@@ -205,34 +205,109 @@
             year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' 
         });
 
-        // Mock Data Generator for 12 months (Thai Fiscal Year: Oct - Sep)
+        // ===================================================================
+        //  Google Sheet (Publish to web -> CSV) configuration
+        // -------------------------------------------------------------------
+        //  วิธีตั้งค่า:
+        //  1. ใน Google Sheet ไปที่ File > Share > Publish to web
+        //  2. เลือกชีตที่ต้องการ และรูปแบบ "Comma-separated values (.csv)"
+        //  3. กดปุ่ม Publish แล้วคัดลอกลิงก์ที่ได้มาวางแทนค่าด้านล่างนี้
+        //
+        //  คอลัมน์ในชีต (แถวแรกเป็นหัวตาราง) ต้องมีชื่อตรงตามนี้:
+        //  month, quarter, patientDays, cathDays, ventDays, surgeries,
+        //  liveBirths, haiCount, cautiCount, vapCount, ssiCount, omphCount
+        // ===================================================================
+        const SHEET_CSV_URL = ''; // <-- วาง URL CSV ของ Google Sheet ที่นี่
+
         const months = ['ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.'];
-        
-        // Base dataset
-        let rawData = months.map((month, index) => {
-            // Generating somewhat realistic fluctuating data
-            const patientDays = 3000 + Math.floor(Math.random() * 1000);
-            const cathDays = Math.floor(patientDays * 0.3);
-            const ventDays = Math.floor(patientDays * 0.15);
-            const surgeries = 200 + Math.floor(Math.random() * 100);
-            const liveBirths = 80 + Math.floor(Math.random() * 40);
 
-            return {
-                month: month,
-                quarter: index < 3 ? 'Q1' : index < 6 ? 'Q2' : index < 9 ? 'Q3' : 'Q4',
-                patientDays,
-                cathDays,
-                ventDays,
-                surgeries,
-                liveBirths,
-                haiCount: Math.floor(Math.random() * 10),
-                cautiCount: Math.floor(Math.random() * 5),
-                vapCount: Math.floor(Math.random() * 4),
-                ssiCount: Math.floor(Math.random() * 3), // 0 to 2
-                omphCount: Math.floor(Math.random() * 2)  // 0 or 1
-            };
-        });
+        // ตัวเลขที่ต้องแปลงจากข้อความเป็นตัวเลข
+        const NUMERIC_FIELDS = ['patientDays', 'cathDays', 'ventDays', 'surgeries',
+            'liveBirths', 'haiCount', 'cautiCount', 'vapCount', 'ssiCount', 'omphCount'];
 
+        // แปลงข้อความ CSV เป็น array ของ object (รองรับค่าที่มีเครื่องหมายคำพูดครอบ)
+        function parseCSV(text) {
+            const rows = [];
+            let row = [], field = '', inQuotes = false;
+            for (let i = 0; i < text.length; i++) {
+                const c = text[i];
+                if (inQuotes) {
+                    if (c === '"') {
+                        if (text[i + 1] === '"') { field += '"'; i++; }
+                        else { inQuotes = false; }
+                    } else { field += c; }
+                } else {
+                    if (c === '"') { inQuotes = true; }
+                    else if (c === ',') { row.push(field); field = ''; }
+                    else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+                    else if (c === '\r') { /* ข้าม */ }
+                    else { field += c; }
+                }
+            }
+            if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+
+            if (rows.length < 2) return [];
+            const headers = rows[0].map(h => h.trim());
+            return rows.slice(1)
+                .filter(r => r.some(cell => cell.trim() !== '')) // ข้ามแถวว่าง
+                .map(r => {
+                    const obj = {};
+                    headers.forEach((h, idx) => {
+                        let val = (r[idx] ?? '').trim();
+                        if (NUMERIC_FIELDS.includes(h)) {
+                            val = Number(val.replace(/,/g, '')) || 0;
+                        }
+                        obj[h] = val;
+                    });
+                    // เติม quarter อัตโนมัติหากชีตไม่ได้ระบุ (อิงลำดับเดือนปีงบประมาณ)
+                    if (!obj.quarter) {
+                        const mi = months.indexOf(obj.month);
+                        obj.quarter = mi < 0 ? '' : mi < 3 ? 'Q1' : mi < 6 ? 'Q2' : mi < 9 ? 'Q3' : 'Q4';
+                    }
+                    return obj;
+                });
+        }
+
+        // ข้อมูลจำลอง (ใช้เป็น fallback เมื่อยังไม่ได้ตั้งค่าชีต หรือดึงข้อมูลไม่สำเร็จ)
+        function generateMockData() {
+            return months.map((month, index) => {
+                const patientDays = 3000 + Math.floor(Math.random() * 1000);
+                const cathDays = Math.floor(patientDays * 0.3);
+                const ventDays = Math.floor(patientDays * 0.15);
+                const surgeries = 200 + Math.floor(Math.random() * 100);
+                const liveBirths = 80 + Math.floor(Math.random() * 40);
+                return {
+                    month,
+                    quarter: index < 3 ? 'Q1' : index < 6 ? 'Q2' : index < 9 ? 'Q3' : 'Q4',
+                    patientDays, cathDays, ventDays, surgeries, liveBirths,
+                    haiCount: Math.floor(Math.random() * 10),
+                    cautiCount: Math.floor(Math.random() * 5),
+                    vapCount: Math.floor(Math.random() * 4),
+                    ssiCount: Math.floor(Math.random() * 3),
+                    omphCount: Math.floor(Math.random() * 2)
+                };
+            });
+        }
+
+        // โหลดข้อมูลจาก Google Sheet; หากล้มเหลวจะใช้ข้อมูลจำลองแทน
+        async function loadData() {
+            if (!SHEET_CSV_URL) {
+                console.info('ยังไม่ได้ตั้งค่า SHEET_CSV_URL — ใช้ข้อมูลจำลองชั่วคราว');
+                return { data: generateMockData(), source: 'mock' };
+            }
+            try {
+                const res = await fetch(SHEET_CSV_URL);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const parsed = parseCSV(await res.text());
+                if (parsed.length === 0) throw new Error('ไม่พบข้อมูลในชีต');
+                return { data: parsed, source: 'sheet' };
+            } catch (err) {
+                console.error('ดึงข้อมูลจาก Google Sheet ไม่สำเร็จ:', err);
+                return { data: generateMockData(), source: 'mock', error: err };
+            }
+        }
+
+        let rawData = [];
         let trendChartInstance = null;
         let barChartInstance = null;
 
@@ -381,7 +456,22 @@
         document.getElementById('filterPCT').addEventListener('change', updateDashboard);
 
         // Initial Load
-        window.onload = () => {
+        window.onload = async () => {
+            const result = await loadData();
+            rawData = result.data;
+
+            // แสดงสถานะแหล่งข้อมูลตรงหัวข้อ "ข้อมูลอัปเดตล่าสุด"
+            const statusEl = document.getElementById('lastUpdated');
+            if (result.source === 'sheet') {
+                statusEl.textContent = today.toLocaleDateString('th-TH', {
+                    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                }) + ' (จาก Google Sheet)';
+            } else {
+                statusEl.textContent = SHEET_CSV_URL
+                    ? '⚠️ เชื่อม Google Sheet ไม่สำเร็จ — แสดงข้อมูลจำลอง'
+                    : 'ข้อมูลจำลอง (ยังไม่ได้ตั้งค่า Google Sheet)';
+            }
+
             updateDashboard();
         };
     </script>
