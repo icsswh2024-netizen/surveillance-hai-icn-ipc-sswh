@@ -191,6 +191,24 @@
             return 'Q4';
         }
 
+        // รองรับ Month ทั้งเลข (10) และชื่อเดือนไทย (ตุลาคม / ต.ค.)
+        const THAI_MONTH_TO_NUM = {
+            'มกราคม': 1, 'ม.ค.': 1, 'กุมภาพันธ์': 2, 'ก.พ.': 2, 'มีนาคม': 3, 'มี.ค.': 3,
+            'เมษายน': 4, 'เม.ย.': 4, 'พฤษภาคม': 5, 'พ.ค.': 5, 'มิถุนายน': 6, 'มิ.ย.': 6,
+            'กรกฎาคม': 7, 'ก.ค.': 7, 'สิงหาคม': 8, 'ส.ค.': 8, 'กันยายน': 9, 'ก.ย.': 9,
+            'ตุลาคม': 10, 'ต.ค.': 10, 'พฤศจิกายน': 11, 'พ.ย.': 11, 'ธันวาคม': 12, 'ธ.ค.': 12
+        };
+        function parseMonth(raw) {
+            const s = (raw || '').toString().trim();
+            if (s === '') return null;
+            const n = parseInt(s, 10);
+            if (!isNaN(n) && n >= 1 && n <= 12) return n;
+            if (THAI_MONTH_TO_NUM[s] !== undefined) return THAI_MONTH_TO_NUM[s];
+            // เผื่อชื่อเต็มมีช่องว่างหรืออักขระแฝง
+            for (const key in THAI_MONTH_TO_NUM) if (s.indexOf(key) !== -1) return THAI_MONTH_TO_NUM[key];
+            return null;
+        }
+
         // ชนิดการติดเชื้อ (numerator) — จับจากค่า SITE (พิมพ์เล็ก)
         const SITE_TYPES = [
             { key: 'CAUTI',      test: s => s.includes('cauti') },
@@ -240,11 +258,11 @@
         // แปลงแต่ละแถวดิบให้เป็น record ที่ใช้งานได้
         function normalize(rows) {
             return rows.map(r => {
-                const month = parseInt(r['Month'], 10);
+                const month = parseMonth(r['Month']);
                 return {
                     year: (r['Year'] || '').trim(),
-                    month: isNaN(month) ? null : month,
-                    quarter: isNaN(month) ? '' : monthQuarter(month),
+                    month: month,
+                    quarter: month == null ? '' : monthQuarter(month),
                     unit: (r['Unit'] || '').trim().toUpperCase(),
                     pct: (r['PCT'] || '').trim().toUpperCase(),
                     isHAI: (r['HAI'] || '').trim().toLowerCase() === 'hai', // นับเฉพาะแถวหลัก
@@ -311,8 +329,12 @@
             const cases = getFilteredCases();
             const byMonth = aggregateByMonth(cases);
 
+            // นับ KPI ตรงจากเคส (ไม่ผูกกับการแยกเดือน เพื่อไม่ให้ค่าหายหากเดือนผิดรูปแบบ)
             const total = { HAI: 0, CAUTI: 0, VAP: 0, HAP: 0, CLABSI: 0, SSI: 0, UTI: 0, BSI: 0, Omphalitis: 0, Other: 0 };
-            FISCAL_MONTHS.forEach(m => Object.keys(total).forEach(k => total[k] += byMonth[m][k]));
+            cases.forEach(c => {
+                total.HAI += 1;
+                if (total[c.siteType] !== undefined) total[c.siteType] += 1;
+            });
 
             animateValue('kpiHAI', total.HAI);
             animateValue('kpiCAUTI', total.CAUTI);
