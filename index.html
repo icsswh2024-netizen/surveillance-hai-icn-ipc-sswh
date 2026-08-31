@@ -42,6 +42,7 @@
             </div>
             <div class="text-right">
                 <p class="text-sm text-slate-400">สถานะข้อมูล: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
+                <p class="text-xs text-slate-400 mt-1" id="debugInfo"></p>
             </div>
         </div>
 
@@ -259,10 +260,13 @@
         function normalize(rows) {
             return rows.map(r => {
                 const month = parseMonth(r['Month']);
+                // ไตรมาส: ใช้คอลัมน์ Quater (1-4) ก่อน ถ้าไม่มีค่อยคำนวณจากเดือน
+                const quaterRaw = (r['Quater'] || '').toString().trim();
+                const quarterFromCol = { '1': 'Q1', '2': 'Q2', '3': 'Q3', '4': 'Q4' }[quaterRaw];
                 return {
                     year: (r['Year'] || '').trim(),
                     month: month,
-                    quarter: month == null ? '' : monthQuarter(month),
+                    quarter: quarterFromCol || (month == null ? '' : monthQuarter(month)),
                     unit: (r['Unit'] || '').trim().toUpperCase(),
                     pct: (r['PCT'] || '').trim().toUpperCase(),
                     isHAI: (r['HAI'] || '').trim().toLowerCase() === 'hai', // นับเฉพาะแถวหลัก
@@ -460,6 +464,14 @@
                 rawData = await loadData();
                 populateFilters();
                 const caseCount = rawData.filter(d => d.isHAI).length;
+
+                // แถบวินิจฉัย: บอกว่าอ่านคอลัมน์ไหนได้บ้าง
+                const dbg = document.getElementById('debugInfo');
+                const withMonth = rawData.filter(d => d.month != null).length;
+                const withQuarter = rawData.filter(d => d.quarter).length;
+                const sites = [...new Set(rawData.map(d => d.siteType))].join(', ');
+                dbg.textContent = 'แถว: ' + rawData.length + ' | HAI: ' + caseCount +
+                    ' | มีเดือน: ' + withMonth + ' | มีไตรมาส: ' + withQuarter + ' | SITE: ' + sites;
                 statusEl.textContent = 'เชื่อม Google Sheet สำเร็จ — ' + caseCount + ' เคส (' +
                     new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ')';
                 updateDashboard();
