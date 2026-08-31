@@ -4,44 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>แดชบอร์ดทะเบียน-1 : ระบบเฝ้าระวังการติดเชื้อในโรงพยาบาล (HAI)</title>
-    
+
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Load Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+
     <!-- Google Fonts: Inter and Noto Sans Thai -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <style>
         body {
             font-family: 'Inter', 'Noto Sans Thai', sans-serif;
             background-color: #f8fafc; /* slate-50 */
         }
-        /* Custom scrollbar for a cleaner look */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1; 
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1; 
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8; 
-        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body class="text-slate-800 p-4 md:p-6 lg:p-8">
-    
+
     <div class="max-w-7xl mx-auto space-y-6">
-        
+
         <!-- Header -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div>
@@ -49,10 +38,10 @@
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                     แดชบอร์ดทะเบียน-1
                 </h1>
-                <p class="text-slate-500 mt-1">ตัวชี้วัดระบบเฝ้าระวังการติดเชื้อในโรงพยาบาล (HAI Dashboard)</p>
+                <p class="text-slate-500 mt-1">จำนวนเคสติดเชื้อในโรงพยาบาล (HAI Case Surveillance)</p>
             </div>
             <div class="text-right">
-                <p class="text-sm text-slate-400">ข้อมูลอัปเดตล่าสุด: <span class="font-medium text-slate-600" id="lastUpdated"></span></p>
+                <p class="text-sm text-slate-400">สถานะข้อมูล: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
             </div>
         </div>
 
@@ -60,11 +49,8 @@
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-2">ปี พ.ศ.</label>
-                    <select id="filterYear" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-                        <option value="2569">2569</option>
-                        <option value="2568">2568</option>
-                    </select>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">ปี งบประมาณ (พ.ศ.)</label>
+                    <select id="filterYear" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"></select>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-2">ไตรมาส</label>
@@ -78,401 +64,388 @@
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-2">หอผู้ป่วย (Unit)</label>
-                    <select id="filterUnit" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-                        <option value="ALL">ทุกหอผู้ป่วย</option>
-                        <option value="ICU">ICU</option>
-                        <option value="SURG">ศัลยกรรม</option>
-                        <option value="MED">อายุรกรรม</option>
-                        <option value="PED">กุมารเวชกรรม</option>
-                    </select>
+                    <select id="filterUnit" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"></select>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-2">กลุ่มงาน (PCT)</label>
-                    <select id="filterPCT" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-                        <option value="ALL">ทุกกลุ่มงาน</option>
-                        <option value="SURG_PCT">PCT ศัลยกรรม</option>
-                        <option value="MED_PCT">PCT อายุรกรรม</option>
-                        <option value="OBG_PCT">PCT สูตินรีเวช</option>
-                    </select>
+                    <select id="filterPCT" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"></select>
                 </div>
             </div>
         </div>
 
-        <!-- KPI Cards -->
+        <!-- KPI Cards (จำนวนเคส) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            
-            <!-- HAI Rate -->
+
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-5 text-white shadow-md relative overflow-hidden flex flex-col justify-between h-32">
-                <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-blue-400 opacity-30" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
-                <h6 class="font-medium text-blue-100 z-10">HAI Rate</h6>
+                <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-blue-400 opacity-30" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
+                <h6 class="font-medium text-blue-100 z-10">HAI ทั้งหมด</h6>
                 <div class="z-10">
-                    <h3 id="kpiHAI" class="text-3xl font-bold">0.00</h3>
-                    <p class="text-xs text-blue-100 mt-1">ต่อ 1,000 วันนอน</p>
+                    <h3 id="kpiHAI" class="text-3xl font-bold">0</h3>
+                    <p class="text-xs text-blue-100 mt-1">จำนวนเคส</p>
                 </div>
             </div>
 
-            <!-- CAUTI Rate -->
             <div class="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl p-5 text-white shadow-md relative overflow-hidden flex flex-col justify-between h-32">
-                <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-orange-400 opacity-30" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                <h6 class="font-medium text-orange-50 z-10">CAUTI Rate</h6>
+                <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-orange-400 opacity-30" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3z" clip-rule="evenodd"></path></svg>
+                <h6 class="font-medium text-orange-50 z-10">CAUTI</h6>
                 <div class="z-10">
-                    <h3 id="kpiCAUTI" class="text-3xl font-bold">0.00</h3>
-                    <p class="text-xs text-orange-100 mt-1">ต่อ 1,000 วันคาสาย</p>
+                    <h3 id="kpiCAUTI" class="text-3xl font-bold">0</h3>
+                    <p class="text-xs text-orange-100 mt-1">จำนวนเคส</p>
                 </div>
             </div>
 
-            <!-- VAP Rate -->
             <div class="bg-gradient-to-br from-emerald-400 to-green-600 rounded-2xl p-5 text-white shadow-md relative overflow-hidden flex flex-col justify-between h-32">
-                <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-green-400 opacity-30" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path></svg>
-                <h6 class="font-medium text-emerald-50 z-10">VAP Rate</h6>
+                <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-green-400 opacity-30" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path></svg>
+                <h6 class="font-medium text-emerald-50 z-10">VAP</h6>
                 <div class="z-10">
-                    <h3 id="kpiVAP" class="text-3xl font-bold">0.00</h3>
-                    <p class="text-xs text-emerald-100 mt-1">ต่อ 1,000 วันใส่เครื่อง</p>
-                </div>
-            </div>
-            
-            <!-- SSI Rate -->
-            <div class="bg-cyan-50 rounded-2xl p-5 border border-cyan-100 shadow-sm relative overflow-hidden flex flex-col justify-between h-32">
-                <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-cyan-200 opacity-40" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V8z" clip-rule="evenodd"></path></svg>
-                <h6 class="font-medium text-cyan-800 z-10">SSI Rate (แผลผ่าตัด)</h6>
-                <div class="z-10">
-                    <h3 id="kpiSSI" class="text-3xl font-bold text-cyan-700">0.00</h3>
-                    <p class="text-xs text-cyan-600 mt-1">ต่อ 100 ครั้งผ่าตัด</p>
+                    <h3 id="kpiVAP" class="text-3xl font-bold">0</h3>
+                    <p class="text-xs text-emerald-100 mt-1">จำนวนเคส</p>
                 </div>
             </div>
 
-            <!-- Omphalitis Rate -->
+            <div class="bg-cyan-50 rounded-2xl p-5 border border-cyan-100 shadow-sm relative overflow-hidden flex flex-col justify-between h-32">
+                <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-cyan-200 opacity-40" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V8z" clip-rule="evenodd"></path></svg>
+                <h6 class="font-medium text-cyan-800 z-10">SSI (แผลผ่าตัด)</h6>
+                <div class="z-10">
+                    <h3 id="kpiSSI" class="text-3xl font-bold text-cyan-700">0</h3>
+                    <p class="text-xs text-cyan-600 mt-1">จำนวนเคส</p>
+                </div>
+            </div>
+
             <div class="bg-rose-50 rounded-2xl p-5 border border-rose-100 shadow-sm relative overflow-hidden flex flex-col justify-between h-32">
-                <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-rose-200 opacity-40" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
+                <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-rose-200 opacity-40" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
                 <h6 class="font-medium text-rose-800 z-10">Omphalitis (สะดือเด็ก)</h6>
                 <div class="z-10">
-                    <h3 id="kpiOmphalitis" class="text-3xl font-bold text-rose-600">0.00</h3>
-                    <p class="text-xs text-rose-600 mt-1">ต่อ 100 ทารกเกิดมีชีพ</p>
+                    <h3 id="kpiOmphalitis" class="text-3xl font-bold text-rose-600">0</h3>
+                    <p class="text-xs text-rose-600 mt-1">จำนวนเคส</p>
                 </div>
             </div>
         </div>
 
         <!-- Charts Section -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Chart 1: Infection Trends -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h3 class="text-lg font-semibold text-slate-800 mb-4">แนวโน้มอัตราการติดเชื้อรายเดือน (ต่อพันวัน)</h3>
-                <div class="relative h-72 w-full">
-                    <canvas id="trendChart"></canvas>
-                </div>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">จำนวนเคสติดเชื้อรายเดือน (แยกชนิด)</h3>
+                <div class="relative h-72 w-full"><canvas id="trendChart"></canvas></div>
             </div>
-
-            <!-- Chart 2: SSI & Omphalitis -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h3 class="text-lg font-semibold text-slate-800 mb-4">อัตราการติดเชื้อแผลผ่าตัด และสะดือเด็ก (ต่อร้อย)</h3>
-                <div class="relative h-72 w-full">
-                    <canvas id="barChart"></canvas>
-                </div>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">สัดส่วนการติดเชื้อแยกตามตำแหน่ง (SITE)</h3>
+                <div class="relative h-72 w-full"><canvas id="siteChart"></canvas></div>
             </div>
         </div>
 
-        <!-- Detailed Data Table (Optional but good for dashboards) -->
+        <!-- Detailed Data Table -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                <h3 class="text-lg font-semibold text-slate-800">ตารางข้อมูลดิบประจำปี</h3>
-                <button class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
+                <h3 class="text-lg font-semibold text-slate-800">ตารางจำนวนเคสรายเดือน</h3>
+                <button id="btnExport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm text-slate-600">
                     <thead class="bg-slate-50 text-slate-700 font-semibold">
                         <tr>
                             <th class="py-3 px-4">เดือน</th>
-                            <th class="py-3 px-4 text-right">จำนวนวันนอน</th>
-                            <th class="py-3 px-4 text-right">จำนวนติดเชื้อ (HAI)</th>
-                            <th class="py-3 px-4 text-right">จำนวนผ่าตัด</th>
-                            <th class="py-3 px-4 text-right">ติดเชื้อ (SSI)</th>
-                            <th class="py-3 px-4 text-right">ทารกเกิดมีชีพ</th>
-                            <th class="py-3 px-4 text-right">Omphalitis</th>
+                            <th class="py-3 px-4 text-right">HAI</th>
+                            <th class="py-3 px-4 text-right">CAUTI</th>
+                            <th class="py-3 px-4 text-right">VAP</th>
+                            <th class="py-3 px-4 text-right">HAP</th>
+                            <th class="py-3 px-4 text-right">CLABSI</th>
+                            <th class="py-3 px-4 text-right text-cyan-600">SSI</th>
+                            <th class="py-3 px-4 text-right">UTI</th>
+                            <th class="py-3 px-4 text-right">BSI</th>
+                            <th class="py-3 px-4 text-right text-rose-600">Omphalitis</th>
                         </tr>
                     </thead>
-                    <tbody id="dataTableBody" class="divide-y divide-slate-100">
-                        <!-- Data rows will be populated by JS -->
-                    </tbody>
+                    <tbody id="dataTableBody" class="divide-y divide-slate-100"></tbody>
                 </table>
             </div>
         </div>
+
+        <p class="text-xs text-slate-400 text-center">
+            แหล่งข้อมูล: Google Sheet ชีต "ทะเบียน-1" — ตัวเลขคือ "จำนวนเคสติดเชื้อ" (นับเฉพาะแถวที่ระบุ HAI เพื่อไม่ให้นับเชื้อซ้ำ)
+        </p>
     </div>
 
     <script>
-        // Set current date
-        const today = new Date();
-        document.getElementById('lastUpdated').textContent = today.toLocaleDateString('th-TH', { 
-            year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-        });
-
         // ===================================================================
-        //  Google Sheet (Publish to web -> CSV) configuration
-        // -------------------------------------------------------------------
-        //  วิธีตั้งค่า:
-        //  1. ใน Google Sheet ไปที่ File > Share > Publish to web
-        //  2. เลือกชีตที่ต้องการ และรูปแบบ "Comma-separated values (.csv)"
-        //  3. กดปุ่ม Publish แล้วคัดลอกลิงก์ที่ได้มาวางแทนค่าด้านล่างนี้
-        //
-        //  คอลัมน์ในชีต (แถวแรกเป็นหัวตาราง) ต้องมีชื่อตรงตามนี้:
-        //  month, quarter, patientDays, cathDays, ventDays, surgeries,
-        //  liveBirths, haiCount, cautiCount, vapCount, ssiCount, omphCount
+        //  แหล่งข้อมูล: Google Sheet ชีต "ทะเบียน-1"
+        //  ใช้ gviz endpoint (ทำงานได้เมื่อชีตตั้งค่า "ทุกคนที่มีลิงก์" อ่านได้)
+        //  หากใช้ Publish to web (CSV) ให้แทน URL นี้ด้วยลิงก์ที่ publish
         // ===================================================================
-        const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTl12Au-IsliRCkqZqrBhnhp4aSI02f_F0DLft6SxvKb2yTYNPFsI8mid4TkjYx2JRRgiAjTBz-w7ec/pub?gid=1367228784&single=true&output=csv';
+        const SHEET_ID = '1KEK2bvXLDAY7awAapTnF32yZz1qvfqfWXje2ccG2pLc';
+        const SHEET_NAME = 'ทะเบียน-1';
+        const SHEET_CSV_URL =
+            'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+            '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(SHEET_NAME);
 
-        const months = ['ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.'];
+        // ปีงบประมาณไทยเริ่ม ต.ค. — เรียงเดือน 10,11,12,1..9
+        const FISCAL_MONTHS = [10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        const MONTH_LABELS = {
+            10: 'ต.ค.', 11: 'พ.ย.', 12: 'ธ.ค.', 1: 'ม.ค.', 2: 'ก.พ.', 3: 'มี.ค.',
+            4: 'เม.ย.', 5: 'พ.ค.', 6: 'มิ.ย.', 7: 'ก.ค.', 8: 'ส.ค.', 9: 'ก.ย.'
+        };
+        function monthQuarter(m) {
+            if ([10, 11, 12].includes(m)) return 'Q1';
+            if ([1, 2, 3].includes(m)) return 'Q2';
+            if ([4, 5, 6].includes(m)) return 'Q3';
+            return 'Q4';
+        }
 
-        // ตัวเลขที่ต้องแปลงจากข้อความเป็นตัวเลข
-        const NUMERIC_FIELDS = ['patientDays', 'cathDays', 'ventDays', 'surgeries',
-            'liveBirths', 'haiCount', 'cautiCount', 'vapCount', 'ssiCount', 'omphCount'];
+        // ชนิดการติดเชื้อ (numerator) — จับจากค่า SITE (พิมพ์เล็ก)
+        const SITE_TYPES = [
+            { key: 'CAUTI',      test: s => s.includes('cauti') },
+            { key: 'VAP',        test: s => s.includes('vap') },
+            { key: 'HAP',        test: s => s.includes('hap') },
+            { key: 'CLABSI',     test: s => s.includes('clabsi') },
+            { key: 'SSI',        test: s => s.includes('ssi') },
+            { key: 'Omphalitis', test: s => s.includes('omphal') },
+            { key: 'UTI',        test: s => s.includes('uti') && !s.includes('cauti') },
+            { key: 'BSI',        test: s => s.includes('bsi') },
+        ];
+        function classifySite(site) {
+            const s = (site || '').toString().trim().toLowerCase();
+            for (const t of SITE_TYPES) if (t.test(s)) return t.key;
+            return 'Other';
+        }
 
-        // แปลงข้อความ CSV เป็น array ของ object (รองรับค่าที่มีเครื่องหมายคำพูดครอบ)
+        // ---- ตัวแปลง CSV เป็น array ของ object ----
         function parseCSV(text) {
             const rows = [];
             let row = [], field = '', inQuotes = false;
             for (let i = 0; i < text.length; i++) {
                 const c = text[i];
                 if (inQuotes) {
-                    if (c === '"') {
-                        if (text[i + 1] === '"') { field += '"'; i++; }
-                        else { inQuotes = false; }
-                    } else { field += c; }
+                    if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
+                    else field += c;
                 } else {
-                    if (c === '"') { inQuotes = true; }
+                    if (c === '"') inQuotes = true;
                     else if (c === ',') { row.push(field); field = ''; }
                     else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
-                    else if (c === '\r') { /* ข้าม */ }
-                    else { field += c; }
+                    else if (c === '\r') { /* skip */ }
+                    else field += c;
                 }
             }
             if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
-
             if (rows.length < 2) return [];
             const headers = rows[0].map(h => h.trim());
             return rows.slice(1)
-                .filter(r => r.some(cell => cell.trim() !== '')) // ข้ามแถวว่าง
+                .filter(r => r.some(cell => cell.trim() !== ''))
                 .map(r => {
                     const obj = {};
-                    headers.forEach((h, idx) => {
-                        let val = (r[idx] ?? '').trim();
-                        if (NUMERIC_FIELDS.includes(h)) {
-                            val = Number(val.replace(/,/g, '')) || 0;
-                        }
-                        obj[h] = val;
-                    });
-                    // เติม quarter อัตโนมัติหากชีตไม่ได้ระบุ (อิงลำดับเดือนปีงบประมาณ)
-                    if (!obj.quarter) {
-                        const mi = months.indexOf(obj.month);
-                        obj.quarter = mi < 0 ? '' : mi < 3 ? 'Q1' : mi < 6 ? 'Q2' : mi < 9 ? 'Q3' : 'Q4';
-                    }
+                    headers.forEach((h, idx) => { obj[h] = (r[idx] ?? '').trim(); });
                     return obj;
                 });
         }
 
-        // ข้อมูลจำลอง (ใช้เป็น fallback เมื่อยังไม่ได้ตั้งค่าชีต หรือดึงข้อมูลไม่สำเร็จ)
-        function generateMockData() {
-            return months.map((month, index) => {
-                const patientDays = 3000 + Math.floor(Math.random() * 1000);
-                const cathDays = Math.floor(patientDays * 0.3);
-                const ventDays = Math.floor(patientDays * 0.15);
-                const surgeries = 200 + Math.floor(Math.random() * 100);
-                const liveBirths = 80 + Math.floor(Math.random() * 40);
+        // แปลงแต่ละแถวดิบให้เป็น record ที่ใช้งานได้
+        function normalize(rows) {
+            return rows.map(r => {
+                const month = parseInt(r['Month'], 10);
                 return {
-                    month,
-                    quarter: index < 3 ? 'Q1' : index < 6 ? 'Q2' : index < 9 ? 'Q3' : 'Q4',
-                    patientDays, cathDays, ventDays, surgeries, liveBirths,
-                    haiCount: Math.floor(Math.random() * 10),
-                    cautiCount: Math.floor(Math.random() * 5),
-                    vapCount: Math.floor(Math.random() * 4),
-                    ssiCount: Math.floor(Math.random() * 3),
-                    omphCount: Math.floor(Math.random() * 2)
+                    year: (r['Year'] || '').trim(),
+                    month: isNaN(month) ? null : month,
+                    quarter: isNaN(month) ? '' : monthQuarter(month),
+                    unit: (r['Unit'] || '').trim().toUpperCase(),
+                    pct: (r['PCT'] || '').trim().toUpperCase(),
+                    isHAI: (r['HAI'] || '').trim().toLowerCase() === 'hai', // นับเฉพาะแถวหลัก
+                    siteType: classifySite(r['SITE'])
                 };
             });
         }
 
-        // โหลดข้อมูลจาก Google Sheet; หากล้มเหลวจะใช้ข้อมูลจำลองแทน
-        async function loadData() {
-            if (!SHEET_CSV_URL) {
-                console.info('ยังไม่ได้ตั้งค่า SHEET_CSV_URL — ใช้ข้อมูลจำลองชั่วคราว');
-                return { data: generateMockData(), source: 'mock' };
-            }
-            try {
-                const res = await fetch(SHEET_CSV_URL);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const parsed = parseCSV(await res.text());
-                if (parsed.length === 0) throw new Error('ไม่พบข้อมูลในชีต');
-                return { data: parsed, source: 'sheet' };
-            } catch (err) {
-                console.error('ดึงข้อมูลจาก Google Sheet ไม่สำเร็จ:', err);
-                return { data: generateMockData(), source: 'mock', error: err };
-            }
-        }
-
         let rawData = [];
         let trendChartInstance = null;
-        let barChartInstance = null;
+        let siteChartInstance = null;
+
+        async function loadData() {
+            const res = await fetch(SHEET_CSV_URL);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return normalize(parseCSV(await res.text()));
+        }
+
+        // เติมตัวเลือกใน dropdown จากค่าจริงในข้อมูล
+        function populateFilters() {
+            const years = [...new Set(rawData.map(d => d.year).filter(Boolean))].sort().reverse();
+            const units = [...new Set(rawData.map(d => d.unit).filter(Boolean))].sort();
+            const pcts  = [...new Set(rawData.map(d => d.pct).filter(Boolean))].sort();
+
+            const fill = (id, values, allLabel) => {
+                const sel = document.getElementById(id);
+                sel.innerHTML = '<option value="ALL">' + allLabel + '</option>' +
+                    values.map(v => '<option value="' + v + '">' + v + '</option>').join('');
+            };
+            fill('filterYear', years, 'ทุกปี');
+            fill('filterUnit', units, 'ทุกหอผู้ป่วย');
+            fill('filterPCT', pcts, 'ทุกกลุ่มงาน');
+        }
+
+        function getFilteredCases() {
+            const y = document.getElementById('filterYear').value;
+            const q = document.getElementById('filterQuarter').value;
+            const u = document.getElementById('filterUnit').value;
+            const p = document.getElementById('filterPCT').value;
+            return rawData.filter(d =>
+                d.isHAI &&
+                (y === 'ALL' || d.year === y) &&
+                (q === 'ALL' || d.quarter === q) &&
+                (u === 'ALL' || d.unit === u) &&
+                (p === 'ALL' || d.pct === p)
+            );
+        }
+
+        // รวมยอดต่อเดือน -> { month: {HAI, CAUTI, VAP, ...} }
+        function aggregateByMonth(cases) {
+            const byMonth = {};
+            FISCAL_MONTHS.forEach(m => {
+                byMonth[m] = { HAI: 0, CAUTI: 0, VAP: 0, HAP: 0, CLABSI: 0, SSI: 0, UTI: 0, BSI: 0, Omphalitis: 0, Other: 0 };
+            });
+            cases.forEach(c => {
+                if (c.month == null || !byMonth[c.month]) return;
+                byMonth[c.month].HAI += 1;
+                if (byMonth[c.month][c.siteType] !== undefined) byMonth[c.month][c.siteType] += 1;
+            });
+            return byMonth;
+        }
 
         function updateDashboard() {
-            const selectedQuarter = document.getElementById('filterQuarter').value;
-            
-            // Filter data
-            let filteredData = rawData;
-            if (selectedQuarter !== 'ALL') {
-                filteredData = rawData.filter(d => d.quarter === selectedQuarter);
-            }
+            const cases = getFilteredCases();
+            const byMonth = aggregateByMonth(cases);
 
-            // Aggregate Data
-            const agg = filteredData.reduce((acc, curr) => {
-                acc.patientDays += curr.patientDays;
-                acc.cathDays += curr.cathDays;
-                acc.ventDays += curr.ventDays;
-                acc.surgeries += curr.surgeries;
-                acc.liveBirths += curr.liveBirths;
-                
-                acc.haiCount += curr.haiCount;
-                acc.cautiCount += curr.cautiCount;
-                acc.vapCount += curr.vapCount;
-                acc.ssiCount += curr.ssiCount;
-                acc.omphCount += curr.omphCount;
-                return acc;
-            }, { patientDays: 0, cathDays: 0, ventDays: 0, surgeries: 0, liveBirths: 0, haiCount: 0, cautiCount: 0, vapCount: 0, ssiCount: 0, omphCount: 0 });
+            const total = { HAI: 0, CAUTI: 0, VAP: 0, HAP: 0, CLABSI: 0, SSI: 0, UTI: 0, BSI: 0, Omphalitis: 0, Other: 0 };
+            FISCAL_MONTHS.forEach(m => Object.keys(total).forEach(k => total[k] += byMonth[m][k]));
 
-            // Calculate Rates
-            // Formula: (Infection Count / Denominator) * Multiplier
-            const haiRate = agg.patientDays > 0 ? (agg.haiCount / agg.patientDays) * 1000 : 0;
-            const cautiRate = agg.cathDays > 0 ? (agg.cautiCount / agg.cathDays) * 1000 : 0;
-            const vapRate = agg.ventDays > 0 ? (agg.vapCount / agg.ventDays) * 1000 : 0;
-            const ssiRate = agg.surgeries > 0 ? (agg.ssiCount / agg.surgeries) * 100 : 0;
-            const omphRate = agg.liveBirths > 0 ? (agg.omphCount / agg.liveBirths) * 100 : 0;
+            animateValue('kpiHAI', total.HAI);
+            animateValue('kpiCAUTI', total.CAUTI);
+            animateValue('kpiVAP', total.VAP);
+            animateValue('kpiSSI', total.SSI);
+            animateValue('kpiOmphalitis', total.Omphalitis);
 
-            // Update DOM with Animation
-            animateValue('kpiHAI', haiRate, 2);
-            animateValue('kpiCAUTI', cautiRate, 2);
-            animateValue('kpiVAP', vapRate, 2);
-            animateValue('kpiSSI', ssiRate, 2);
-            animateValue('kpiOmphalitis', omphRate, 2);
-
-            updateCharts(filteredData);
-            updateTable(filteredData);
+            updateCharts(byMonth, total);
+            updateTable(byMonth);
         }
 
-        function animateValue(id, end, decimals) {
+        function animateValue(id, end) {
             const obj = document.getElementById(id);
-            const start = parseFloat(obj.innerText) || 0;
-            const duration = 800;
-            let startTimestamp = null;
-            const step = (timestamp) => {
-                if (!startTimestamp) startTimestamp = timestamp;
-                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                // Ease out quad
-                const easeProgress = progress * (2 - progress);
-                const currentVal = (start + (end - start) * easeProgress).toFixed(decimals);
-                obj.innerHTML = currentVal;
-                if (progress < 1) {
-                    window.requestAnimationFrame(step);
-                } else {
-                    obj.innerHTML = end.toFixed(decimals);
-                }
+            const start = parseInt(obj.innerText, 10) || 0;
+            const duration = 600;
+            let startTs = null;
+            const step = (ts) => {
+                if (!startTs) startTs = ts;
+                const p = Math.min((ts - startTs) / duration, 1);
+                const ease = p * (2 - p);
+                obj.innerHTML = Math.round(start + (end - start) * ease);
+                if (p < 1) requestAnimationFrame(step); else obj.innerHTML = end;
             };
-            window.requestAnimationFrame(step);
+            requestAnimationFrame(step);
         }
 
-        function updateCharts(data) {
-            const labels = data.map(d => d.month);
-            
-            // Calculate rates per month for charts
-            const haiTrend = data.map(d => (d.patientDays > 0 ? (d.haiCount / d.patientDays) * 1000 : 0).toFixed(2));
-            const cautiTrend = data.map(d => (d.cathDays > 0 ? (d.cautiCount / d.cathDays) * 1000 : 0).toFixed(2));
-            const vapTrend = data.map(d => (d.ventDays > 0 ? (d.vapCount / d.ventDays) * 1000 : 0).toFixed(2));
-            
-            const ssiTrend = data.map(d => (d.surgeries > 0 ? (d.ssiCount / d.surgeries) * 100 : 0).toFixed(2));
-            const omphTrend = data.map(d => (d.liveBirths > 0 ? (d.omphCount / d.liveBirths) * 100 : 0).toFixed(2));
+        function updateCharts(byMonth, total) {
+            const labels = FISCAL_MONTHS.map(m => MONTH_LABELS[m]);
+            const series = (key) => FISCAL_MONTHS.map(m => byMonth[m][key]);
 
-            // Setup Trend Chart (Line)
             const ctxTrend = document.getElementById('trendChart').getContext('2d');
             if (trendChartInstance) trendChartInstance.destroy();
             trendChartInstance = new Chart(ctxTrend, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels,
                     datasets: [
-                        { label: 'HAI Rate', data: haiTrend, borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.4, borderWidth: 2 },
-                        { label: 'CAUTI Rate', data: cautiTrend, borderColor: '#f59e0b', backgroundColor: '#f59e0b', tension: 0.4, borderWidth: 2 },
-                        { label: 'VAP Rate', data: vapTrend, borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.4, borderWidth: 2 }
+                        { label: 'HAI', data: series('HAI'), borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.4, borderWidth: 2 },
+                        { label: 'CAUTI', data: series('CAUTI'), borderColor: '#f59e0b', backgroundColor: '#f59e0b', tension: 0.4, borderWidth: 2 },
+                        { label: 'VAP', data: series('VAP'), borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.4, borderWidth: 2 },
+                        { label: 'SSI', data: series('SSI'), borderColor: '#06b6d4', backgroundColor: '#06b6d4', tension: 0.4, borderWidth: 2 }
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } } },
-                    scales: { y: { beginAtZero: true, grid: { borderDash: [4, 4] } }, x: { grid: { display: false } } }
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } }
                 }
             });
 
-            // Setup Bar Chart for SSI & Omphalitis
-            const ctxBar = document.getElementById('barChart').getContext('2d');
-            if (barChartInstance) barChartInstance.destroy();
-            barChartInstance = new Chart(ctxBar, {
-                type: 'bar',
+            const siteKeys = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'Other'];
+            const siteVals = siteKeys.map(k => total[k]);
+            const ctxSite = document.getElementById('siteChart').getContext('2d');
+            if (siteChartInstance) siteChartInstance.destroy();
+            siteChartInstance = new Chart(ctxSite, {
+                type: 'doughnut',
                 data: {
-                    labels: labels,
-                    datasets: [
-                        { label: 'SSI Rate', data: ssiTrend, backgroundColor: '#06b6d4', borderRadius: 4 },
-                        { label: 'Omphalitis Rate', data: omphTrend, backgroundColor: '#f43f5e', borderRadius: 4 }
-                    ]
+                    labels: siteKeys,
+                    datasets: [{
+                        data: siteVals,
+                        backgroundColor: ['#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4', '#eab308', '#ec4899', '#f43f5e', '#94a3b8']
+                    }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } } },
-                    scales: { y: { beginAtZero: true, grid: { borderDash: [4, 4] } }, x: { grid: { display: false } } }
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { usePointStyle: true, font: { family: 'Inter' } } } }
                 }
             });
         }
 
-        function updateTable(data) {
+        function updateTable(byMonth) {
             const tbody = document.getElementById('dataTableBody');
             tbody.innerHTML = '';
-            
-            data.forEach(d => {
+            const cols = ['HAI', 'CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis'];
+            const totals = Object.fromEntries(cols.map(c => [c, 0]));
+
+            FISCAL_MONTHS.forEach(m => {
+                const d = byMonth[m];
+                cols.forEach(c => totals[c] += d[c]);
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-slate-50 transition-colors';
-                tr.innerHTML = `
-                    <td class="py-3 px-4 font-medium text-slate-700">${d.month}</td>
-                    <td class="py-3 px-4 text-right">${d.patientDays.toLocaleString()}</td>
-                    <td class="py-3 px-4 text-right">${d.haiCount}</td>
-                    <td class="py-3 px-4 text-right">${d.surgeries.toLocaleString()}</td>
-                    <td class="py-3 px-4 text-right text-cyan-600 font-medium">${d.ssiCount}</td>
-                    <td class="py-3 px-4 text-right">${d.liveBirths.toLocaleString()}</td>
-                    <td class="py-3 px-4 text-right text-rose-600 font-medium">${d.omphCount}</td>
-                `;
+                tr.innerHTML =
+                    '<td class="py-3 px-4 font-medium text-slate-700">' + MONTH_LABELS[m] + '</td>' +
+                    cols.map(c => {
+                        const cls = c === 'SSI' ? ' text-cyan-600 font-medium' : c === 'Omphalitis' ? ' text-rose-600 font-medium' : '';
+                        return '<td class="py-3 px-4 text-right' + cls + '">' + (d[c] || '') + '</td>';
+                    }).join('');
                 tbody.appendChild(tr);
             });
+
+            const trTotal = document.createElement('tr');
+            trTotal.className = 'bg-slate-50 font-semibold text-slate-800';
+            trTotal.innerHTML = '<td class="py-3 px-4">รวม</td>' +
+                cols.map(c => '<td class="py-3 px-4 text-right">' + totals[c] + '</td>').join('');
+            tbody.appendChild(trTotal);
         }
 
-        // Event Listeners for Filters
-        document.getElementById('filterYear').addEventListener('change', updateDashboard);
-        document.getElementById('filterQuarter').addEventListener('change', updateDashboard);
-        document.getElementById('filterUnit').addEventListener('change', updateDashboard);
-        document.getElementById('filterPCT').addEventListener('change', updateDashboard);
+        // ส่งออกตารางเป็น CSV
+        function exportCSV() {
+            const cols = ['HAI', 'CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis'];
+            const byMonth = aggregateByMonth(getFilteredCases());
+            let csv = 'เดือน,' + cols.join(',') + '\n';
+            FISCAL_MONTHS.forEach(m => {
+                csv += MONTH_LABELS[m] + ',' + cols.map(c => byMonth[m][c]).join(',') + '\n';
+            });
+            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'hai-register-1.csv';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
 
-        // Initial Load
+        // Event listeners
+        ['filterYear', 'filterQuarter', 'filterUnit', 'filterPCT'].forEach(id =>
+            document.getElementById(id).addEventListener('change', updateDashboard));
+        document.getElementById('btnExport').addEventListener('click', exportCSV);
+
+        // Initial load
         window.onload = async () => {
-            const result = await loadData();
-            rawData = result.data;
-
-            // แสดงสถานะแหล่งข้อมูลตรงหัวข้อ "ข้อมูลอัปเดตล่าสุด"
             const statusEl = document.getElementById('lastUpdated');
-            if (result.source === 'sheet') {
-                statusEl.textContent = today.toLocaleDateString('th-TH', {
-                    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                }) + ' (จาก Google Sheet)';
-            } else {
-                statusEl.textContent = SHEET_CSV_URL
-                    ? '⚠️ เชื่อม Google Sheet ไม่สำเร็จ — แสดงข้อมูลจำลอง'
-                    : 'ข้อมูลจำลอง (ยังไม่ได้ตั้งค่า Google Sheet)';
+            try {
+                rawData = await loadData();
+                populateFilters();
+                const caseCount = rawData.filter(d => d.isHAI).length;
+                statusEl.textContent = 'เชื่อม Google Sheet สำเร็จ — ' + caseCount + ' เคส (' +
+                    new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ')';
+                updateDashboard();
+            } catch (err) {
+                console.error(err);
+                statusEl.textContent = '⚠️ ดึงข้อมูลจากชีต "ทะเบียน-1" ไม่สำเร็จ — ตรวจสอบสิทธิ์การเข้าถึง (ต้องตั้ง "ทุกคนที่มีลิงก์")';
+                statusEl.className = 'font-medium text-rose-600';
             }
-
-            updateDashboard();
         };
     </script>
 </body>
