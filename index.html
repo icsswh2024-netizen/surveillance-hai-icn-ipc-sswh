@@ -177,7 +177,9 @@
         const SHEET_NAME = 'ทะเบียน-1';
         const SHEET_CSV_URL =
             'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
-            '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(SHEET_NAME);
+            // headers=1 บังคับให้ gviz ใช้แถวแรกเป็นหัวตารางเพียงแถวเดียว
+            // (กันปัญหา gviz เดาจำนวนแถวหัวตารางผิดกับคอลัมน์ตัวเลข เช่น Month/Quater)
+            '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(SHEET_NAME);
 
         // ปีงบประมาณไทยเริ่ม ต.ค. — เรียงเดือน 10,11,12,1..9
         const FISCAL_MONTHS = [10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -202,8 +204,12 @@
         function parseMonth(raw) {
             const s = (raw || '').toString().trim();
             if (s === '') return null;
-            const n = parseInt(s, 10);
-            if (!isNaN(n) && n >= 1 && n <= 12) return n;
+            // ดึงตัวเลขตัวแรก (รองรับ "10", "10.0", "เดือน 10", "10 ต.ค.")
+            const numMatch = s.match(/\d{1,2}/);
+            if (numMatch) {
+                const n = parseInt(numMatch[0], 10);
+                if (n >= 1 && n <= 12) return n;
+            }
             if (THAI_MONTH_TO_NUM[s] !== undefined) return THAI_MONTH_TO_NUM[s];
             // เผื่อชื่อเต็มมีช่องว่างหรืออักขระแฝง
             for (const key in THAI_MONTH_TO_NUM) if (s.indexOf(key) !== -1) return THAI_MONTH_TO_NUM[key];
@@ -256,21 +262,37 @@
                 });
         }
 
+        // จับคู่หัวคอลัมน์แบบยืดหยุ่น: ไม่สนตัวเล็ก/ใหญ่ ช่องว่าง จุด หรือชื่อไทย/สะกดต่าง
+        function normKey(s) { return (s || '').toString().toLowerCase().replace(/[\s.]/g, ''); }
+        function pick(row, candidates) {
+            // สร้าง map คีย์ที่ normalize แล้ว (ทำครั้งเดียวต่อแถว แล้ว cache)
+            if (!row.__norm) {
+                const m = {};
+                for (const k in row) if (k !== '__norm') m[normKey(k)] = row[k];
+                Object.defineProperty(row, '__norm', { value: m, enumerable: false });
+            }
+            for (const c of candidates) {
+                const v = row.__norm[normKey(c)];
+                if (v !== undefined && v !== '') return v;
+            }
+            return '';
+        }
+
         // แปลงแต่ละแถวดิบให้เป็น record ที่ใช้งานได้
         function normalize(rows) {
             return rows.map(r => {
-                const month = parseMonth(r['Month']);
+                const month = parseMonth(pick(r, ['Month', 'เดือน']));
                 // ไตรมาส: ใช้คอลัมน์ Quater (1-4) ก่อน ถ้าไม่มีค่อยคำนวณจากเดือน
-                const quaterRaw = (r['Quater'] || '').toString().trim();
+                const quaterRaw = pick(r, ['Quater', 'Quarter', 'ไตรมาส']).toString().trim().replace(/\D/g, '');
                 const quarterFromCol = { '1': 'Q1', '2': 'Q2', '3': 'Q3', '4': 'Q4' }[quaterRaw];
                 return {
-                    year: (r['Year'] || '').trim(),
+                    year: pick(r, ['Year', 'ปี']).toString().trim(),
                     month: month,
                     quarter: quarterFromCol || (month == null ? '' : monthQuarter(month)),
-                    unit: (r['Unit'] || '').trim().toUpperCase(),
-                    pct: (r['PCT'] || '').trim().toUpperCase(),
-                    isHAI: (r['HAI'] || '').trim().toLowerCase() === 'hai', // นับเฉพาะแถวหลัก
-                    siteType: classifySite(r['SITE'])
+                    unit: pick(r, ['Unit', 'หอผู้ป่วย']).toString().trim().toUpperCase(),
+                    pct: pick(r, ['PCT', 'กลุ่มงาน']).toString().trim().toUpperCase(),
+                    isHAI: pick(r, ['HAI']).toString().trim().toLowerCase() === 'hai', // นับเฉพาะแถวหลัก
+                    siteType: classifySite(pick(r, ['SITE', 'ตำแหน่ง']))
                 };
             });
         }
@@ -282,7 +304,13 @@
         async function loadData() {
             const res = await fetch(SHEET_CSV_URL);
             if (!res.ok) throw new Error('HTTP ' + res.status);
-            return normalize(parseCSV(await res.text()));
+            const rows = parseCSV(await res.text());
+            // วินิจฉัย: แสดงหัวคอลัมน์จริง + ค่าตัวอย่างของแถวแรกใน console (กด F12)
+            if (rows.length) {
+                console.log('[HAI] หัวคอลัมน์ที่ gviz ส่งมา:', Object.keys(rows[0]));
+                console.log('[HAI] ตัวอย่างแถวแรก:', rows[0]);
+            }
+            return normalize(rows);
         }
 
         // เติมตัวเลือกใน dropdown จากค่าจริงในข้อมูล
