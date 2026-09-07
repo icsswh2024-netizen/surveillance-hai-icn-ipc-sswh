@@ -147,6 +147,12 @@
             <p class="text-xs text-slate-400 mt-3" id="rateDebug"></p>
         </div>
 
+        <!-- HAI Total Area Chart -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h3 class="text-lg font-semibold text-slate-800 mb-4">HAI รวมรายเดือน (จำนวนเคสสะสมพื้นที่)</h3>
+            <div class="relative h-72 w-full"><canvas id="haiAreaChart"></canvas></div>
+        </div>
+
         <!-- Detailed Data Table -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
@@ -326,6 +332,7 @@
         let trendChartInstance = null;
         let siteChartInstance = null;
         let rateChartInstance = null;
+        let haiAreaChartInstance = null;
 
         async function loadData() {
             const res = await fetch(SHEET_CSV_URL);
@@ -423,6 +430,41 @@
             updateCharts(byMonth, total);
             updateTable(byMonth);
             updateRateChart(byMonth, aggregateDenominatorsByMonth(getFilteredRows()));
+            updateHaiAreaChart(byMonth);
+        }
+
+        // กราฟ HAI รวมรายเดือน แบบเติมสีพื้นที่ใต้เส้น (area chart)
+        function updateHaiAreaChart(byMonth) {
+            let months = FISCAL_MONTHS.filter(m => byMonth[m].HAI > 0);
+            if (months.length === 0) months = FISCAL_MONTHS;
+            const labels = months.map(m => MONTH_LABELS[m]);
+            const data = months.map(m => byMonth[m].HAI);
+
+            const ctx = document.getElementById('haiAreaChart').getContext('2d');
+            // ไล่เฉดสีน้ำเงินโปร่งใต้เส้น
+            const grad = ctx.createLinearGradient(0, 0, 0, 288);
+            grad.addColorStop(0, 'rgba(59,130,246,0.35)');
+            grad.addColorStop(1, 'rgba(59,130,246,0.02)');
+
+            if (haiAreaChartInstance) haiAreaChartInstance.destroy();
+            haiAreaChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'HAI รวม (เคส)', data,
+                        borderColor: '#2563eb', backgroundColor: grad,
+                        fill: true, tension: 0.4, borderWidth: 2.5,
+                        pointRadius: 4, pointHoverRadius: 6,
+                        pointBackgroundColor: '#2563eb'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } }
+                }
+            });
         }
 
         // กราฟอัตราการติดเชื้อ: ตัวตั้ง (เคส) / ตัวหาร (วัน device / วันนอน / ผ่าตัด)
