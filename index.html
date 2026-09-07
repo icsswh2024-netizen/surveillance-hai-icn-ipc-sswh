@@ -366,8 +366,13 @@
         }
 
         function updateCharts(byMonth, total) {
-            const labels = FISCAL_MONTHS.map(m => MONTH_LABELS[m]);
-            const series = (key) => FISCAL_MONTHS.map(m => byMonth[m][key]);
+            // แสดงเฉพาะเดือนที่มีข้อมูลจริง (มีเคส HAI อย่างน้อย 1 เคส)
+            // เพื่อไม่ให้เส้นกราฟยุบเป็น 0 ยาวๆ ในเดือนที่ยังไม่มีข้อมูล
+            let visibleMonths = FISCAL_MONTHS.filter(m => byMonth[m].HAI > 0);
+            if (visibleMonths.length === 0) visibleMonths = FISCAL_MONTHS; // เผื่อยังไม่มีข้อมูลเลย
+
+            const labels = visibleMonths.map(m => MONTH_LABELS[m]);
+            const series = (key) => visibleMonths.map(m => byMonth[m][key]);
 
             const ctxTrend = document.getElementById('trendChart').getContext('2d');
             if (trendChartInstance) trendChartInstance.destroy();
@@ -376,10 +381,10 @@
                 data: {
                     labels,
                     datasets: [
-                        { label: 'HAI', data: series('HAI'), borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.4, borderWidth: 2 },
-                        { label: 'CAUTI', data: series('CAUTI'), borderColor: '#f59e0b', backgroundColor: '#f59e0b', tension: 0.4, borderWidth: 2 },
-                        { label: 'VAP', data: series('VAP'), borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.4, borderWidth: 2 },
-                        { label: 'SSI', data: series('SSI'), borderColor: '#06b6d4', backgroundColor: '#06b6d4', tension: 0.4, borderWidth: 2 }
+                        { label: 'HAI', data: series('HAI'), borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6 },
+                        { label: 'CAUTI', data: series('CAUTI'), borderColor: '#f59e0b', backgroundColor: '#f59e0b', tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6 },
+                        { label: 'VAP', data: series('VAP'), borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6 },
+                        { label: 'SSI', data: series('SSI'), borderColor: '#06b6d4', backgroundColor: '#06b6d4', tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6 }
                     ]
                 },
                 options: {
