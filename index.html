@@ -149,7 +149,7 @@
 
         <!-- HAI Total Area Chart -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-            <h3 class="text-lg font-semibold text-slate-800 mb-4">HAI รวมรายเดือน (จำนวนเคสสะสมพื้นที่)</h3>
+            <h3 class="text-lg font-semibold text-slate-800 mb-4">HAI รวมรายเดือน (จำนวนเคส + อัตรา /1000 วันนอน)</h3>
             <div class="relative h-72 w-full"><canvas id="haiAreaChart"></canvas></div>
         </div>
 
@@ -429,16 +429,22 @@
 
             updateCharts(byMonth, total);
             updateTable(byMonth);
-            updateRateChart(byMonth, aggregateDenominatorsByMonth(getFilteredRows()));
-            updateHaiAreaChart(byMonth);
+            const den = aggregateDenominatorsByMonth(getFilteredRows());
+            updateRateChart(byMonth, den);
+            updateHaiAreaChart(byMonth, den);
         }
 
-        // กราฟ HAI รวมรายเดือน แบบเติมสีพื้นที่ใต้เส้น (area chart)
-        function updateHaiAreaChart(byMonth) {
+        // กราฟ HAI รวมรายเดือน: จำนวนเคส (พื้นที่สี) + อัตรา /1000 วันนอน (เส้น) แกน 2 ด้าน
+        function updateHaiAreaChart(byMonth, den) {
             let months = FISCAL_MONTHS.filter(m => byMonth[m].HAI > 0);
             if (months.length === 0) months = FISCAL_MONTHS;
             const labels = months.map(m => MONTH_LABELS[m]);
-            const data = months.map(m => byMonth[m].HAI);
+            const counts = months.map(m => byMonth[m].HAI);
+            const rates = months.map(m => {
+                const pd = den[m] ? den[m].patientDay : 0;
+                return pd ? +((byMonth[m].HAI / pd) * 1000).toFixed(2) : null;
+            });
+            const hasRate = rates.some(v => v != null);
 
             const ctx = document.getElementById('haiAreaChart').getContext('2d');
             // ไล่เฉดสีน้ำเงินโปร่งใต้เส้น
@@ -446,23 +452,37 @@
             grad.addColorStop(0, 'rgba(59,130,246,0.35)');
             grad.addColorStop(1, 'rgba(59,130,246,0.02)');
 
+            const datasets = [{
+                label: 'HAI รวม (เคส)', data: counts, yAxisID: 'y',
+                borderColor: '#2563eb', backgroundColor: grad,
+                fill: true, tension: 0.4, borderWidth: 2.5,
+                pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: '#2563eb'
+            }];
+            if (hasRate) {
+                datasets.push({
+                    label: 'อัตรา HAI /1000 วันนอน', data: rates, yAxisID: 'y1',
+                    borderColor: '#f43f5e', backgroundColor: '#f43f5e',
+                    fill: false, tension: 0.3, borderWidth: 2, borderDash: [5, 4],
+                    pointRadius: 4, pointHoverRadius: 6, spanGaps: true
+                });
+            }
+
             if (haiAreaChartInstance) haiAreaChartInstance.destroy();
             haiAreaChartInstance = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: 'HAI รวม (เคส)', data,
-                        borderColor: '#2563eb', backgroundColor: grad,
-                        fill: true, tension: 0.4, borderWidth: 2.5,
-                        pointRadius: 4, pointHoverRadius: 6,
-                        pointBackgroundColor: '#2563eb'
-                    }]
-                },
+                data: { labels, datasets },
                 options: {
                     responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
                     plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } } },
-                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } }
+                    scales: {
+                        y: { beginAtZero: true, position: 'left', ticks: { precision: 0 },
+                             title: { display: true, text: 'จำนวนเคส' } },
+                        y1: { beginAtZero: true, position: 'right', display: hasRate,
+                              grid: { drawOnChartArea: false },
+                              title: { display: true, text: 'อัตรา /1000 วันนอน' } },
+                        x: { grid: { display: false } }
+                    }
                 }
             });
         }
