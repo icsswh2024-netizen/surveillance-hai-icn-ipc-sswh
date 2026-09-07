@@ -46,6 +46,12 @@
             </div>
         </div>
 
+        <!-- Menu -->
+        <div class="flex flex-wrap gap-2">
+            <button id="menuDashboard" class="menu-btn px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white shadow-sm transition-colors">แดชบอร์ด</button>
+            <button id="menuWards" class="menu-btn px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">สรุปรายหอผู้ป่วย</button>
+        </div>
+
         <!-- Filter Controls -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -73,6 +79,9 @@
                 </div>
             </div>
         </div>
+
+        <!-- ===================== VIEW: แดชบอร์ด ===================== -->
+        <div id="viewDashboard" class="space-y-6">
 
         <!-- KPI Cards (จำนวนเคส) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -183,6 +192,43 @@
         <p class="text-xs text-slate-400 text-center">
             แหล่งข้อมูล: Google Sheet ชีต "ทะเบียน-1" — ตัวเลขคือ "จำนวนเคสติดเชื้อ" (นับเฉพาะแถวที่ระบุ HAI เพื่อไม่ให้นับเชื้อซ้ำ)
         </p>
+
+        </div><!-- /viewDashboard -->
+
+        <!-- ===================== VIEW: สรุปรายหอผู้ป่วย ===================== -->
+        <div id="viewWards" class="space-y-6" hidden>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">สรุปการติดเชื้อรายหอผู้ป่วย</h3>
+                        <p class="text-xs text-slate-400 mt-1">อัตรา device ต่อ 1,000 วันคาอุปกรณ์ · HAI ต่อ 1,000 วันนอน · SSI ต่อ 100 การผ่าตัด (คำนวณสดจากทะเบียน-1)</p>
+                    </div>
+                    <button id="btnExportWards" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">หอผู้ป่วย</th>
+                                <th class="py-3 px-4 text-right">วันนอน</th>
+                                <th class="py-3 px-4 text-right">HAI</th>
+                                <th class="py-3 px-4 text-right text-blue-700">อัตรา HAI<br><span class="font-normal text-slate-400">/1000 วันนอน</span></th>
+                                <th class="py-3 px-4 text-right">CAUTI</th>
+                                <th class="py-3 px-4 text-right text-amber-600">/1000 วันคาสาย</th>
+                                <th class="py-3 px-4 text-right">VAP</th>
+                                <th class="py-3 px-4 text-right text-emerald-600">/1000 วันเครื่องช่วยหายใจ</th>
+                                <th class="py-3 px-4 text-right">CLABSI</th>
+                                <th class="py-3 px-4 text-right text-red-600">/1000 วันคาสายหลอดเลือด</th>
+                                <th class="py-3 px-4 text-right">SSI</th>
+                                <th class="py-3 px-4 text-right text-cyan-600">/100 ผ่าตัด</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wardTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="text-xs text-slate-400 text-center">เรียงตามอัตรา HAI จากมากไปน้อย · ช่อง "-" หมายถึงยังไม่มีตัวหาร (วัน/ผ่าตัด) ในเดือน/หอนั้น</p>
+        </div><!-- /viewWards -->
     </div>
 
     <script>
@@ -674,10 +720,135 @@
             URL.revokeObjectURL(url);
         }
 
+        // ===================== สรุปรายหอผู้ป่วย =====================
+        // แถวตามตัวกรอง ปี/ไตรมาส/PCT (ไม่สนตัวกรองหอผู้ป่วย เพราะตารางนี้แยกรายหออยู่แล้ว)
+        function getRowsForWards() {
+            const y = document.getElementById('filterYear').value;
+            const q = document.getElementById('filterQuarter').value;
+            const p = document.getElementById('filterPCT').value;
+            return rawData.filter(d =>
+                (y === 'ALL' || d.year === y) &&
+                (q === 'ALL' || d.quarter === q) &&
+                (p === 'ALL' || d.pct === p)
+            );
+        }
+
+        // รวมยอดรายหอผู้ป่วย
+        function aggregateByWard(rows) {
+            const byWard = {};
+            rows.forEach(r => {
+                const u = r.unit || '(ไม่ระบุ)';
+                if (!byWard[u]) byWard[u] = { unit: u, patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0,
+                                              HAI: 0, CAUTI: 0, VAP: 0, CLABSI: 0, SSI: 0 };
+                const w = byWard[u];
+                w.patientDay += r.patientDay; w.cathDay += r.cathDay; w.venDay += r.venDay;
+                w.lineDay += r.lineDay; w.op += r.op;
+                if (r.isHAI) {
+                    w.HAI += 1;
+                    if (w[r.siteType] !== undefined) w[r.siteType] += 1;
+                }
+            });
+            return Object.values(byWard);
+        }
+
+        // อัตรา = ตัวตั้ง/ตัวหาร*factor -> คืน number หรือ null (ไม่มีตัวหาร)
+        function rate(numer, denom, factor) {
+            return denom ? +((numer / denom) * factor).toFixed(2) : null;
+        }
+        const fmtRate = v => (v == null ? '-' : v.toFixed(2));
+
+        function updateWardTable() {
+            const wards = aggregateByWard(getRowsForWards())
+                .map(w => ({
+                    ...w,
+                    rHAI: rate(w.HAI, w.patientDay, 1000),
+                    rCAUTI: rate(w.CAUTI, w.cathDay, 1000),
+                    rVAP: rate(w.VAP, w.venDay, 1000),
+                    rCLABSI: rate(w.CLABSI, w.lineDay, 1000),
+                    rSSI: rate(w.SSI, w.op, 100)
+                }))
+                .sort((a, b) => (b.rHAI ?? -1) - (a.rHAI ?? -1) || b.HAI - a.HAI);
+
+            const tbody = document.getElementById('wardTableBody');
+            tbody.innerHTML = '';
+            const tot = { patientDay: 0, HAI: 0, CAUTI: 0, cathDay: 0, VAP: 0, venDay: 0, CLABSI: 0, lineDay: 0, SSI: 0, op: 0 };
+            wards.forEach(w => {
+                Object.keys(tot).forEach(k => tot[k] += w[k]);
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.innerHTML =
+                    '<td class="py-3 px-4 font-medium text-slate-700">' + w.unit + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + (w.patientDay || 0).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right font-semibold">' + w.HAI + '</td>' +
+                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(w.rHAI) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + w.CAUTI + '</td>' +
+                    '<td class="py-3 px-4 text-right text-amber-600">' + fmtRate(w.rCAUTI) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + w.VAP + '</td>' +
+                    '<td class="py-3 px-4 text-right text-emerald-600">' + fmtRate(w.rVAP) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + w.CLABSI + '</td>' +
+                    '<td class="py-3 px-4 text-right text-red-600">' + fmtRate(w.rCLABSI) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + w.SSI + '</td>' +
+                    '<td class="py-3 px-4 text-right text-cyan-600">' + fmtRate(w.rSSI) + '</td>';
+                tbody.appendChild(tr);
+            });
+            // แถวรวมทั้งโรงพยาบาล
+            const trTot = document.createElement('tr');
+            trTot.className = 'bg-slate-50 font-semibold text-slate-800';
+            trTot.innerHTML =
+                '<td class="py-3 px-4">รวมทั้งหมด</td>' +
+                '<td class="py-3 px-4 text-right">' + tot.patientDay.toLocaleString() + '</td>' +
+                '<td class="py-3 px-4 text-right">' + tot.HAI + '</td>' +
+                '<td class="py-3 px-4 text-right text-blue-700">' + fmtRate(rate(tot.HAI, tot.patientDay, 1000)) + '</td>' +
+                '<td class="py-3 px-4 text-right">' + tot.CAUTI + '</td>' +
+                '<td class="py-3 px-4 text-right text-amber-600">' + fmtRate(rate(tot.CAUTI, tot.cathDay, 1000)) + '</td>' +
+                '<td class="py-3 px-4 text-right">' + tot.VAP + '</td>' +
+                '<td class="py-3 px-4 text-right text-emerald-600">' + fmtRate(rate(tot.VAP, tot.venDay, 1000)) + '</td>' +
+                '<td class="py-3 px-4 text-right">' + tot.CLABSI + '</td>' +
+                '<td class="py-3 px-4 text-right text-red-600">' + fmtRate(rate(tot.CLABSI, tot.lineDay, 1000)) + '</td>' +
+                '<td class="py-3 px-4 text-right">' + tot.SSI + '</td>' +
+                '<td class="py-3 px-4 text-right text-cyan-600">' + fmtRate(rate(tot.SSI, tot.op, 100)) + '</td>';
+            tbody.appendChild(trTot);
+        }
+
+        function exportWardsCSV() {
+            const head = ['หอผู้ป่วย', 'วันนอน', 'HAI', 'อัตรา HAI/1000', 'CAUTI', 'CAUTI/1000', 'VAP', 'VAP/1000', 'CLABSI', 'CLABSI/1000', 'SSI', 'SSI/100'];
+            const wards = aggregateByWard(getRowsForWards())
+                .sort((a, b) => (rate(b.HAI, b.patientDay, 1000) ?? -1) - (rate(a.HAI, a.patientDay, 1000) ?? -1));
+            let csv = head.join(',') + '\n';
+            wards.forEach(w => {
+                csv += [w.unit, w.patientDay, w.HAI, fmtRate(rate(w.HAI, w.patientDay, 1000)),
+                        w.CAUTI, fmtRate(rate(w.CAUTI, w.cathDay, 1000)),
+                        w.VAP, fmtRate(rate(w.VAP, w.venDay, 1000)),
+                        w.CLABSI, fmtRate(rate(w.CLABSI, w.lineDay, 1000)),
+                        w.SSI, fmtRate(rate(w.SSI, w.op, 100))].join(',') + '\n';
+            });
+            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'hai-ward-summary.csv';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // สลับเมนู แดชบอร์ด / รายหอผู้ป่วย
+        function switchView(view) {
+            const isWards = view === 'wards';
+            document.getElementById('viewDashboard').hidden = isWards;
+            document.getElementById('viewWards').hidden = !isWards;
+            const on = 'bg-blue-600 text-white shadow-sm';
+            const off = 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50';
+            document.getElementById('menuDashboard').className = 'menu-btn px-4 py-2 rounded-lg text-sm font-semibold transition-colors ' + (isWards ? off : on);
+            document.getElementById('menuWards').className = 'menu-btn px-4 py-2 rounded-lg text-sm font-semibold transition-colors ' + (isWards ? on : off);
+            if (isWards) updateWardTable();
+        }
+
         // Event listeners
         ['filterYear', 'filterQuarter', 'filterUnit', 'filterPCT'].forEach(id =>
-            document.getElementById(id).addEventListener('change', updateDashboard));
+            document.getElementById(id).addEventListener('change', () => { updateDashboard(); updateWardTable(); }));
         document.getElementById('btnExport').addEventListener('click', exportCSV);
+        document.getElementById('btnExportWards').addEventListener('click', exportWardsCSV);
+        document.getElementById('menuDashboard').addEventListener('click', () => switchView('dashboard'));
+        document.getElementById('menuWards').addEventListener('click', () => switchView('wards'));
 
         // Initial load
         window.onload = async () => {
@@ -697,6 +868,7 @@
                 statusEl.textContent = 'เชื่อม Google Sheet สำเร็จ — ' + caseCount + ' เคส (' +
                     new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ')';
                 updateDashboard();
+                updateWardTable();
             } catch (err) {
                 console.error(err);
                 statusEl.textContent = '⚠️ ดึงข้อมูลจากชีต "ทะเบียน-1" ไม่สำเร็จ — ตรวจสอบสิทธิ์การเข้าถึง (ต้องตั้ง "ทุกคนที่มีลิงก์")';
