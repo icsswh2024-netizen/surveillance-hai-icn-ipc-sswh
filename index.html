@@ -374,18 +374,35 @@
             const labels = visibleMonths.map(m => MONTH_LABELS[m]);
             const series = (key) => visibleMonths.map(m => byMonth[m][key]);
 
+            // เลือกเส้นชนิดเชื้ออัตโนมัติ: แสดงเฉพาะชนิดที่มีเคส > 0 (พอเพิ่มข้อมูลทีหลังเส้นก็โผล่เอง)
+            const TREND_TYPES = [
+                { key: 'CAUTI', color: '#f59e0b' },
+                { key: 'VAP', color: '#10b981' },
+                { key: 'HAP', color: '#8b5cf6' },
+                { key: 'CLABSI', color: '#ef4444' },
+                { key: 'SSI', color: '#06b6d4' },
+                { key: 'UTI', color: '#eab308' },
+                { key: 'BSI', color: '#ec4899' },
+                { key: 'Omphalitis', color: '#f43f5e' },
+                { key: 'Other', color: '#94a3b8' }
+            ];
+            const mkDataset = (label, color) => ({
+                label, data: series(label), borderColor: color, backgroundColor: color,
+                tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6
+            });
+            // เส้น HAI (ยอดรวม) แสดงเสมอ + เส้นชนิดเชื้อที่มีข้อมูล
+            const trendDatasets = [mkDataset('HAI', '#3b82f6')];
+            TREND_TYPES.forEach(t => {
+                if (visibleMonths.some(m => byMonth[m][t.key] > 0)) trendDatasets.push(mkDataset(t.key, t.color));
+            });
+
             const ctxTrend = document.getElementById('trendChart').getContext('2d');
             if (trendChartInstance) trendChartInstance.destroy();
             trendChartInstance = new Chart(ctxTrend, {
                 type: 'line',
                 data: {
                     labels,
-                    datasets: [
-                        { label: 'HAI', data: series('HAI'), borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6 },
-                        { label: 'CAUTI', data: series('CAUTI'), borderColor: '#f59e0b', backgroundColor: '#f59e0b', tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6 },
-                        { label: 'VAP', data: series('VAP'), borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6 },
-                        { label: 'SSI', data: series('SSI'), borderColor: '#06b6d4', backgroundColor: '#06b6d4', tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6 }
-                    ]
+                    datasets: trendDatasets
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
