@@ -450,6 +450,22 @@
             return true;
         }
 
+        // นิยามตัวหาร/หน่วยของอัตราต่อชนิดเชื้อ (ใช้ร่วมกันทุกกราฟ)
+        const RATE_META = {
+            HAI:    { den: 'patientDay', factor: 1000, unit: '/1000 วันนอน' },
+            CAUTI:  { den: 'cathDay',    factor: 1000, unit: '/1000 วันคาสาย' },
+            VAP:    { den: 'venDay',     factor: 1000, unit: '/1000 วันเครื่องช่วยหายใจ' },
+            CLABSI: { den: 'lineDay',    factor: 1000, unit: '/1000 วันคาสายหลอดเลือด' },
+            SSI:    { den: 'op',         factor: 100,  unit: '/100 ผ่าตัด' }
+        };
+        // อัตราของชนิด key ในเดือน m (คืน number หรือ null ถ้าไม่มีตัวหาร/ไม่มีสูตร)
+        function rateFor(key, m, byMonth, den) {
+            const meta = RATE_META[key];
+            if (!meta || !den[m]) return null;
+            const d = den[m][meta.den];
+            return d ? +((byMonth[m][key] / d) * meta.factor).toFixed(2) : null;
+        }
+
         // แปลงค่าเป็นตัวเลข (รองรับคอมมา/ช่องว่าง/ค่าว่าง -> 0)
         function num(x) {
             const n = parseFloat((x || '').toString().replace(/,/g, '').trim());
@@ -560,9 +576,9 @@
             animateValue('kpiMDR', mdrCount);
             document.getElementById('kpiMDRpct').textContent = total.HAI ? Math.round(mdrCount / total.HAI * 100) : 0;
 
-            updateCharts(byMonth, total);
-            updateTable(byMonth);
             const den = aggregateDenominatorsByMonth(getFilteredRows());
+            updateCharts(byMonth, total, den);
+            updateTable(byMonth);
             updateRateChart(byMonth, den);
             updateHaiAreaChart(byMonth, den);
             updateMdrDashChart();
@@ -651,7 +667,8 @@
                 if (data.some(v => v != null)) {
                     datasets.push({
                         label: def.label, data, borderColor: def.color, backgroundColor: def.color,
-                        tension: 0.3, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6, spanGaps: true
+                        tension: 0.3, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6, spanGaps: true,
+                        _counts: months.map(m => byMonth[m][def.num]) // จำนวนเคสไว้ให้ tooltip
                     });
                 }
             });
@@ -665,7 +682,11 @@
                     responsive: true, maintainAspectRatio: false,
                     plugins: {
                         legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } },
-                        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (c.parsed.y ?? '-') } }
+                        tooltip: { callbacks: { label: c => {
+                            const n = c.dataset._counts ? c.dataset._counts[c.dataIndex] : null;
+                            const cntTxt = n == null ? '' : ' · ' + n + ' เคส';
+                            return c.dataset.label + ': ' + (c.parsed.y ?? '-') + cntTxt;
+                        } } }
                     },
                     scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา (ต่อ 1,000 / 100)' } }, x: { grid: { display: false } } }
                 }
@@ -699,7 +720,8 @@
             requestAnimationFrame(step);
         }
 
-        function updateCharts(byMonth, total) {
+        function updateCharts(byMonth, total, den) {
+            den = den || {};
             // แสดงเฉพาะเดือนที่มีข้อมูลจริง (มีเคส HAI อย่างน้อย 1 เคส)
             // เพื่อไม่ให้เส้นกราฟยุบเป็น 0 ยาวๆ ในเดือนที่ยังไม่มีข้อมูล
             let visibleMonths = FISCAL_MONTHS.filter(m => byMonth[m].HAI > 0);
@@ -722,7 +744,10 @@
             ];
             const mkDataset = (label, color) => ({
                 label, data: series(label), borderColor: color, backgroundColor: color,
-                tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6
+                tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6,
+                // เก็บอัตรารายเดือนของชนิดนี้ไว้ให้ tooltip อ่าน
+                _rates: visibleMonths.map(m => rateFor(label, m, byMonth, den)),
+                _unit: (RATE_META[label] || {}).unit || ''
             });
             // เส้น HAI (ยอดรวม) แสดงเสมอ + เส้นชนิดเชื้อที่มีข้อมูล
             const trendDatasets = [mkDataset('HAI', '#3b82f6')];
@@ -740,13 +765,30 @@
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } } },
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } },
+                        tooltip: { callbacks: { label: c => {
+                            const r = c.dataset._rates ? c.dataset._rates[c.dataIndex] : null;
+                            const rateTxt = r == null ? '' : ' · อัตรา ' + r + ' ' + (c.dataset._unit || '');
+                            return c.dataset.label + ': ' + c.parsed.y + ' เคส' + rateTxt;
+                        } } }
+                    },
                     scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } }
                 }
             });
 
             const siteKeys = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'Other'];
             const siteVals = siteKeys.map(k => total[k]);
+            const siteTotal = siteVals.reduce((a, b) => a + b, 0);
+            // อัตรารวมของแต่ละชนิด (ยอดทั้งช่วง) สำหรับ tooltip โดนัท
+            const denTotal = {};
+            ['cathDay', 'venDay', 'lineDay', 'patientDay', 'op'].forEach(k =>
+                denTotal[k] = FISCAL_MONTHS.reduce((a, m) => a + (den[m] ? den[m][k] : 0), 0));
+            const siteRate = (key) => {
+                const meta = RATE_META[key]; if (!meta) return null;
+                const d = denTotal[meta.den]; return d ? +((total[key] / d) * meta.factor).toFixed(2) : null;
+            };
             const ctxSite = document.getElementById('siteChart').getContext('2d');
             if (siteChartInstance) siteChartInstance.destroy();
             siteChartInstance = new Chart(ctxSite, {
@@ -760,7 +802,16 @@
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'right', labels: { usePointStyle: true, font: { family: 'Inter' } } } }
+                    plugins: {
+                        legend: { position: 'right', labels: { usePointStyle: true, font: { family: 'Inter' } } },
+                        tooltip: { callbacks: { label: c => {
+                            const key = c.label, v = c.parsed;
+                            const pct = siteTotal ? Math.round(v / siteTotal * 100) : 0;
+                            const r = siteRate(key);
+                            const rateTxt = r == null ? '' : ' · อัตรา ' + r + ' ' + RATE_META[key].unit;
+                            return key + ': ' + v + ' เคส (' + pct + '%)' + rateTxt;
+                        } } }
+                    }
                 }
             });
         }
