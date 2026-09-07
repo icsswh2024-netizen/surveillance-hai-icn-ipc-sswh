@@ -368,7 +368,7 @@
                     pct: pick(r, ['PCT', 'กลุ่มงาน']).toString().trim().toUpperCase(),
                     isHAI: pick(r, ['HAI']).toString().trim().toLowerCase() === 'hai', // นับเฉพาะแถวหลัก
                     siteType: classifySite(pick(r, ['SITE', 'ตำแหน่ง'])),
-                    isMDR: isResistant(pick(r, ['AMR'])) || isResistant(pick(r, ['MDR'])), // เชื้อดื้อยา
+                    isMDR: isResistant(pick(r, ['AMR'])), // เชื้อดื้อยา (ใช้คอลัมน์ AMR)
                     // ตัวหารสำหรับคำนวณอัตราการติดเชื้อ (รวมจากทุกแถว ไม่ใช่แค่เคส HAI)
                     // คู่คอลัมน์ X1=n (จำนวนครั้ง/ราย), X2=จำนวนวันคาอุปกรณ์ -> ใช้ X2 เป็นตัวหาร
                     cathDay: num(pick(r, ['CAUTI2'])),                    // วันคาสายสวนปัสสาวะ -> CAUTI
