@@ -172,6 +172,12 @@
             <div class="relative h-72 w-full"><canvas id="haiAreaChart"></canvas></div>
         </div>
 
+        <!-- MDR Chart (dashboard) -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h3 class="text-lg font-semibold text-slate-800 mb-4">เชื้อดื้อยา (MDR) รายเดือน (จำนวนเคส + %ของ HAI)</h3>
+            <div class="relative h-72 w-full"><canvas id="mdrDashChart"></canvas></div>
+        </div>
+
         <!-- Detailed Data Table -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
@@ -456,6 +462,7 @@
         let rateChartInstance = null;
         let haiAreaChartInstance = null;
         let mdrChartInstance = null;
+        let mdrDashChartInstance = null;
 
         async function loadData() {
             const res = await fetch(SHEET_CSV_URL);
@@ -558,6 +565,7 @@
             const den = aggregateDenominatorsByMonth(getFilteredRows());
             updateRateChart(byMonth, den);
             updateHaiAreaChart(byMonth, den);
+            updateMdrDashChart();
         }
 
         // กราฟ HAI รวมรายเดือน: จำนวนเคส (พื้นที่สี) + อัตรา /1000 วันนอน (เส้น) แกน 2 ด้าน
@@ -917,8 +925,8 @@
         }
 
         // ===================== เชื้อดื้อยา (MDR) =====================
-        // กราฟ MDR รายเดือน: จำนวน (แท่ง/พื้นที่) + %ของ HAI (เส้น) แกน 2 ด้าน
-        function updateMdrChart() {
+        // กราฟ MDR รายเดือน: จำนวน (พื้นที่) + %ของ HAI (เส้น) แกน 2 ด้าน — ใช้ร่วมได้หลาย canvas
+        function renderMdrChart(canvasId, destroyFn, setFn) {
             const cases = getFilteredCases(); // เคส HAI ตามตัวกรอง
             const byMonthMdr = {}; const byMonthHai = {};
             FISCAL_MONTHS.forEach(m => { byMonthMdr[m] = 0; byMonthHai[m] = 0; });
@@ -933,12 +941,12 @@
             const counts = months.map(m => byMonthMdr[m]);
             const pcts = months.map(m => byMonthHai[m] ? +((byMonthMdr[m] / byMonthHai[m]) * 100).toFixed(1) : null);
 
-            const ctx = document.getElementById('mdrChart').getContext('2d');
+            const ctx = document.getElementById(canvasId).getContext('2d');
             const grad = ctx.createLinearGradient(0, 0, 0, 288);
             grad.addColorStop(0, 'rgba(168,85,247,0.35)');
             grad.addColorStop(1, 'rgba(168,85,247,0.02)');
-            if (mdrChartInstance) mdrChartInstance.destroy();
-            mdrChartInstance = new Chart(ctx, {
+            destroyFn();
+            setFn(new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels,
@@ -959,7 +967,13 @@
                         x: { grid: { display: false } }
                     }
                 }
-            });
+            }));
+        }
+        function updateMdrChart() {
+            renderMdrChart('mdrChart', () => { if (mdrChartInstance) mdrChartInstance.destroy(); }, c => mdrChartInstance = c);
+        }
+        function updateMdrDashChart() {
+            renderMdrChart('mdrDashChart', () => { if (mdrDashChartInstance) mdrDashChartInstance.destroy(); }, c => mdrDashChartInstance = c);
         }
 
         // รวม MDR รายหอผู้ป่วย (นับเฉพาะ HAI ที่ดื้อยา)
