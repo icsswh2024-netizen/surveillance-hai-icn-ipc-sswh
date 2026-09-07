@@ -84,7 +84,7 @@
         <div id="viewDashboard" class="space-y-6">
 
         <!-- KPI Cards (จำนวนเคส) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
 
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-5 text-white shadow-md relative overflow-hidden flex flex-col justify-between h-32">
                 <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-blue-400 opacity-30" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
@@ -128,6 +128,15 @@
                 <div class="z-10">
                     <h3 id="kpiOmphalitis" class="text-3xl font-bold text-rose-600">0</h3>
                     <p class="text-xs text-rose-600 mt-1">จำนวนเคส</p>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-2xl p-5 text-white shadow-md relative overflow-hidden flex flex-col justify-between h-32">
+                <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-fuchsia-300 opacity-30" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd"></path></svg>
+                <h6 class="font-medium text-fuchsia-50 z-10">MDR (ดื้อยา)</h6>
+                <div class="z-10">
+                    <h3 id="kpiMDR" class="text-3xl font-bold">0</h3>
+                    <p class="text-xs text-fuchsia-100 mt-1"><span id="kpiMDRpct">0</span>% ของ HAI</p>
                 </div>
             </div>
         </div>
@@ -221,6 +230,8 @@
                                 <th class="py-3 px-4 text-right text-red-600">/1000 วันคาสายหลอดเลือด</th>
                                 <th class="py-3 px-4 text-right">SSI</th>
                                 <th class="py-3 px-4 text-right text-cyan-600">/100 ผ่าตัด</th>
+                                <th class="py-3 px-4 text-right text-fuchsia-700">MDR</th>
+                                <th class="py-3 px-4 text-right text-fuchsia-700">%MDR</th>
                             </tr>
                         </thead>
                         <tbody id="wardTableBody" class="divide-y divide-slate-100"></tbody>
@@ -357,6 +368,7 @@
                     pct: pick(r, ['PCT', 'กลุ่มงาน']).toString().trim().toUpperCase(),
                     isHAI: pick(r, ['HAI']).toString().trim().toLowerCase() === 'hai', // นับเฉพาะแถวหลัก
                     siteType: classifySite(pick(r, ['SITE', 'ตำแหน่ง'])),
+                    isMDR: isResistant(pick(r, ['AMR'])) || isResistant(pick(r, ['MDR'])), // เชื้อดื้อยา
                     // ตัวหารสำหรับคำนวณอัตราการติดเชื้อ (รวมจากทุกแถว ไม่ใช่แค่เคส HAI)
                     // คู่คอลัมน์ X1=n (จำนวนครั้ง/ราย), X2=จำนวนวันคาอุปกรณ์ -> ใช้ X2 เป็นตัวหาร
                     cathDay: num(pick(r, ['CAUTI2'])),                    // วันคาสายสวนปัสสาวะ -> CAUTI
@@ -366,6 +378,13 @@
                     op: num(pick(r, ['op', 'OP', 'จำนวนผ่าตัด']))         // จำนวนผ่าตัด -> SSI
                 };
             });
+        }
+
+        // เชื้อดื้อยา: ค่าที่ระบุว่าดื้อยา (mdr/cre/esbl/xdr...) — ยกเว้น "no mdr"/ว่าง
+        function isResistant(x) {
+            const s = (x || '').toString().trim().toLowerCase();
+            if (s === '' || s === 'no' || s === 'no mdr' || s === 'non mdr' || s === 'nonmdr' || s === 'none' || s === '-') return false;
+            return true;
         }
 
         // แปลงค่าเป็นตัวเลข (รองรับคอมมา/ช่องว่าง/ค่าว่าง -> 0)
@@ -467,11 +486,14 @@
                 if (total[c.siteType] !== undefined) total[c.siteType] += 1;
             });
 
+            const mdrCount = cases.filter(c => c.isMDR).length;
             animateValue('kpiHAI', total.HAI);
             animateValue('kpiCAUTI', total.CAUTI);
             animateValue('kpiVAP', total.VAP);
             animateValue('kpiSSI', total.SSI);
             animateValue('kpiOmphalitis', total.Omphalitis);
+            animateValue('kpiMDR', mdrCount);
+            document.getElementById('kpiMDRpct').textContent = total.HAI ? Math.round(mdrCount / total.HAI * 100) : 0;
 
             updateCharts(byMonth, total);
             updateTable(byMonth);
@@ -739,13 +761,14 @@
             rows.forEach(r => {
                 const u = r.unit || '(ไม่ระบุ)';
                 if (!byWard[u]) byWard[u] = { unit: u, patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0,
-                                              HAI: 0, CAUTI: 0, VAP: 0, CLABSI: 0, SSI: 0 };
+                                              HAI: 0, CAUTI: 0, VAP: 0, CLABSI: 0, SSI: 0, MDR: 0 };
                 const w = byWard[u];
                 w.patientDay += r.patientDay; w.cathDay += r.cathDay; w.venDay += r.venDay;
                 w.lineDay += r.lineDay; w.op += r.op;
                 if (r.isHAI) {
                     w.HAI += 1;
                     if (w[r.siteType] !== undefined) w[r.siteType] += 1;
+                    if (r.isMDR) w.MDR += 1;
                 }
             });
             return Object.values(byWard);
@@ -771,7 +794,7 @@
 
             const tbody = document.getElementById('wardTableBody');
             tbody.innerHTML = '';
-            const tot = { patientDay: 0, HAI: 0, CAUTI: 0, cathDay: 0, VAP: 0, venDay: 0, CLABSI: 0, lineDay: 0, SSI: 0, op: 0 };
+            const tot = { patientDay: 0, HAI: 0, CAUTI: 0, cathDay: 0, VAP: 0, venDay: 0, CLABSI: 0, lineDay: 0, SSI: 0, op: 0, MDR: 0 };
             wards.forEach(w => {
                 Object.keys(tot).forEach(k => tot[k] += w[k]);
                 const tr = document.createElement('tr');
@@ -788,7 +811,9 @@
                     '<td class="py-3 px-4 text-right">' + w.CLABSI + '</td>' +
                     '<td class="py-3 px-4 text-right text-red-600">' + fmtRate(w.rCLABSI) + '</td>' +
                     '<td class="py-3 px-4 text-right">' + w.SSI + '</td>' +
-                    '<td class="py-3 px-4 text-right text-cyan-600">' + fmtRate(w.rSSI) + '</td>';
+                    '<td class="py-3 px-4 text-right text-cyan-600">' + fmtRate(w.rSSI) + '</td>' +
+                    '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + w.MDR + '</td>' +
+                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + (w.HAI ? Math.round(w.MDR / w.HAI * 100) + '%' : '-') + '</td>';
                 tbody.appendChild(tr);
             });
             // แถวรวมทั้งโรงพยาบาล
@@ -806,12 +831,14 @@
                 '<td class="py-3 px-4 text-right">' + tot.CLABSI + '</td>' +
                 '<td class="py-3 px-4 text-right text-red-600">' + fmtRate(rate(tot.CLABSI, tot.lineDay, 1000)) + '</td>' +
                 '<td class="py-3 px-4 text-right">' + tot.SSI + '</td>' +
-                '<td class="py-3 px-4 text-right text-cyan-600">' + fmtRate(rate(tot.SSI, tot.op, 100)) + '</td>';
+                '<td class="py-3 px-4 text-right text-cyan-600">' + fmtRate(rate(tot.SSI, tot.op, 100)) + '</td>' +
+                '<td class="py-3 px-4 text-right text-fuchsia-700">' + tot.MDR + '</td>' +
+                '<td class="py-3 px-4 text-right text-fuchsia-700">' + (tot.HAI ? Math.round(tot.MDR / tot.HAI * 100) + '%' : '-') + '</td>';
             tbody.appendChild(trTot);
         }
 
         function exportWardsCSV() {
-            const head = ['หอผู้ป่วย', 'วันนอน', 'HAI', 'อัตรา HAI/1000', 'CAUTI', 'CAUTI/1000', 'VAP', 'VAP/1000', 'CLABSI', 'CLABSI/1000', 'SSI', 'SSI/100'];
+            const head = ['หอผู้ป่วย', 'วันนอน', 'HAI', 'อัตรา HAI/1000', 'CAUTI', 'CAUTI/1000', 'VAP', 'VAP/1000', 'CLABSI', 'CLABSI/1000', 'SSI', 'SSI/100', 'MDR', '%MDR'];
             const wards = aggregateByWard(getRowsForWards())
                 .sort((a, b) => (rate(b.HAI, b.patientDay, 1000) ?? -1) - (rate(a.HAI, a.patientDay, 1000) ?? -1));
             let csv = head.join(',') + '\n';
@@ -820,7 +847,8 @@
                         w.CAUTI, fmtRate(rate(w.CAUTI, w.cathDay, 1000)),
                         w.VAP, fmtRate(rate(w.VAP, w.venDay, 1000)),
                         w.CLABSI, fmtRate(rate(w.CLABSI, w.lineDay, 1000)),
-                        w.SSI, fmtRate(rate(w.SSI, w.op, 100))].join(',') + '\n';
+                        w.SSI, fmtRate(rate(w.SSI, w.op, 100)),
+                        w.MDR, (w.HAI ? Math.round(w.MDR / w.HAI * 100) : 0)].join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
