@@ -50,6 +50,7 @@
         <div class="flex flex-wrap gap-2">
             <button id="menuDashboard" class="menu-btn px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white shadow-sm transition-colors">แดชบอร์ด</button>
             <button id="menuWards" class="menu-btn px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">สรุปรายหอผู้ป่วย</button>
+            <button id="menuMdr" class="menu-btn px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">เชื้อดื้อยา (MDR)</button>
         </div>
 
         <!-- Filter Controls -->
@@ -240,6 +241,62 @@
             </div>
             <p class="text-xs text-slate-400 text-center">เรียงตามอัตรา HAI จากมากไปน้อย · ช่อง "-" หมายถึงยังไม่มีตัวหาร (วัน/ผ่าตัด) ในเดือน/หอนั้น</p>
         </div><!-- /viewWards -->
+
+        <!-- ===================== VIEW: เชื้อดื้อยา (MDR) ===================== -->
+        <div id="viewMdr" class="space-y-6" hidden>
+            <!-- MDR summary cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-2xl p-5 text-white shadow-md flex flex-col justify-between h-28">
+                    <h6 class="font-medium text-fuchsia-50">MDR ทั้งหมด</h6>
+                    <div><h3 id="mdrTotal" class="text-3xl font-bold">0</h3><p class="text-xs text-fuchsia-100 mt-1">จำนวนเคสดื้อยา</p></div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between h-28">
+                    <h6 class="font-medium text-slate-700">%MDR ของ HAI</h6>
+                    <div><h3 id="mdrPct" class="text-3xl font-bold text-fuchsia-700">0%</h3><p class="text-xs text-slate-400 mt-1">สัดส่วนเชื้อดื้อยา</p></div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between h-28">
+                    <h6 class="font-medium text-slate-700">HAI ทั้งหมด</h6>
+                    <div><h3 id="mdrHai" class="text-3xl font-bold text-blue-700">0</h3><p class="text-xs text-slate-400 mt-1">ฐานคำนวณ %MDR</p></div>
+                </div>
+            </div>
+
+            <!-- MDR trend chart -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">เชื้อดื้อยา (MDR) รายเดือน — จำนวน + %ของ HAI</h3>
+                <div class="relative h-72 w-full"><canvas id="mdrChart"></canvas></div>
+            </div>
+
+            <!-- MDR ward table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">เชื้อดื้อยา (MDR) รายหอผู้ป่วย</h3>
+                        <p class="text-xs text-slate-400 mt-1">นับเฉพาะเคส HAI ที่ AMR = ดื้อยา · อัตรา MDR ต่อ 1,000 วันนอน (คำนวณสดจากทะเบียน-1)</p>
+                    </div>
+                    <button id="btnExportMdr" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">หอผู้ป่วย</th>
+                                <th class="py-3 px-4 text-right">วันนอน</th>
+                                <th class="py-3 px-4 text-right">HAI</th>
+                                <th class="py-3 px-4 text-right text-fuchsia-700">MDR</th>
+                                <th class="py-3 px-4 text-right text-fuchsia-700">%MDR</th>
+                                <th class="py-3 px-4 text-right text-fuchsia-700">อัตรา MDR<br><span class="font-normal text-slate-400">/1000 วันนอน</span></th>
+                                <th class="py-3 px-4 text-right">CAUTI-MDR</th>
+                                <th class="py-3 px-4 text-right">VAP-MDR</th>
+                                <th class="py-3 px-4 text-right">CLABSI-MDR</th>
+                                <th class="py-3 px-4 text-right">SSI-MDR</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mdrTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="text-xs text-slate-400 text-center">เรียงตามจำนวน MDR จากมากไปน้อย</p>
+        </div><!-- /viewMdr -->
     </div>
 
     <script>
@@ -398,6 +455,7 @@
         let siteChartInstance = null;
         let rateChartInstance = null;
         let haiAreaChartInstance = null;
+        let mdrChartInstance = null;
 
         async function loadData() {
             const res = await fetch(SHEET_CSV_URL);
@@ -858,25 +916,161 @@
             URL.revokeObjectURL(url);
         }
 
-        // สลับเมนู แดชบอร์ด / รายหอผู้ป่วย
+        // ===================== เชื้อดื้อยา (MDR) =====================
+        // กราฟ MDR รายเดือน: จำนวน (แท่ง/พื้นที่) + %ของ HAI (เส้น) แกน 2 ด้าน
+        function updateMdrChart() {
+            const cases = getFilteredCases(); // เคส HAI ตามตัวกรอง
+            const byMonthMdr = {}; const byMonthHai = {};
+            FISCAL_MONTHS.forEach(m => { byMonthMdr[m] = 0; byMonthHai[m] = 0; });
+            cases.forEach(c => {
+                if (c.month == null || byMonthHai[c.month] === undefined) return;
+                byMonthHai[c.month] += 1;
+                if (c.isMDR) byMonthMdr[c.month] += 1;
+            });
+            let months = FISCAL_MONTHS.filter(m => byMonthHai[m] > 0);
+            if (months.length === 0) months = FISCAL_MONTHS;
+            const labels = months.map(m => MONTH_LABELS[m]);
+            const counts = months.map(m => byMonthMdr[m]);
+            const pcts = months.map(m => byMonthHai[m] ? +((byMonthMdr[m] / byMonthHai[m]) * 100).toFixed(1) : null);
+
+            const ctx = document.getElementById('mdrChart').getContext('2d');
+            const grad = ctx.createLinearGradient(0, 0, 0, 288);
+            grad.addColorStop(0, 'rgba(168,85,247,0.35)');
+            grad.addColorStop(1, 'rgba(168,85,247,0.02)');
+            if (mdrChartInstance) mdrChartInstance.destroy();
+            mdrChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'MDR (เคส)', data: counts, yAxisID: 'y', borderColor: '#a855f7',
+                          backgroundColor: grad, fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 4, pointHoverRadius: 6 },
+                        { label: '%MDR ของ HAI', data: pcts, yAxisID: 'y1', borderColor: '#db2777',
+                          backgroundColor: '#db2777', fill: false, tension: 0.3, borderWidth: 2, borderDash: [5, 4], pointRadius: 4, spanGaps: true }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } } },
+                    scales: {
+                        y: { beginAtZero: true, position: 'left', ticks: { precision: 0 }, title: { display: true, text: 'จำนวนเคส' } },
+                        y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '%MDR' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // รวม MDR รายหอผู้ป่วย (นับเฉพาะ HAI ที่ดื้อยา)
+        function aggregateMdrByWard(rows) {
+            const byWard = {};
+            rows.forEach(r => {
+                const u = r.unit || '(ไม่ระบุ)';
+                if (!byWard[u]) byWard[u] = { unit: u, patientDay: 0, HAI: 0, MDR: 0, CAUTI: 0, VAP: 0, CLABSI: 0, SSI: 0 };
+                const w = byWard[u];
+                w.patientDay += r.patientDay;
+                if (r.isHAI) {
+                    w.HAI += 1;
+                    if (r.isMDR) {
+                        w.MDR += 1;
+                        if (w[r.siteType] !== undefined) w[r.siteType] += 1;
+                    }
+                }
+            });
+            return Object.values(byWard);
+        }
+
+        function updateMdrView() {
+            // การ์ดสรุป
+            const cases = getFilteredCases();
+            const mdr = cases.filter(c => c.isMDR).length;
+            document.getElementById('mdrTotal').textContent = mdr;
+            document.getElementById('mdrHai').textContent = cases.length;
+            document.getElementById('mdrPct').textContent = (cases.length ? Math.round(mdr / cases.length * 100) : 0) + '%';
+            updateMdrChart();
+
+            // ตารางรายหอ
+            const wards = aggregateMdrByWard(getRowsForWards())
+                .filter(w => w.HAI > 0 || w.MDR > 0)
+                .sort((a, b) => b.MDR - a.MDR || (rate(b.MDR, b.patientDay, 1000) ?? -1) - (rate(a.MDR, a.patientDay, 1000) ?? -1));
+            const tbody = document.getElementById('mdrTableBody');
+            tbody.innerHTML = '';
+            const tot = { patientDay: 0, HAI: 0, MDR: 0, CAUTI: 0, VAP: 0, CLABSI: 0, SSI: 0 };
+            wards.forEach(w => {
+                Object.keys(tot).forEach(k => tot[k] += w[k]);
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.innerHTML =
+                    '<td class="py-3 px-4 font-medium text-slate-700">' + w.unit + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + (w.patientDay || 0).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + w.HAI + '</td>' +
+                    '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + w.MDR + '</td>' +
+                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + (w.HAI ? Math.round(w.MDR / w.HAI * 100) + '%' : '-') + '</td>' +
+                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + fmtRate(rate(w.MDR, w.patientDay, 1000)) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + w.CAUTI + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + w.VAP + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + w.CLABSI + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + w.SSI + '</td>';
+                tbody.appendChild(tr);
+            });
+            const trTot = document.createElement('tr');
+            trTot.className = 'bg-slate-50 font-semibold text-slate-800';
+            trTot.innerHTML =
+                '<td class="py-3 px-4">รวมทั้งหมด</td>' +
+                '<td class="py-3 px-4 text-right">' + tot.patientDay.toLocaleString() + '</td>' +
+                '<td class="py-3 px-4 text-right">' + tot.HAI + '</td>' +
+                '<td class="py-3 px-4 text-right text-fuchsia-700">' + tot.MDR + '</td>' +
+                '<td class="py-3 px-4 text-right text-fuchsia-700">' + (tot.HAI ? Math.round(tot.MDR / tot.HAI * 100) + '%' : '-') + '</td>' +
+                '<td class="py-3 px-4 text-right text-fuchsia-700">' + fmtRate(rate(tot.MDR, tot.patientDay, 1000)) + '</td>' +
+                '<td class="py-3 px-4 text-right">' + tot.CAUTI + '</td>' +
+                '<td class="py-3 px-4 text-right">' + tot.VAP + '</td>' +
+                '<td class="py-3 px-4 text-right">' + tot.CLABSI + '</td>' +
+                '<td class="py-3 px-4 text-right">' + tot.SSI + '</td>';
+            tbody.appendChild(trTot);
+        }
+
+        function exportMdrCSV() {
+            const head = ['หอผู้ป่วย', 'วันนอน', 'HAI', 'MDR', '%MDR', 'อัตรา MDR/1000', 'CAUTI-MDR', 'VAP-MDR', 'CLABSI-MDR', 'SSI-MDR'];
+            const wards = aggregateMdrByWard(getRowsForWards())
+                .filter(w => w.HAI > 0 || w.MDR > 0)
+                .sort((a, b) => b.MDR - a.MDR);
+            let csv = head.join(',') + '\n';
+            wards.forEach(w => {
+                csv += [w.unit, w.patientDay, w.HAI, w.MDR, (w.HAI ? Math.round(w.MDR / w.HAI * 100) : 0),
+                        fmtRate(rate(w.MDR, w.patientDay, 1000)), w.CAUTI, w.VAP, w.CLABSI, w.SSI].join(',') + '\n';
+            });
+            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'hai-mdr-summary.csv';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // สลับเมนู แดชบอร์ด / รายหอผู้ป่วย / MDR
         function switchView(view) {
-            const isWards = view === 'wards';
-            document.getElementById('viewDashboard').hidden = isWards;
-            document.getElementById('viewWards').hidden = !isWards;
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr' };
             const on = 'bg-blue-600 text-white shadow-sm';
             const off = 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50';
-            document.getElementById('menuDashboard').className = 'menu-btn px-4 py-2 rounded-lg text-sm font-semibold transition-colors ' + (isWards ? off : on);
-            document.getElementById('menuWards').className = 'menu-btn px-4 py-2 rounded-lg text-sm font-semibold transition-colors ' + (isWards ? on : off);
-            if (isWards) updateWardTable();
+            Object.keys(views).forEach(k => {
+                document.getElementById(views[k]).hidden = (k !== view);
+                document.getElementById(menus[k]).className = 'menu-btn px-4 py-2 rounded-lg text-sm font-semibold transition-colors ' + (k === view ? on : off);
+            });
+            if (view === 'wards') updateWardTable();
+            if (view === 'mdr') updateMdrView();
         }
 
         // Event listeners
         ['filterYear', 'filterQuarter', 'filterUnit', 'filterPCT'].forEach(id =>
-            document.getElementById(id).addEventListener('change', () => { updateDashboard(); updateWardTable(); }));
+            document.getElementById(id).addEventListener('change', () => { updateDashboard(); updateWardTable(); updateMdrView(); }));
         document.getElementById('btnExport').addEventListener('click', exportCSV);
         document.getElementById('btnExportWards').addEventListener('click', exportWardsCSV);
+        document.getElementById('btnExportMdr').addEventListener('click', exportMdrCSV);
         document.getElementById('menuDashboard').addEventListener('click', () => switchView('dashboard'));
         document.getElementById('menuWards').addEventListener('click', () => switchView('wards'));
+        document.getElementById('menuMdr').addEventListener('click', () => switchView('mdr'));
 
         // Initial load
         window.onload = async () => {
