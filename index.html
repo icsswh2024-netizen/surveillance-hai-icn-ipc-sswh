@@ -135,6 +135,18 @@
             </div>
         </div>
 
+        <!-- Infection Rate Chart -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                <h3 class="text-lg font-semibold text-slate-800">อัตราการติดเชื้อรายเดือน (Infection Rate)</h3>
+                <p class="text-xs text-slate-400">
+                    device ต่อ 1,000 วันคาอุปกรณ์ · HAI ต่อ 1,000 วันนอน · SSI ต่อ 100 การผ่าตัด
+                </p>
+            </div>
+            <div class="relative h-80 w-full"><canvas id="rateChart"></canvas></div>
+            <p class="text-xs text-slate-400 mt-3" id="rateDebug"></p>
+        </div>
+
         <!-- Detailed Data Table -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
@@ -292,14 +304,28 @@
                     unit: pick(r, ['Unit', 'หอผู้ป่วย']).toString().trim().toUpperCase(),
                     pct: pick(r, ['PCT', 'กลุ่มงาน']).toString().trim().toUpperCase(),
                     isHAI: pick(r, ['HAI']).toString().trim().toLowerCase() === 'hai', // นับเฉพาะแถวหลัก
-                    siteType: classifySite(pick(r, ['SITE', 'ตำแหน่ง']))
+                    siteType: classifySite(pick(r, ['SITE', 'ตำแหน่ง'])),
+                    // ตัวหารสำหรับคำนวณอัตราการติดเชื้อ (รวมจากทุกแถว ไม่ใช่แค่เคส HAI)
+                    // คู่คอลัมน์ X1=n (จำนวนครั้ง/ราย), X2=จำนวนวันคาอุปกรณ์ -> ใช้ X2 เป็นตัวหาร
+                    cathDay: num(pick(r, ['CAUTI2'])),                    // วันคาสายสวนปัสสาวะ -> CAUTI
+                    venDay: num(pick(r, ['VAP2'])),                       // วันใช้เครื่องช่วยหายใจ -> VAP
+                    lineDay: num(pick(r, ['CLABSI2'])),                   // วันคาสายสวนหลอดเลือด -> CLABSI
+                    patientDay: num(pick(r, ['วันนนอน', 'วันนอน', 'PatientDays'])), // วันนอนผู้ป่วย -> HAI รวม
+                    op: num(pick(r, ['op', 'OP', 'จำนวนผ่าตัด']))         // จำนวนผ่าตัด -> SSI
                 };
             });
+        }
+
+        // แปลงค่าเป็นตัวเลข (รองรับคอมมา/ช่องว่าง/ค่าว่าง -> 0)
+        function num(x) {
+            const n = parseFloat((x || '').toString().replace(/,/g, '').trim());
+            return isNaN(n) ? 0 : n;
         }
 
         let rawData = [];
         let trendChartInstance = null;
         let siteChartInstance = null;
+        let rateChartInstance = null;
 
         async function loadData() {
             const res = await fetch(SHEET_CSV_URL);
@@ -329,18 +355,38 @@
             fill('filterPCT', pcts, 'ทุกกลุ่มงาน');
         }
 
-        function getFilteredCases() {
+        // แถวที่ผ่านตัวกรอง (ทุกแถว — ใช้เป็นตัวหารสำหรับอัตราการติดเชื้อ)
+        function getFilteredRows() {
             const y = document.getElementById('filterYear').value;
             const q = document.getElementById('filterQuarter').value;
             const u = document.getElementById('filterUnit').value;
             const p = document.getElementById('filterPCT').value;
             return rawData.filter(d =>
-                d.isHAI &&
                 (y === 'ALL' || d.year === y) &&
                 (q === 'ALL' || d.quarter === q) &&
                 (u === 'ALL' || d.unit === u) &&
                 (p === 'ALL' || d.pct === p)
             );
+        }
+
+        // เฉพาะเคส HAI (ตัวตั้ง)
+        function getFilteredCases() {
+            return getFilteredRows().filter(d => d.isHAI);
+        }
+
+        // รวมตัวหารต่อเดือน: วัน device-days / วันนอน / จำนวนผ่าตัด (จากทุกแถว)
+        function aggregateDenominatorsByMonth(rows) {
+            const den = {};
+            FISCAL_MONTHS.forEach(m => { den[m] = { cathDay: 0, venDay: 0, lineDay: 0, patientDay: 0, op: 0 }; });
+            rows.forEach(r => {
+                if (r.month == null || !den[r.month]) return;
+                den[r.month].cathDay += r.cathDay;
+                den[r.month].venDay += r.venDay;
+                den[r.month].lineDay += r.lineDay;
+                den[r.month].patientDay += r.patientDay;
+                den[r.month].op += r.op;
+            });
+            return den;
         }
 
         // รวมยอดต่อเดือน -> { month: {HAI, CAUTI, VAP, ...} }
@@ -376,6 +422,70 @@
 
             updateCharts(byMonth, total);
             updateTable(byMonth);
+            updateRateChart(byMonth, aggregateDenominatorsByMonth(getFilteredRows()));
+        }
+
+        // กราฟอัตราการติดเชื้อ: ตัวตั้ง (เคส) / ตัวหาร (วัน device / วันนอน / ผ่าตัด)
+        function updateRateChart(byMonth, den) {
+            // สูตร: numerator = ชนิดเคส, denominator = คีย์ตัวหาร, factor = ต่อกี่หน่วย
+            const RATE_DEFS = [
+                { label: 'CAUTI /1000 วันคาสาย', num: 'CAUTI', den: 'cathDay', factor: 1000, color: '#f59e0b' },
+                { label: 'VAP /1000 วันเครื่องช่วยหายใจ', num: 'VAP', den: 'venDay', factor: 1000, color: '#10b981' },
+                { label: 'CLABSI /1000 วันคาสายหลอดเลือด', num: 'CLABSI', den: 'lineDay', factor: 1000, color: '#ef4444' },
+                { label: 'HAI /1000 วันนอน', num: 'HAI', den: 'patientDay', factor: 1000, color: '#3b82f6' },
+                { label: 'SSI /100 การผ่าตัด', num: 'SSI', den: 'op', factor: 100, color: '#06b6d4' }
+            ];
+
+            // แสดงเฉพาะเดือนที่มีตัวหารอย่างน้อยหนึ่งชนิด
+            let months = FISCAL_MONTHS.filter(m =>
+                den[m] && (den[m].cathDay || den[m].venDay || den[m].lineDay || den[m].patientDay || den[m].op));
+            if (months.length === 0) months = FISCAL_MONTHS.filter(m => byMonth[m].HAI > 0);
+            if (months.length === 0) months = FISCAL_MONTHS;
+
+            const labels = months.map(m => MONTH_LABELS[m]);
+            const datasets = [];
+            RATE_DEFS.forEach(def => {
+                // คำนวณอัตรา; เดือนที่ไม่มีตัวหาร -> null (ไม่ลากเส้นผ่านจุดที่หารไม่ได้)
+                const data = months.map(m => {
+                    const d = den[m] ? den[m][def.den] : 0;
+                    if (!d) return null;
+                    return +( (byMonth[m][def.num] / d) * def.factor ).toFixed(2);
+                });
+                // แสดงเส้นเฉพาะที่มีค่าจริงอย่างน้อยหนึ่งจุด
+                if (data.some(v => v != null)) {
+                    datasets.push({
+                        label: def.label, data, borderColor: def.color, backgroundColor: def.color,
+                        tension: 0.3, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6, spanGaps: true
+                    });
+                }
+            });
+
+            const ctx = document.getElementById('rateChart').getContext('2d');
+            if (rateChartInstance) rateChartInstance.destroy();
+            rateChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } },
+                        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (c.parsed.y ?? '-') } }
+                    },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา (ต่อ 1,000 / 100)' } }, x: { grid: { display: false } } }
+                }
+            });
+
+            // แถบวินิจฉัยตัวหาร: บอกผลรวมวัน/ผ่าตัด เพื่อให้ตรวจสอบได้ว่าดึงตัวหารถูก
+            const sum = k => months.reduce((a, m) => a + (den[m] ? den[m][k] : 0), 0);
+            const dbg = document.getElementById('rateDebug');
+            if (dbg) {
+                const s = { cathDay: sum('cathDay'), venDay: sum('venDay'), lineDay: sum('lineDay'), patientDay: sum('patientDay'), op: sum('op') };
+                const allZero = Object.values(s).every(v => !v);
+                dbg.textContent = allZero
+                    ? '⚠️ ตัวหารเป็น 0 ทั้งหมด — ตรวจสอบว่าคอลัมน์ Cath day / Ven day / Line day / วันนนอน / op ในชีตมีตัวเลข'
+                    : 'ตัวหารรวม → วันคาสาย: ' + s.cathDay + ' | วันเครื่องช่วยหายใจ: ' + s.venDay +
+                      ' | วันคาสายหลอดเลือด: ' + s.lineDay + ' | วันนอน: ' + s.patientDay + ' | ผ่าตัด: ' + s.op;
+            }
         }
 
         function animateValue(id, end) {
