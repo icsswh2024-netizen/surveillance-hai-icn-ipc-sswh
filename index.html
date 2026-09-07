@@ -306,9 +306,10 @@
                     isHAI: pick(r, ['HAI']).toString().trim().toLowerCase() === 'hai', // นับเฉพาะแถวหลัก
                     siteType: classifySite(pick(r, ['SITE', 'ตำแหน่ง'])),
                     // ตัวหารสำหรับคำนวณอัตราการติดเชื้อ (รวมจากทุกแถว ไม่ใช่แค่เคส HAI)
-                    cathDay: num(pick(r, ['Cath day', 'Cath days'])),      // วันคาสายสวนปัสสาวะ -> CAUTI
-                    venDay: num(pick(r, ['Ven day', 'Vent day'])),        // วันใช้เครื่องช่วยหายใจ -> VAP
-                    lineDay: num(pick(r, ['Line day', 'Line days'])),     // วันคาสายสวนหลอดเลือด -> CLABSI
+                    // คู่คอลัมน์ X1=n (จำนวนครั้ง/ราย), X2=จำนวนวันคาอุปกรณ์ -> ใช้ X2 เป็นตัวหาร
+                    cathDay: num(pick(r, ['CAUTI2'])),                    // วันคาสายสวนปัสสาวะ -> CAUTI
+                    venDay: num(pick(r, ['VAP2'])),                       // วันใช้เครื่องช่วยหายใจ -> VAP
+                    lineDay: num(pick(r, ['CLABSI2'])),                   // วันคาสายสวนหลอดเลือด -> CLABSI
                     patientDay: num(pick(r, ['วันนนอน', 'วันนอน', 'PatientDays'])), // วันนอนผู้ป่วย -> HAI รวม
                     op: num(pick(r, ['op', 'OP', 'จำนวนผ่าตัด']))         // จำนวนผ่าตัด -> SSI
                 };
