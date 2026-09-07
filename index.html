@@ -246,6 +246,35 @@
                 </div>
             </div>
             <p class="text-xs text-slate-400 text-center">เรียงตามอัตรา HAI จากมากไปน้อย · ช่อง "-" หมายถึงยังไม่มีตัวหาร (วัน/ผ่าตัด) ในเดือน/หอนั้น</p>
+
+            <!-- Individual detail (PDPA) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">รายละเอียดรายบุคคล (เคส HAI)</h3>
+                        <p class="text-xs text-amber-600 mt-1">🔒 ปกปิดข้อมูลส่วนบุคคลตาม PDPA — ไม่แสดงชื่อ-สกุล, HN แสดงเฉพาะ 3 ตัวท้าย</p>
+                    </div>
+                    <span id="wardDetailCount" class="text-xs text-slate-400 self-start"></span>
+                </div>
+                <div class="overflow-x-auto max-h-[28rem] overflow-y-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0">
+                            <tr>
+                                <th class="py-3 px-4">#</th>
+                                <th class="py-3 px-4">หอผู้ป่วย</th>
+                                <th class="py-3 px-4">PCT</th>
+                                <th class="py-3 px-4">เดือน</th>
+                                <th class="py-3 px-4">HN</th>
+                                <th class="py-3 px-4">เพศ</th>
+                                <th class="py-3 px-4 text-right">อายุ</th>
+                                <th class="py-3 px-4">ตำแหน่ง (SITE)</th>
+                                <th class="py-3 px-4">ดื้อยา (AMR)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wardDetailBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
         </div><!-- /viewWards -->
 
         <!-- ===================== VIEW: เชื้อดื้อยา (MDR) ===================== -->
@@ -302,6 +331,35 @@
                 </div>
             </div>
             <p class="text-xs text-slate-400 text-center">เรียงตามจำนวน MDR จากมากไปน้อย</p>
+
+            <!-- Individual detail (PDPA) — MDR only -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">รายละเอียดรายบุคคล (เคสดื้อยา MDR)</h3>
+                        <p class="text-xs text-amber-600 mt-1">🔒 ปกปิดข้อมูลส่วนบุคคลตาม PDPA — ไม่แสดงชื่อ-สกุล, HN แสดงเฉพาะ 3 ตัวท้าย</p>
+                    </div>
+                    <span id="mdrDetailCount" class="text-xs text-slate-400 self-start"></span>
+                </div>
+                <div class="overflow-x-auto max-h-[28rem] overflow-y-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0">
+                            <tr>
+                                <th class="py-3 px-4">#</th>
+                                <th class="py-3 px-4">หอผู้ป่วย</th>
+                                <th class="py-3 px-4">PCT</th>
+                                <th class="py-3 px-4">เดือน</th>
+                                <th class="py-3 px-4">HN</th>
+                                <th class="py-3 px-4">เพศ</th>
+                                <th class="py-3 px-4 text-right">อายุ</th>
+                                <th class="py-3 px-4">ตำแหน่ง (SITE)</th>
+                                <th class="py-3 px-4">ดื้อยา (AMR)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mdrDetailBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
         </div><!-- /viewMdr -->
     </div>
 
@@ -438,9 +496,23 @@
                     venDay: num(pick(r, ['VAP2'])),                       // วันใช้เครื่องช่วยหายใจ -> VAP
                     lineDay: num(pick(r, ['CLABSI2'])),                   // วันคาสายสวนหลอดเลือด -> CLABSI
                     patientDay: num(pick(r, ['วันนนอน', 'วันนอน', 'PatientDays'])), // วันนอนผู้ป่วย -> HAI รวม
-                    op: num(pick(r, ['op', 'OP', 'จำนวนผ่าตัด']))         // จำนวนผ่าตัด -> SSI
+                    op: num(pick(r, ['op', 'OP', 'จำนวนผ่าตัด'])),        // จำนวนผ่าตัด -> SSI
+                    // ---- ข้อมูลรายบุคคล (PDPA): เก็บเฉพาะที่จำเป็น + มาสก์ตัวระบุตัวตน ----
+                    hnMasked: maskId(pick(r, ['HN'])),                    // มาสก์ HN (ไม่เก็บเลขเต็ม)
+                    sex: pick(r, ['เพศ', 'sex']).toString().trim(),
+                    age: pick(r, ['อายุ', 'age']).toString().trim(),
+                    amr: pick(r, ['AMR']).toString().trim()               // ชนิดผลดื้อยา (แสดงได้ ไม่ใช่ข้อมูลส่วนบุคคล)
+                    // หมายเหตุ: ไม่เก็บ ชื่อ/สกุล/AN เพื่อความเป็นส่วนตัวตาม PDPA
                 };
             });
+        }
+
+        // มาสก์ตัวระบุตัวตน (HN): โชว์เฉพาะ 3 ตัวท้าย ที่เหลือเป็น •
+        function maskId(x) {
+            const s = (x || '').toString().trim();
+            if (s === '') return '-';
+            if (s.length <= 3) return '•'.repeat(s.length);
+            return '••••' + s.slice(-3);
         }
 
         // เชื้อดื้อยา: ค่าที่ระบุว่าดื้อยา (mdr/cre/esbl/xdr...) — ยกเว้น "no mdr"/ว่าง
@@ -952,6 +1024,9 @@
                 '<td class="py-3 px-4 text-right text-fuchsia-700">' + tot.MDR + '</td>' +
                 '<td class="py-3 px-4 text-right text-fuchsia-700">' + (tot.HAI ? Math.round(tot.MDR / tot.HAI * 100) + '%' : '-') + '</td>';
             tbody.appendChild(trTot);
+
+            // ตารางรายบุคคล (เคส HAI ทั้งหมดตามตัวกรอง)
+            renderDetailTable(getRowsForWards().filter(d => d.isHAI), 'wardDetailBody', 'wardDetailCount');
         }
 
         function exportWardsCSV() {
@@ -1093,6 +1168,9 @@
                 '<td class="py-3 px-4 text-right">' + tot.CLABSI + '</td>' +
                 '<td class="py-3 px-4 text-right">' + tot.SSI + '</td>';
             tbody.appendChild(trTot);
+
+            // ตารางรายบุคคล (เฉพาะเคสดื้อยา MDR)
+            renderDetailTable(getRowsForWards().filter(d => d.isHAI && d.isMDR), 'mdrDetailBody', 'mdrDetailCount');
         }
 
         function exportMdrCSV() {
@@ -1111,6 +1189,37 @@
             a.href = url; a.download = 'hai-mdr-summary.csv';
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+
+        // ตารางรายละเอียดรายบุคคล (PDPA) — แสดงเฉพาะข้อมูลที่มาสก์แล้ว
+        const SITE_LABEL = { CAUTI: 'CAUTI', VAP: 'VAP', HAP: 'HAP', CLABSI: 'CLABSI', SSI: 'SSI',
+                             UTI: 'UTI', BSI: 'BSI', Omphalitis: 'Omphalitis', Other: 'อื่นๆ' };
+        function renderDetailTable(rows, tbodyId, countId) {
+            const list = rows.slice().sort((a, b) =>
+                (a.unit || '').localeCompare(b.unit || '') ||
+                (FISCAL_MONTHS.indexOf(a.month) - FISCAL_MONTHS.indexOf(b.month)));
+            const tbody = document.getElementById(tbodyId);
+            tbody.innerHTML = '';
+            list.forEach((r, i) => {
+                const mdrBadge = r.isMDR
+                    ? '<span class="inline-block px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-700 text-xs font-medium">' + (r.amr || 'ดื้อยา') + '</span>'
+                    : '<span class="text-slate-400">-</span>';
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.innerHTML =
+                    '<td class="py-2.5 px-4 text-slate-400">' + (i + 1) + '</td>' +
+                    '<td class="py-2.5 px-4 font-medium text-slate-700">' + (r.unit || '-') + '</td>' +
+                    '<td class="py-2.5 px-4">' + (r.pct || '-') + '</td>' +
+                    '<td class="py-2.5 px-4">' + (r.month != null ? MONTH_LABELS[r.month] : '-') + '</td>' +
+                    '<td class="py-2.5 px-4 font-mono text-slate-500">' + r.hnMasked + '</td>' +
+                    '<td class="py-2.5 px-4">' + (r.sex || '-') + '</td>' +
+                    '<td class="py-2.5 px-4 text-right">' + (r.age || '-') + '</td>' +
+                    '<td class="py-2.5 px-4">' + (SITE_LABEL[r.siteType] || r.siteType) + '</td>' +
+                    '<td class="py-2.5 px-4">' + mdrBadge + '</td>';
+                tbody.appendChild(tr);
+            });
+            const cnt = document.getElementById(countId);
+            if (cnt) cnt.textContent = list.length + ' ราย';
         }
 
         // สลับเมนู แดชบอร์ด / รายหอผู้ป่วย / MDR
