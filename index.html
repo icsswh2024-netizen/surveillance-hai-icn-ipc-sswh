@@ -545,7 +545,26 @@
         <!-- ===================== VIEW: เฝ้าระวังหน่วยพิเศษ ===================== -->
         <div id="viewSpecial" class="space-y-6" hidden>
             <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-800">
-                <b>หน่วยพิเศษ:</b> <span id="specialUnitList">HDU, CAPD</span> — จับจากคอลัมน์ <b>HAI = "ci"</b> โดยดูหน่วยจากคอลัมน์ <b>SITE</b> (hdu / capd)
+                <b>หน่วยพิเศษ:</b> <span id="specialUnitList">CAPD, HD</span> — จับจากคอลัมน์ <b>HAI = "ci"</b> · แยกกลุ่มด้วย <b>SITE</b> · ตัวหาร: CAPD ÷ ครั้ง CAPD, HD ÷ ครั้ง HD1
+            </div>
+            <!-- Special summary cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="kpi bg-gradient-to-r from-emerald-400 to-green-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">CAPD — เคส / MDR</h6>
+                    <h3 class="text-2xl font-bold z-10"><span id="capdN">0</span> <span class="text-sm font-normal">/ MDR <span id="capdMDR">0</span></span></h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">CAPD — อัตรา/1000 (ครั้ง <span id="capdDen">0</span>)</h6>
+                    <h3 id="capdRate" class="text-2xl font-bold z-10">-</h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-teal-400 to-cyan-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">HD — เคส / MDR</h6>
+                    <h3 class="text-2xl font-bold z-10"><span id="hdN">0</span> <span class="text-sm font-normal">/ MDR <span id="hdMDR">0</span></span></h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-purple-500 to-fuchsia-600 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">HD — อัตรา/1000 (ครั้ง <span id="hdDen">0</span>)</h6>
+                    <h3 id="hdRate" class="text-2xl font-bold z-10">-</h3>
+                </div>
             </div>
             <!-- Special monthly chart -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -559,12 +578,6 @@
                     <div>
                         <h3 class="text-lg font-semibold text-emerald-700">CAPD — ล้างไตทางช่องท้อง</h3>
                         <p class="text-xs text-slate-400 mt-1">ตัวหาร = จำนวนครั้ง CAPD · อัตราต่อ 1,000 ครั้ง</p>
-                    </div>
-                    <div class="flex flex-wrap gap-4 text-sm">
-                        <span class="text-slate-500">เคส <b id="capdN" class="text-slate-800">0</b></span>
-                        <span class="text-slate-500">ครั้ง <b id="capdDen" class="text-slate-800">0</b></span>
-                        <span class="text-slate-500">อัตรา <b id="capdRate" class="text-blue-700">-</b></span>
-                        <span class="text-slate-500">MDR <b id="capdMDR" class="text-fuchsia-700">0</b></span>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -590,12 +603,6 @@
                     <div>
                         <h3 class="text-lg font-semibold text-sky-700">HD — ฟอกเลือด</h3>
                         <p class="text-xs text-slate-400 mt-1">ตัวหาร = จำนวนครั้ง HD (HD1) · อัตราต่อ 1,000 ครั้ง</p>
-                    </div>
-                    <div class="flex flex-wrap gap-4 text-sm">
-                        <span class="text-slate-500">เคส <b id="hdN" class="text-slate-800">0</b></span>
-                        <span class="text-slate-500">ครั้ง <b id="hdDen" class="text-slate-800">0</b></span>
-                        <span class="text-slate-500">อัตรา <b id="hdRate" class="text-blue-700">-</b></span>
-                        <span class="text-slate-500">MDR <b id="hdMDR" class="text-fuchsia-700">0</b></span>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
