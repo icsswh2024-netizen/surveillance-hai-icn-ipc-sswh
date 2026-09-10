@@ -579,36 +579,28 @@
                 </div>
             </div>
 
-            <!-- Neonatal BSI (แยกระดับ non1-non4) -->
+            <!-- BSI: เฝ้าระวังการให้สารน้ำ / NSS Lock -->
             <div>
                 <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-lg font-semibold text-slate-800">การติดเชื้อในกระแสเลือดทารกแรกเกิด (Neonatal BSI)</h3>
-                    <span class="text-xs text-slate-400">เด็กเกิดมีชีพ <b id="bsiLive" class="text-slate-700">0</b> ราย · อัตรารวม <b id="bsiRate" class="text-blue-700">0</b> /1,000</span>
+                    <h3 class="text-lg font-semibold text-slate-800">เฝ้าระวังการให้สารน้ำ / NSS Lock (BSI)</h3>
+                    <span class="text-xs text-slate-400">วันคาอุปกรณ์รวม <b id="bsiLive" class="text-slate-700">0</b> วัน · อัตรา BSI <b id="bsiRate" class="text-blue-700">0</b> /1,000 วัน</span>
                 </div>
-                <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
-                    <div class="kpi bg-gradient-to-r from-pink-400 to-rose-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                        <h6 class="text-xs font-medium text-white/90 z-10">BSI non1</h6>
-                        <h3 id="bsiN1" class="text-2xl font-bold z-10">0</h3>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="kpi bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">ผู้ป่วยที่ให้สารน้ำ</h6>
+                        <div class="z-10"><h3 id="bsiN1" class="text-2xl font-bold">0</h3><p class="text-xs text-white/80">ราย</p></div>
                     </div>
-                    <div class="kpi bg-gradient-to-r from-fuchsia-400 to-pink-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                        <h6 class="text-xs font-medium text-white/90 z-10">BSI non2</h6>
-                        <h3 id="bsiN2" class="text-2xl font-bold z-10">0</h3>
+                    <div class="kpi bg-gradient-to-r from-cyan-400 to-teal-500 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">วันรวม ผู้ป่วยที่ให้สารน้ำ</h6>
+                        <div class="z-10"><h3 id="bsiN2" class="text-2xl font-bold">0</h3><p class="text-xs text-white/80">วัน</p></div>
                     </div>
-                    <div class="kpi bg-gradient-to-r from-purple-400 to-fuchsia-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                        <h6 class="text-xs font-medium text-white/90 z-10">BSI non3</h6>
-                        <h3 id="bsiN3" class="text-2xl font-bold z-10">0</h3>
+                    <div class="kpi bg-gradient-to-r from-fuchsia-400 to-pink-500 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">ผู้ป่วยที่ให้ NSS Lock</h6>
+                        <div class="z-10"><h3 id="bsiN3" class="text-2xl font-bold">0</h3><p class="text-xs text-white/80">ราย</p></div>
                     </div>
-                    <div class="kpi bg-gradient-to-r from-violet-400 to-purple-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                        <h6 class="text-xs font-medium text-white/90 z-10">BSI non4</h6>
-                        <h3 id="bsiN4" class="text-2xl font-bold z-10">0</h3>
-                    </div>
-                    <div class="kpi bg-gradient-to-r from-rose-500 to-red-600 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                        <h6 class="text-xs font-medium text-white/90 z-10">รวม BSI</h6>
-                        <h3 id="bsiSum" class="text-2xl font-bold z-10">0</h3>
-                    </div>
-                    <div class="kpi bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                        <h6 class="text-xs font-medium text-white/90 z-10">เด็กเกิดมีชีพ</h6>
-                        <h3 id="bsiLive2" class="text-2xl font-bold z-10">0</h3>
+                    <div class="kpi bg-gradient-to-r from-purple-400 to-fuchsia-500 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">วันรวม ผู้ป่วยที่ให้ NSS Lock</h6>
+                        <div class="z-10"><h3 id="bsiN4" class="text-2xl font-bold">0</h3><p class="text-xs text-white/80">วัน</p></div>
                     </div>
                 </div>
             </div>
@@ -1336,18 +1328,18 @@
             document.getElementById('ssiKneeN').textContent = Math.round(sum('ssiKnee')).toLocaleString();
             document.getElementById('ssiGynN').textContent = Math.round(sum('ssiGyn')).toLocaleString();
 
-            // การ์ด BSI ทารกแรกเกิด (non1-non4) + เด็กเกิดมีชีพ + อัตรา /1,000
+            // การ์ด BSI: เฝ้าระวังการให้สารน้ำ / NSS Lock
+            //   BSI1 = ผู้ป่วยให้สารน้ำ (ราย), BSI2 = วันรวมสารน้ำ (วัน)
+            //   BSI3 = ผู้ป่วย NSS Lock (ราย), BSI4 = วันรวม NSS Lock (วัน)
             const b1 = sum('bsi1'), b2 = sum('bsi2'), b3 = sum('bsi3'), b4 = sum('bsi4');
-            let bSum = sum('bsiSum'); if (!bSum) bSum = b1 + b2 + b3 + b4; // ใช้คอลัมน์รวม ถ้าว่างค่อยบวกเอง
-            const live = sum('liveBirth');
+            const devDays = b2 + b4;                 // วันคาอุปกรณ์รวม (ตัวหาร)
+            let bSum = sum('bsiSum');                // จำนวนเคส BSI (ตัวตั้ง)
             document.getElementById('bsiN1').textContent = Math.round(b1).toLocaleString();
             document.getElementById('bsiN2').textContent = Math.round(b2).toLocaleString();
             document.getElementById('bsiN3').textContent = Math.round(b3).toLocaleString();
             document.getElementById('bsiN4').textContent = Math.round(b4).toLocaleString();
-            document.getElementById('bsiSum').textContent = Math.round(bSum).toLocaleString();
-            document.getElementById('bsiLive2').textContent = Math.round(live).toLocaleString();
-            document.getElementById('bsiLive').textContent = Math.round(live).toLocaleString();
-            document.getElementById('bsiRate').textContent = live ? (bSum / live * 1000).toFixed(2) : '0';
+            document.getElementById('bsiLive').textContent = Math.round(devDays).toLocaleString();
+            document.getElementById('bsiRate').textContent = devDays ? (bSum / devDays * 1000).toFixed(2) : '0';
         }
 
         // กราฟ HAI รวมรายเดือน: จำนวนเคส (พื้นที่สี) + อัตรา /1000 วันนอน (เส้น) แกน 2 ด้าน
