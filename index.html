@@ -579,6 +579,40 @@
                 </div>
             </div>
 
+            <!-- Neonatal BSI (แยกระดับ non1-non4) -->
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-semibold text-slate-800">การติดเชื้อในกระแสเลือดทารกแรกเกิด (Neonatal BSI)</h3>
+                    <span class="text-xs text-slate-400">เด็กเกิดมีชีพ <b id="bsiLive" class="text-slate-700">0</b> ราย · อัตรารวม <b id="bsiRate" class="text-blue-700">0</b> /1,000</span>
+                </div>
+                <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
+                    <div class="kpi bg-gradient-to-r from-pink-400 to-rose-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">BSI non1</h6>
+                        <h3 id="bsiN1" class="text-2xl font-bold z-10">0</h3>
+                    </div>
+                    <div class="kpi bg-gradient-to-r from-fuchsia-400 to-pink-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">BSI non2</h6>
+                        <h3 id="bsiN2" class="text-2xl font-bold z-10">0</h3>
+                    </div>
+                    <div class="kpi bg-gradient-to-r from-purple-400 to-fuchsia-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">BSI non3</h6>
+                        <h3 id="bsiN3" class="text-2xl font-bold z-10">0</h3>
+                    </div>
+                    <div class="kpi bg-gradient-to-r from-violet-400 to-purple-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">BSI non4</h6>
+                        <h3 id="bsiN4" class="text-2xl font-bold z-10">0</h3>
+                    </div>
+                    <div class="kpi bg-gradient-to-r from-rose-500 to-red-600 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">รวม BSI</h6>
+                        <h3 id="bsiSum" class="text-2xl font-bold z-10">0</h3>
+                    </div>
+                    <div class="kpi bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">เด็กเกิดมีชีพ</h6>
+                        <h3 id="bsiLive2" class="text-2xl font-bold z-10">0</h3>
+                    </div>
+                </div>
+            </div>
+
             <!-- Ward service table -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
@@ -960,6 +994,13 @@
                     ssiEye: num(pick(r, ['eye'])), ssiHip: num(pick(r, ['hip'])), ssiKnee: num(pick(r, ['knee'])), ssiGyn: num(pick(r, ['gyn'])),
                     patientDay: num(pick(r, ['วันนนอน', 'วันนอน', 'PatientDays'])), // วันนอนผู้ป่วย -> HAI รวม
                     op: num(pick(r, ['op', 'OP', 'จำนวนผ่าตัด'])),        // จำนวนผ่าตัด -> SSI
+                    // ---- BSI ทารกแรกเกิด แยกระดับ non1-non4 + รวม + เด็กเกิดมีชีพ (ตัวหาร /1000) ----
+                    bsi1: num(pick(r, ['BSI non1', 'BSInon1'])),
+                    bsi2: num(pick(r, ['BSI non2', 'BSInon2'])),
+                    bsi3: num(pick(r, ['BSI non3', 'BSInon3'])),
+                    bsi4: num(pick(r, ['BSI non4', 'BSInon4'])),
+                    bsiSum: num(pick(r, ['sum BSI', 'sumBSI'])),
+                    liveBirth: num(pick(r, ['เด็กมีชีพ', 'เด็กเกิดมีชีพ', 'LiveBirth'])),
                     // ---- ข้อมูลรายบุคคล (PDPA): เก็บเฉพาะที่จำเป็น + มาสก์ตัวระบุตัวตน ----
                     hnMasked: maskId(pick(r, ['HN'])),                    // มาสก์ HN (ไม่เก็บเลขเต็ม)
                     sex: pick(r, ['เพศ', 'sex']).toString().trim(),
@@ -1294,6 +1335,19 @@
             document.getElementById('ssiHipN').textContent = Math.round(sum('ssiHip')).toLocaleString();
             document.getElementById('ssiKneeN').textContent = Math.round(sum('ssiKnee')).toLocaleString();
             document.getElementById('ssiGynN').textContent = Math.round(sum('ssiGyn')).toLocaleString();
+
+            // การ์ด BSI ทารกแรกเกิด (non1-non4) + เด็กเกิดมีชีพ + อัตรา /1,000
+            const b1 = sum('bsi1'), b2 = sum('bsi2'), b3 = sum('bsi3'), b4 = sum('bsi4');
+            let bSum = sum('bsiSum'); if (!bSum) bSum = b1 + b2 + b3 + b4; // ใช้คอลัมน์รวม ถ้าว่างค่อยบวกเอง
+            const live = sum('liveBirth');
+            document.getElementById('bsiN1').textContent = Math.round(b1).toLocaleString();
+            document.getElementById('bsiN2').textContent = Math.round(b2).toLocaleString();
+            document.getElementById('bsiN3').textContent = Math.round(b3).toLocaleString();
+            document.getElementById('bsiN4').textContent = Math.round(b4).toLocaleString();
+            document.getElementById('bsiSum').textContent = Math.round(bSum).toLocaleString();
+            document.getElementById('bsiLive2').textContent = Math.round(live).toLocaleString();
+            document.getElementById('bsiLive').textContent = Math.round(live).toLocaleString();
+            document.getElementById('bsiRate').textContent = live ? (bSum / live * 1000).toFixed(2) : '0';
         }
 
         // กราฟ HAI รวมรายเดือน: จำนวนเคส (พื้นที่สี) + อัตรา /1000 วันนอน (เส้น) แกน 2 ด้าน
