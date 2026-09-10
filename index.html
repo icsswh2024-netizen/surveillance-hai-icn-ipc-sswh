@@ -892,8 +892,8 @@
                 if (data.some(v => v != null)) {
                     datasets.push({
                         label: def.label, data, borderColor: def.color,
-                        backgroundColor: fadeFill(ctxRate, def.color), fill: true,
-                        tension: 0.3, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6, spanGaps: true,
+                        backgroundColor: def.color, fill: false,
+                        tension: 0.3, borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6, spanGaps: true,
                         _counts: months.map(m => byMonth[m][def.num]) // จำนวนเคสไว้ให้ tooltip
                     });
                 }
@@ -969,16 +969,17 @@
                 { key: 'Other', color: CAT.Other }
             ];
             const ctxTrend = document.getElementById('trendChart').getContext('2d');
-            const mkDataset = (label, color) => ({
+            // fill=true เฉพาะเส้นหลัก (HAI) ที่เหลือเป็นเส้นสีคมชัด กันพื้นทับกันจนขุ่น
+            const mkDataset = (label, color, filled) => ({
                 label, data: series(label), borderColor: color,
-                backgroundColor: fadeFill(ctxTrend, color), fill: true,
-                tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6,
+                backgroundColor: filled ? fadeFill(ctxTrend, color) : color, fill: !!filled,
+                tension: 0.4, borderWidth: filled ? 2.5 : 2.5, pointRadius: 3, pointHoverRadius: 6,
                 // เก็บอัตรารายเดือนของชนิดนี้ไว้ให้ tooltip อ่าน
                 _rates: visibleMonths.map(m => rateFor(label, m, byMonth, den)),
                 _unit: (RATE_META[label] || {}).unit || ''
             });
-            // เส้น HAI (ยอดรวม) แสดงเสมอ — ใส่จุดสีเข้มโชว์ตัวเลข + เส้นชนิดเชื้อที่มีข้อมูล
-            const haiDs = mkDataset('HAI', CAT.HAI);
+            // เส้น HAI (ยอดรวม) แสดงเสมอ — พื้นเขียว + จุดสีเข้มโชว์ตัวเลข + เส้นชนิดเชื้อที่มีข้อมูล
+            const haiDs = mkDataset('HAI', CAT.HAI, true);
             haiDs._badge = true; haiDs._badgeColor = darken(CAT.HAI);
             const trendDatasets = [haiDs];
             TREND_TYPES.forEach(t => {
@@ -1408,8 +1409,8 @@
             ];
             const datasets = S.map(s => ({
                 label: s.label, data: months.map(m => den[m] ? den[m][s.k] : 0),
-                borderColor: s.color, backgroundColor: fadeFill(ctx, s.color),
-                fill: true, tension: 0.3, borderWidth: 2, pointRadius: 3, pointHoverRadius: 6
+                borderColor: s.color, backgroundColor: s.color,
+                fill: false, tension: 0.3, borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6
             }));
             if (serviceChartInstance) serviceChartInstance.destroy();
             serviceChartInstance = new Chart(ctx, {
