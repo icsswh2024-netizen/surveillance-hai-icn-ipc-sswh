@@ -547,54 +547,76 @@
             <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-800">
                 <b>หน่วยพิเศษ:</b> <span id="specialUnitList">HDU, CAPD</span> — จับจากคอลัมน์ <b>HAI = "ci"</b> โดยดูหน่วยจากคอลัมน์ <b>SITE</b> (hdu / capd)
             </div>
-            <!-- Special summary cards -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div class="kpi bg-gradient-to-r from-emerald-400 to-green-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">เคส CI ทั้งหมด</h6>
-                    <h3 id="spHAI" class="text-2xl font-bold z-10">0</h3>
-                </div>
-                <div class="kpi bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">อัตรา /1000 ครั้ง</h6>
-                    <h3 id="spRate" class="text-2xl font-bold z-10">-</h3>
-                </div>
-                <div class="kpi bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">จำนวนครั้งรวม (ล้างไต)</h6>
-                    <h3 id="spPatientDay" class="text-2xl font-bold z-10">0</h3>
-                </div>
-                <div class="kpi bg-gradient-to-r from-purple-500 to-fuchsia-600 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">MDR</h6>
-                    <h3 id="spMDR" class="text-2xl font-bold z-10">0</h3>
-                </div>
-            </div>
             <!-- Special monthly chart -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h3 class="text-lg font-semibold text-slate-800 mb-4">การติดเชื้อหน่วยพิเศษ (CI) รายเดือน — แยกตามหน่วย</h3>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">การติดเชื้อหน่วยพิเศษ (CI) รายเดือน — แยกตามชนิด</h3>
                 <div class="relative h-72 w-full"><canvas id="specialChart"></canvas></div>
             </div>
-            <!-- Special ward table -->
+
+            <!-- ===== กลุ่ม CAPD ===== -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <div>
-                        <h3 class="text-lg font-semibold text-slate-800">เฝ้าระวังการติดเชื้อรายหน่วยพิเศษ</h3>
-                        <p class="text-xs text-slate-400 mt-1">นับเคส HAI = CI แยกตามชนิด (SITE) · ตัวหาร: INFECT CAPD ÷ CAPD, ส่วน CLABSI/EXSIT SITE/BSI ÷ HD1 · อัตราต่อ 1,000 ครั้ง · คำนวณสดจากทะเบียน-1</p>
+                        <h3 class="text-lg font-semibold text-emerald-700">CAPD — ล้างไตทางช่องท้อง</h3>
+                        <p class="text-xs text-slate-400 mt-1">ตัวหาร = จำนวนครั้ง CAPD · อัตราต่อ 1,000 ครั้ง</p>
                     </div>
-                    <button id="btnExportSpecial" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                    <div class="flex flex-wrap gap-4 text-sm">
+                        <span class="text-slate-500">เคส <b id="capdN" class="text-slate-800">0</b></span>
+                        <span class="text-slate-500">ครั้ง <b id="capdDen" class="text-slate-800">0</b></span>
+                        <span class="text-slate-500">อัตรา <b id="capdRate" class="text-blue-700">-</b></span>
+                        <span class="text-slate-500">MDR <b id="capdMDR" class="text-fuchsia-700">0</b></span>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
                         <thead class="bg-slate-50 text-slate-700 font-semibold">
                             <tr>
                                 <th class="py-3 px-4">ชนิดการติดเชื้อ (SITE)</th>
-                                <th class="py-3 px-4 text-right">จำนวนเคส CI</th>
-                                <th class="py-3 px-4 text-right">จำนวนครั้ง (ล้างไต)</th>
-                                <th class="py-3 px-4 text-right text-blue-700">อัตรา /1000 ครั้ง</th>
+                                <th class="py-3 px-4 text-right">จำนวนเคส</th>
+                                <th class="py-3 px-4 text-right">ครั้ง CAPD</th>
+                                <th class="py-3 px-4 text-right text-blue-700">อัตรา /1000</th>
                                 <th class="py-3 px-4 text-right text-fuchsia-700">MDR</th>
                                 <th class="py-3 px-4 text-right text-fuchsia-700">%MDR</th>
                             </tr>
                         </thead>
-                        <tbody id="specialTableBody" class="divide-y divide-slate-100"></tbody>
+                        <tbody id="capdTableBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
+            </div>
+
+            <!-- ===== กลุ่ม HD ===== -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                    <div>
+                        <h3 class="text-lg font-semibold text-sky-700">HD — ฟอกเลือด</h3>
+                        <p class="text-xs text-slate-400 mt-1">ตัวหาร = จำนวนครั้ง HD (HD1) · อัตราต่อ 1,000 ครั้ง</p>
+                    </div>
+                    <div class="flex flex-wrap gap-4 text-sm">
+                        <span class="text-slate-500">เคส <b id="hdN" class="text-slate-800">0</b></span>
+                        <span class="text-slate-500">ครั้ง <b id="hdDen" class="text-slate-800">0</b></span>
+                        <span class="text-slate-500">อัตรา <b id="hdRate" class="text-blue-700">-</b></span>
+                        <span class="text-slate-500">MDR <b id="hdMDR" class="text-fuchsia-700">0</b></span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">ชนิดการติดเชื้อ (SITE)</th>
+                                <th class="py-3 px-4 text-right">จำนวนเคส</th>
+                                <th class="py-3 px-4 text-right">ครั้ง HD</th>
+                                <th class="py-3 px-4 text-right text-blue-700">อัตรา /1000</th>
+                                <th class="py-3 px-4 text-right text-fuchsia-700">MDR</th>
+                                <th class="py-3 px-4 text-right text-fuchsia-700">%MDR</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hdTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button id="btnExportSpecial" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
             </div>
             <p id="specialEmpty" class="text-xs text-slate-400 text-center" hidden>ไม่พบเคส HAI = "ci" ตามตัวกรอง (ตรวจสอบค่าในคอลัมน์ HAI และ SITE)</p>
         </div><!-- /viewSpecial -->
@@ -1874,24 +1896,23 @@
             // ตัวหาร (จำนวนครั้ง) รวมจาก "ทุกแถว" แยกตามชนิดล้างไต
             const totCAPD = rows.reduce((a, r) => a + r.capdN, 0);
             const totHD1 = rows.reduce((a, r) => a + r.hd1N, 0);
-            const groups = aggregateSpecial(rows).map(g => ({ ...g, den: specialDenFor(g.unit, totCAPD, totHD1) }))
-                .sort((a, b) => (rate(b.n, b.den, 1000) ?? -1) - (rate(a.n, a.den, 1000) ?? -1) || b.n - a.n);
-            const totN = groups.reduce((a, g) => a + g.n, 0);
-            const totPD = totCAPD + totHD1;
-            const totMDR = groups.reduce((a, g) => a + g.mdr, 0);
-            document.getElementById('spHAI').textContent = totN;
-            document.getElementById('spMDR').textContent = totMDR;
-            document.getElementById('spPatientDay').textContent = Math.round(totPD).toLocaleString();
-            document.getElementById('spRate').textContent = totPD ? (totN / totPD * 1000).toFixed(2) : '-';
-            document.getElementById('specialEmpty').hidden = totN > 0;
+            const allGroups = aggregateSpecial(rows);
+            const isCapd = g => (g.unit || '').toUpperCase().includes('CAPD');
+            const capdGroups = allGroups.filter(isCapd).sort((a, b) => b.n - a.n);
+            const hdGroups = allGroups.filter(g => !isCapd(g)).sort((a, b) => b.n - a.n);
+            document.getElementById('specialEmpty').hidden = allGroups.length > 0;
 
-            // กราฟรายเดือน: เส้นจำนวนเคส CI แยกตามหน่วย (SITE)
+            // เติมกลุ่มลงตาราง + แถบสรุป
+            fillSpecialGroup('capd', capdGroups, totCAPD, 'ครั้ง CAPD');
+            fillSpecialGroup('hd', hdGroups, totHD1, 'ครั้ง HD');
+
+            // กราฟรายเดือน: เส้นจำนวนเคส CI แยกตามชนิด
             const ciRows = rows.filter(rowIsCI);
             let months = FISCAL_MONTHS.filter(m => ciRows.some(r => r.month === m));
             if (months.length === 0) months = FISCAL_MONTHS;
-            const palette = [CAT.HAI, CAT.CAUTI, CAT.VAP, CAT.CLABSI, CAT.MDR, CAT.SSI];
+            const palette = [CAT.HAI, CAT.CAUTI, CAT.VAP, CAT.CLABSI, CAT.MDR, CAT.SSI, CAT.Omphalitis];
             const ctx = document.getElementById('specialChart').getContext('2d');
-            const dss = groups.map((g, i) => {
+            const dss = allGroups.map((g, i) => {
                 const color = palette[i % palette.length];
                 return {
                     label: g.unit, data: months.map(m => g.byMonth[m] || 0),
@@ -1911,9 +1932,17 @@
                     scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } }
                 }
             });
+        }
 
-            // ตารางรายหน่วย
-            const tbody = document.getElementById('specialTableBody');
+        // เติมข้อมูลกลุ่ม CAPD หรือ HD (prefix = 'capd' | 'hd')
+        function fillSpecialGroup(prefix, groups, den, denLabel) {
+            const n = groups.reduce((a, g) => a + g.n, 0);
+            const mdr = groups.reduce((a, g) => a + g.mdr, 0);
+            document.getElementById(prefix + 'N').textContent = n;
+            document.getElementById(prefix + 'Den').textContent = Math.round(den).toLocaleString();
+            document.getElementById(prefix + 'Rate').textContent = fmtRate(rate(n, den, 1000));
+            document.getElementById(prefix + 'MDR').textContent = mdr;
+            const tbody = document.getElementById(prefix + 'TableBody');
             tbody.innerHTML = '';
             groups.forEach(g => {
                 const tr = document.createElement('tr');
@@ -1921,8 +1950,8 @@
                 tr.innerHTML =
                     '<td class="py-3 px-4 font-medium text-slate-700">' + g.unit + '</td>' +
                     '<td class="py-3 px-4 text-right font-semibold">' + g.n + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + Math.round(g.den).toLocaleString() + '</td>' +
-                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(rate(g.n, g.den, 1000)) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(den).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(rate(g.n, den, 1000)) + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + g.mdr + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700">' + (g.n ? Math.round(g.mdr / g.n * 100) + '%' : '-') + '</td>';
                 tbody.appendChild(tr);
@@ -1931,26 +1960,30 @@
                 const trT = document.createElement('tr');
                 trT.className = 'bg-slate-50 font-semibold text-slate-800';
                 trT.innerHTML =
-                    '<td class="py-3 px-4">รวมทั้งหมด</td>' +
-                    '<td class="py-3 px-4 text-right">' + totN + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + Math.round(totPD).toLocaleString() + '</td>' +
-                    '<td class="py-3 px-4 text-right text-blue-700">' + fmtRate(rate(totN, totPD, 1000)) + '</td>' +
-                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + totMDR + '</td>' +
-                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + (totN ? Math.round(totMDR / totN * 100) + '%' : '-') + '</td>';
+                    '<td class="py-3 px-4">รวม</td>' +
+                    '<td class="py-3 px-4 text-right">' + n + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(den).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right text-blue-700">' + fmtRate(rate(n, den, 1000)) + '</td>' +
+                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + mdr + '</td>' +
+                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + (n ? Math.round(mdr / n * 100) + '%' : '-') + '</td>';
                 tbody.appendChild(trT);
+            } else {
+                tbody.innerHTML = '<tr><td colspan="6" class="py-4 px-4 text-center text-slate-400">ไม่มีข้อมูล</td></tr>';
             }
         }
 
         function exportSpecialCSV() {
-            const head = ['ชนิด(SITE)', 'จำนวนเคส CI', 'จำนวนครั้ง(ล้างไต)', 'อัตรา/1000ครั้ง', 'MDR', '%MDR'];
+            const head = ['กลุ่ม', 'ชนิด(SITE)', 'จำนวนเคส CI', 'จำนวนครั้ง', 'อัตรา/1000ครั้ง', 'MDR', '%MDR'];
             const allRows = getRowsForWards();
             const totCAPD = allRows.reduce((a, r) => a + r.capdN, 0);
             const totHD1 = allRows.reduce((a, r) => a + r.hd1N, 0);
-            const groups = aggregateSpecial(allRows).map(g => ({ ...g, den: specialDenFor(g.unit, totCAPD, totHD1) }))
-                .sort((a, b) => (rate(b.n, b.den, 1000) ?? -1) - (rate(a.n, a.den, 1000) ?? -1));
+            const groups = aggregateSpecial(allRows).map(g => {
+                const capd = (g.unit || '').toUpperCase().includes('CAPD');
+                return { ...g, grp: capd ? 'CAPD' : 'HD', den: capd ? totCAPD : totHD1 };
+            }).sort((a, b) => a.grp.localeCompare(b.grp) || b.n - a.n);
             let csv = head.join(',') + '\n';
             groups.forEach(g => {
-                csv += [g.unit, g.n, Math.round(g.den), fmtRate(rate(g.n, g.den, 1000)),
+                csv += [g.grp, g.unit, g.n, Math.round(g.den), fmtRate(rate(g.n, g.den, 1000)),
                         g.mdr, (g.n ? Math.round(g.mdr / g.n * 100) : 0)].join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
