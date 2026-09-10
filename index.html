@@ -85,6 +85,10 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
                 เฝ้าระวังหน่วยพิเศษ
             </button>
+            <button id="menuPostDC" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                เฝ้าระวัง Post discharge
+            </button>
         </nav>
         <div class="p-4 border-t border-slate-100 text-xs text-slate-400">
             <p>สถานะ: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
@@ -627,6 +631,30 @@
             </div>
             <p id="specialEmpty" class="text-xs text-slate-400 text-center" hidden>ไม่พบเคส HAI = "ci" ตามตัวกรอง (ตรวจสอบค่าในคอลัมน์ HAI และ SITE)</p>
         </div><!-- /viewSpecial -->
+
+        <!-- ===================== VIEW: เฝ้าระวัง Post discharge ===================== -->
+        <div id="viewPostDC" class="space-y-6" hidden>
+            <div id="postdcChartCard" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100" hidden>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">เฝ้าระวังการติดเชื้อหลังจำหน่าย (Post-discharge)</h3>
+                <div class="relative h-80 w-full"><canvas id="postdcChart"></canvas></div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">ตารางเฝ้าระวัง Post-discharge</h3>
+                        <p class="text-xs text-slate-400 mt-1" id="postdcStatus">กำลังโหลด...</p>
+                    </div>
+                    <button id="btnReloadPostDC" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">โหลดใหม่</button>
+                </div>
+                <div class="overflow-x-auto max-h-[36rem] overflow-y-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead id="postdcHead" class="bg-slate-50 text-slate-700 font-semibold sticky top-0"></thead>
+                        <tbody id="postdcBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="text-xs text-slate-400 text-center">แหล่งข้อมูล: Google Sheet (เผยแพร่เป็น CSV) — เฝ้าระวังการติดเชื้อหลังผู้ป่วยจำหน่าย</p>
+        </div><!-- /viewPostDC -->
     </div><!-- /max-w container -->
     </main>
   </div><!-- /flex wrapper -->
@@ -893,6 +921,9 @@
         function rowIsCI(d) { return (d.rawHAI || '').toString().toUpperCase() === 'CI'; }
         function specialUnitOf(d) { return (d.rawSITE || '').toString().toUpperCase() || '(ไม่ระบุ)'; }
         const INDICATOR_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTj9sgM8ezxJ89owzZUnYwkQnzbNso4xZ3LQD6tH1gv7VSS2LY_CUi-Blc2MF1oGJOFWkeNumotrb54/pub?gid=1799512390&single=true&output=csv';
+        let postdcChartInstance = null;
+        let postdcLoaded = false;
+        const POSTDC_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUsIGlcFC6itNI9BDMt44HiTpFvUPLBHTkg7CU0_zaP7iyim693r5inKdwx489eRbIZKAWpNrLhQtS/pub?output=csv';
 
         async function loadData() {
             const res = await fetch(SHEET_CSV_URL);
@@ -1724,34 +1755,34 @@
             URL.revokeObjectURL(url);
         }
 
-        // ===================== ตัวชี้วัด (CSV ภายนอก) =====================
-        async function loadIndicators(force) {
-            if (indicatorLoaded && !force) return;
-            const status = document.getElementById('indicatorStatus');
+        // ===================== ตัวอ่าน CSV ภายนอกแบบยืดหยุ่น (ใช้ร่วม ตัวชี้วัด / Post-discharge) =====================
+        async function loadPubCsv(url, o, force) {
+            if (o.getLoaded() && !force) return;
+            const status = document.getElementById(o.statusId);
             status.textContent = 'กำลังโหลด...';
             status.className = 'text-xs text-slate-400 mt-1';
             try {
-                const res = await fetch(INDICATOR_CSV_URL + '&_=' + Date.now());
+                const res = await fetch(url + (url.includes('?') ? '&' : '?') + '_=' + Date.now());
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const rows = parseCSV(await res.text());
                 if (!rows.length) throw new Error('ไม่มีข้อมูล');
                 const headers = Object.keys(rows[0]).filter(h => h !== '' && h !== '__norm');
-                renderIndicatorTable(headers, rows);
-                renderIndicatorChart(headers, rows);
-                indicatorLoaded = true;
+                renderCsvTable(headers, rows, o.headId, o.bodyId);
+                renderCsvChart(headers, rows, o);
+                o.setLoaded(true);
                 status.textContent = 'โหลดสำเร็จ — ' + rows.length + ' รายการ (' +
                     new Date().toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ')';
             } catch (err) {
                 console.error(err);
-                status.textContent = '⚠️ โหลดตัวชี้วัดไม่สำเร็จ — ตรวจสอบว่าลิงก์ CSV เผยแพร่แบบ "ทุกคน" (' + err.message + ')';
+                status.textContent = '⚠️ โหลดไม่สำเร็จ — ตรวจสอบว่าลิงก์ CSV เผยแพร่แบบ "ทุกคน" (' + err.message + ')';
                 status.className = 'text-xs text-rose-600 mt-1';
             }
         }
 
-        function renderIndicatorTable(headers, rows) {
-            document.getElementById('indicatorHead').innerHTML =
+        function renderCsvTable(headers, rows, headId, bodyId) {
+            document.getElementById(headId).innerHTML =
                 '<tr>' + headers.map(h => '<th class="py-3 px-4">' + h + '</th>').join('') + '</tr>';
-            const tbody = document.getElementById('indicatorBody');
+            const tbody = document.getElementById(bodyId);
             tbody.innerHTML = '';
             rows.forEach(r => {
                 const tr = document.createElement('tr');
@@ -1761,8 +1792,8 @@
             });
         }
 
-        // กราฟอัตโนมัติ: คอลัมน์แรก = ป้าย, คอลัมน์ที่เป็นตัวเลข = แท่ง (สูงสุด 4 ชุด)
-        function renderIndicatorChart(headers, rows) {
+        // กราฟอัตโนมัติ: คอลัมน์แรกที่ไม่ใช่ตัวเลข = ป้าย, คอลัมน์ตัวเลข = แท่ง (สูงสุด 4 ชุด)
+        function renderCsvChart(headers, rows, o) {
             const isNum = h => {
                 const vals = rows.map(r => (r[h] || '').toString().replace(/[,%]/g, '').trim()).filter(v => v !== '');
                 if (!vals.length) return false;
@@ -1770,7 +1801,7 @@
             };
             const numCols = headers.filter(isNum);
             const labelCol = headers.find(h => !isNum(h)) || headers[0];
-            const card = document.getElementById('indicatorChartCard');
+            const card = document.getElementById(o.chartCardId);
             if (!numCols.length || numCols.length > 6) { card.hidden = true; return; }
             card.hidden = false;
             const palette = [CAT.HAI, CAT.CAUTI, CAT.VAP, CAT.SSI, CAT.Omphalitis, CAT.MDR];
@@ -1779,9 +1810,9 @@
                 label: h, data: rows.map(r => toNum(r[h])),
                 backgroundColor: palette[i % palette.length], borderRadius: 6
             }));
-            const ctx = document.getElementById('indicatorChart').getContext('2d');
-            if (indicatorChartInstance) indicatorChartInstance.destroy();
-            indicatorChartInstance = new Chart(ctx, {
+            const ctx = document.getElementById(o.chartCanvasId).getContext('2d');
+            o.destroyChart();
+            o.setChart(new Chart(ctx, {
                 type: 'bar',
                 data: { labels: rows.map(r => r[labelCol]), datasets },
                 options: {
@@ -1789,8 +1820,23 @@
                     plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } } },
                     scales: { y: { beginAtZero: true }, x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 60, minRotation: 0 } } }
                 }
-            });
+            }));
         }
+
+        const INDICATOR_OPTS = {
+            statusId: 'indicatorStatus', headId: 'indicatorHead', bodyId: 'indicatorBody',
+            chartCardId: 'indicatorChartCard', chartCanvasId: 'indicatorChart',
+            getLoaded: () => indicatorLoaded, setLoaded: v => indicatorLoaded = v,
+            destroyChart: () => { if (indicatorChartInstance) indicatorChartInstance.destroy(); }, setChart: c => indicatorChartInstance = c
+        };
+        const POSTDC_OPTS = {
+            statusId: 'postdcStatus', headId: 'postdcHead', bodyId: 'postdcBody',
+            chartCardId: 'postdcChartCard', chartCanvasId: 'postdcChart',
+            getLoaded: () => postdcLoaded, setLoaded: v => postdcLoaded = v,
+            destroyChart: () => { if (postdcChartInstance) postdcChartInstance.destroy(); }, setChart: c => postdcChartInstance = c
+        };
+        function loadIndicators(force) { return loadPubCsv(INDICATOR_CSV_URL, INDICATOR_OPTS, force); }
+        function loadPostDC(force) { return loadPubCsv(POSTDC_CSV_URL, POSTDC_OPTS, force); }
 
         // ===================== บทวิเคราะห์ (สร้างอัตโนมัติ) =====================
         function updateAnalysisView() {
@@ -2003,9 +2049,9 @@
 
         // สลับเมนู (sidebar)
         function switchView(view) {
-            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', special: 'viewSpecial' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', special: 'menuSpecial' };
-            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', special: 'เฝ้าระวังหน่วยพิเศษ' };
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', special: 'viewSpecial', postdc: 'viewPostDC' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', special: 'menuSpecial', postdc: 'menuPostDC' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
@@ -2023,6 +2069,7 @@
             if (view === 'indicator') loadIndicators();
             if (view === 'analysis') updateAnalysisView();
             if (view === 'special') updateSpecialView();
+            if (view === 'postdc') loadPostDC();
         }
 
         // Event listeners
@@ -2042,6 +2089,8 @@
         document.getElementById('btnPrintAnalysis').addEventListener('click', () => window.print());
         document.getElementById('menuSpecial').addEventListener('click', () => switchView('special'));
         document.getElementById('btnExportSpecial').addEventListener('click', exportSpecialCSV);
+        document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
+        document.getElementById('btnReloadPostDC').addEventListener('click', () => loadPostDC(true));
 
         // Initial load
         window.onload = async () => {
