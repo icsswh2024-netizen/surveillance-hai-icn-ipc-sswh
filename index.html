@@ -634,8 +634,30 @@
 
         <!-- ===================== VIEW: เฝ้าระวัง Post discharge ===================== -->
         <div id="viewPostDC" class="space-y-6" hidden>
+            <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-800">
+                <b>เฝ้าระวัง SSI หลังจำหน่าย</b> — 4 หัตถการเป้าหมาย: Phacoemulsification (13.41), THR (81.51), TKR (81.54), TAH (68.4) · ติดตามการมาตามนัด / Admit ซ้ำ ใน VN
+            </div>
+            <!-- Post-discharge KPI cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="kpi bg-gradient-to-r from-emerald-400 to-green-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">เคสเฝ้าระวังทั้งหมด</h6>
+                    <h3 id="pdcTotal" class="text-2xl font-bold z-10">0</h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">มาตามนัด</h6>
+                    <h3 class="text-2xl font-bold z-10"><span id="pdcCame">0</span> <span class="text-sm font-normal">(<span id="pdcCamePct">0</span>%)</span></h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">ไม่มาตามนัด</h6>
+                    <h3 id="pdcNotCame" class="text-2xl font-bold z-10">0</h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-rose-400 to-red-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">Admit ซ้ำ</h6>
+                    <h3 id="pdcReadmit" class="text-2xl font-bold z-10">0</h3>
+                </div>
+            </div>
             <div id="postdcChartCard" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100" hidden>
-                <h3 class="text-lg font-semibold text-slate-800 mb-4">เฝ้าระวังการติดเชื้อหลังจำหน่าย (Post-discharge)</h3>
+                <h3 id="postdcChartTitle" class="text-lg font-semibold text-slate-800 mb-4">Post-discharge — แยกตามกลุ่ม</h3>
                 <div class="relative h-80 w-full"><canvas id="postdcChart"></canvas></div>
             </div>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -1768,7 +1790,8 @@
                 if (!rows.length) throw new Error('ไม่มีข้อมูล');
                 const headers = Object.keys(rows[0]).filter(h => h !== '' && h !== '__norm');
                 renderCsvTable(headers, rows, o.headId, o.bodyId);
-                renderCsvChart(headers, rows, o);
+                if (!o.skipAutoChart) renderCsvChart(headers, rows, o);
+                if (o.onLoaded) o.onLoaded(headers, rows);
                 o.setLoaded(true);
                 status.textContent = 'โหลดสำเร็จ — ' + rows.length + ' รายการ (' +
                     new Date().toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ')';
@@ -1779,7 +1802,15 @@
             }
         }
 
-        function renderCsvTable(headers, rows, headId, bodyId) {
+        // มาสก์คอลัมน์ที่เป็นข้อมูลส่วนบุคคล (PDPA)
+        function csvCellMask(header, val) {
+            const h = (header || '').toString().toLowerCase();
+            if (/ชื่อ|สกุล|name|ผู้ป่วย/.test(h) && !/หอ|โรค|หัตถการ|ผ่าตัด/.test(h)) return '—';       // ซ่อนชื่อ-สกุล
+            if (/\bhn\b|\ban\b|cid|บัตรประชาชน|เลขบัตร|เลขที่บัตร/.test(h)) return maskId(val);          // มาสก์ HN/AN/บัตร
+            return (val ?? '');
+        }
+        function renderCsvTable(headers, rows, bodyIdOrHead, bodyId) {
+            const headId = bodyId ? bodyIdOrHead : bodyIdOrHead; // (headId, bodyId)
             document.getElementById(headId).innerHTML =
                 '<tr>' + headers.map(h => '<th class="py-3 px-4">' + h + '</th>').join('') + '</tr>';
             const tbody = document.getElementById(bodyId);
@@ -1787,7 +1818,7 @@
             rows.forEach(r => {
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-slate-50 transition-colors';
-                tr.innerHTML = headers.map(h => '<td class="py-2.5 px-4">' + (r[h] ?? '') + '</td>').join('');
+                tr.innerHTML = headers.map(h => '<td class="py-2.5 px-4">' + csvCellMask(h, r[h]) + '</td>').join('');
                 tbody.appendChild(tr);
             });
         }
@@ -1833,10 +1864,62 @@
             statusId: 'postdcStatus', headId: 'postdcHead', bodyId: 'postdcBody',
             chartCardId: 'postdcChartCard', chartCanvasId: 'postdcChart',
             getLoaded: () => postdcLoaded, setLoaded: v => postdcLoaded = v,
-            destroyChart: () => { if (postdcChartInstance) postdcChartInstance.destroy(); }, setChart: c => postdcChartInstance = c
+            destroyChart: () => { if (postdcChartInstance) postdcChartInstance.destroy(); }, setChart: c => postdcChartInstance = c,
+            skipAutoChart: true, onLoaded: (headers, rows) => postdcSummarize(headers, rows)
         };
         function loadIndicators(force) { return loadPubCsv(INDICATOR_CSV_URL, INDICATOR_OPTS, force); }
         function loadPostDC(force) { return loadPubCsv(POSTDC_CSV_URL, POSTDC_OPTS, force); }
+
+        // สรุป Post-discharge: ตรวจจับคอลัมน์จากคำสำคัญ + คำนวณการ์ด/กราฟ
+        function postdcSummarize(headers, rows) {
+            const low = s => (s || '').toString().toLowerCase().trim();
+            const findCol = kws => headers.find(h => kws.some(k => low(h).includes(k)));
+            const colFollow = findCol(['มาตามนัด', 'ตามนัด', 'ติดตาม', 'follow', 'มานัด', 'นัด']);
+            const colReadmit = findCol(['re-admit', 'readmit', 're admit', 'admit ซ้ำ', 'admitซ้ำ', 'ซ้ำ', 'admit']);
+            const colType = findCol(['ชนิดผ่าตัด', 'ชนิดหัตถการ', 'หัตถการ', 'ผ่าตัด', 'operation', 'surgery', 'ประเภท', 'op']);
+            const isYes = v => { const s = low(v); return s === 'yes' || s === 'y' || s === 'ใช่' || s === 'true' || s === '1' || (s.includes('มา') && !s.includes('ไม่')); };
+            const isNo = v => { const s = low(v); return s === 'no' || s === 'n' || s === 'ไม่' || s === 'false' || s === '0' || s.includes('ไม่มา') || s.includes('ไม่ได้มา'); };
+
+            const total = rows.length;
+            let came = 0, notCame = 0, readmit = 0;
+            rows.forEach(r => {
+                if (colFollow) { if (isYes(r[colFollow])) came++; else if (isNo(r[colFollow])) notCame++; }
+                if (colReadmit && isYes(r[colReadmit])) readmit++;
+            });
+            document.getElementById('pdcTotal').textContent = total;
+            document.getElementById('pdcCame').textContent = came;
+            document.getElementById('pdcCamePct').textContent = total ? Math.round(came / total * 100) : 0;
+            document.getElementById('pdcNotCame').textContent = notCame;
+            document.getElementById('pdcReadmit').textContent = readmit;
+
+            // กราฟ: แยกตามชนิดผ่าตัด (ถ้าเจอคอลัมน์) มิฉะนั้นแยกตามผลติดตาม
+            const card = document.getElementById('postdcChartCard');
+            const title = document.getElementById('postdcChartTitle');
+            let labels, data, colors;
+            if (colType) {
+                const byType = {};
+                rows.forEach(r => { const t = (r[colType] || '(ไม่ระบุ)').toString().trim(); byType[t] = (byType[t] || 0) + 1; });
+                const ent = Object.entries(byType).sort((a, b) => b[1] - a[1]);
+                labels = ent.map(e => e[0]); data = ent.map(e => e[1]);
+                title.textContent = 'Post-discharge — จำนวนเคสแยกตามชนิดผ่าตัด';
+            } else if (colFollow) {
+                labels = ['มาตามนัด', 'ไม่มาตามนัด', 'Admit ซ้ำ']; data = [came, notCame, readmit];
+                title.textContent = 'Post-discharge — ผลการติดตาม';
+            } else { card.hidden = true; return; }
+            const palette = [CAT.HAI, CAT.CAUTI, CAT.VAP, CAT.SSI, CAT.Omphalitis, CAT.MDR, CAT.CLABSI];
+            card.hidden = false;
+            const ctx = document.getElementById('postdcChart').getContext('2d');
+            if (postdcChartInstance) postdcChartInstance.destroy();
+            postdcChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'จำนวนเคส', data, backgroundColor: labels.map((_, i) => palette[i % palette.length]), borderRadius: 6, _badge: true, _badgeColor: '#334155' }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } }
+                }
+            });
+        }
 
         // ===================== บทวิเคราะห์ (สร้างอัตโนมัติ) =====================
         function updateAnalysisView() {
