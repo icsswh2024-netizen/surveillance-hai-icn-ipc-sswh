@@ -584,7 +584,7 @@
                     <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
                         <thead class="bg-slate-50 text-slate-700 font-semibold">
                             <tr>
-                                <th class="py-3 px-4">หน่วย (SITE)</th>
+                                <th class="py-3 px-4">ชนิดการติดเชื้อ (SITE)</th>
                                 <th class="py-3 px-4 text-right">จำนวนเคส CI</th>
                                 <th class="py-3 px-4 text-right">จำนวนครั้ง (ล้างไต)</th>
                                 <th class="py-3 px-4 text-right text-blue-700">อัตรา /1000 ครั้ง</th>
@@ -1869,9 +1869,11 @@
 
         function updateSpecialView() {
             const rows = getRowsForWards();
-            const groups = aggregateSpecial(rows).sort((a, b) => (rate(b.n, b.den, 1000) ?? -1) - (rate(a.n, a.den, 1000) ?? -1) || b.n - a.n);
+            // ตัวหาร = จำนวนครั้งล้างไตรวมจาก "ทุกแถว" (ค่าอยู่บนแถวบริการ ไม่ใช่แถวติดเชื้อ)
+            const totDen = rows.reduce((a, r) => a + r.dialDen, 0);
+            const groups = aggregateSpecial(rows).sort((a, b) => b.n - a.n);
             const totN = groups.reduce((a, g) => a + g.n, 0);
-            const totPD = groups.reduce((a, g) => a + g.den, 0);
+            const totPD = totDen;
             const totMDR = groups.reduce((a, g) => a + g.mdr, 0);
             document.getElementById('spHAI').textContent = totN;
             document.getElementById('spMDR').textContent = totMDR;
@@ -1915,8 +1917,8 @@
                 tr.innerHTML =
                     '<td class="py-3 px-4 font-medium text-slate-700">' + g.unit + '</td>' +
                     '<td class="py-3 px-4 text-right font-semibold">' + g.n + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + Math.round(g.den).toLocaleString() + '</td>' +
-                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(rate(g.n, g.den, 1000)) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(totDen).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(rate(g.n, totDen, 1000)) + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + g.mdr + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700">' + (g.n ? Math.round(g.mdr / g.n * 100) + '%' : '-') + '</td>';
                 tbody.appendChild(tr);
@@ -1936,12 +1938,13 @@
         }
 
         function exportSpecialCSV() {
-            const head = ['หน่วย(SITE)', 'จำนวนเคส CI', 'จำนวนครั้ง(ล้างไต)', 'อัตรา/1000ครั้ง', 'MDR', '%MDR'];
-            const groups = aggregateSpecial(getRowsForWards())
-                .sort((a, b) => (rate(b.n, b.den, 1000) ?? -1) - (rate(a.n, a.den, 1000) ?? -1));
+            const head = ['ชนิด(SITE)', 'จำนวนเคส CI', 'จำนวนครั้ง(ล้างไต)', 'อัตรา/1000ครั้ง', 'MDR', '%MDR'];
+            const allRows = getRowsForWards();
+            const totDen = allRows.reduce((a, r) => a + r.dialDen, 0);
+            const groups = aggregateSpecial(allRows).sort((a, b) => b.n - a.n);
             let csv = head.join(',') + '\n';
             groups.forEach(g => {
-                csv += [g.unit, g.n, Math.round(g.den), fmtRate(rate(g.n, g.den, 1000)),
+                csv += [g.unit, g.n, Math.round(totDen), fmtRate(rate(g.n, totDen, 1000)),
                         g.mdr, (g.n ? Math.round(g.mdr / g.n * 100) : 0)].join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
