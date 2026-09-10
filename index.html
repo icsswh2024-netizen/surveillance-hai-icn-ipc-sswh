@@ -254,6 +254,51 @@
             </div>
         </div>
 
+        <!-- Monthly service statistics table -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="p-6 border-b border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800">ตารางจำนวนสถิติบริการรายเดือน</h3>
+                <p class="text-xs text-slate-400 mt-1">ตัวหารที่ใช้คำนวณอัตรา (วัน/ครั้ง) จากทะเบียน-1</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                    <thead class="bg-slate-50 text-slate-700 font-semibold">
+                        <tr>
+                            <th class="py-3 px-4">เดือน</th>
+                            <th class="py-3 px-4 text-right">วันนอน</th>
+                            <th class="py-3 px-4 text-right">วันคาสายปัสสาวะ</th>
+                            <th class="py-3 px-4 text-right">วันเครื่องช่วยหายใจ</th>
+                            <th class="py-3 px-4 text-right">วันคาสายหลอดเลือด</th>
+                            <th class="py-3 px-4 text-right">ผ่าตัด (op)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="svcMonthBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Monthly rate summary (numerator / denominator / factor / rate) -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="p-6 border-b border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800">สรุปอัตราการติดเชื้อในโรงพยาบาลรายเดือน</h3>
+                <p class="text-xs text-slate-400 mt-1">อัตรา = ตัวตั้ง (เคส HAI) ÷ ตัวหาร (วันนอน) × ตัวคูณ (1,000)</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                    <thead class="bg-slate-50 text-slate-700 font-semibold">
+                        <tr>
+                            <th class="py-3 px-4">เดือน</th>
+                            <th class="py-3 px-4 text-right">ตัวตั้ง<br><span class="font-normal text-slate-400">เคส HAI</span></th>
+                            <th class="py-3 px-4 text-right">ตัวหาร<br><span class="font-normal text-slate-400">วันนอน</span></th>
+                            <th class="py-3 px-4 text-right">ตัวคูณ</th>
+                            <th class="py-3 px-4 text-right text-blue-700">อัตรา<br><span class="font-normal text-slate-400">/1,000 วันนอน</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="rateMonthBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+
         <p class="text-xs text-slate-400 text-center">
             แหล่งข้อมูล: Google Sheet ชีต "ทะเบียน-1" — ตัวเลขคือ "จำนวนเคสติดเชื้อ" (นับเฉพาะแถวที่ระบุ HAI เพื่อไม่ให้นับเชื้อซ้ำ)
         </p>
@@ -1103,6 +1148,64 @@
             updateRateChart(byMonth, den);
             updateHaiAreaChart(byMonth, den);
             updateMdrDashChart();
+            updateMonthlyTables(byMonth, den);
+        }
+
+        // ตารางสถิติบริการรายเดือน + ตารางสรุปอัตรา (ตัวตั้ง/ตัวหาร/ตัวคูณ/อัตรา)
+        function updateMonthlyTables(byMonth, den) {
+            const svcBody = document.getElementById('svcMonthBody');
+            const rateBody = document.getElementById('rateMonthBody');
+            svcBody.innerHTML = ''; rateBody.innerHTML = '';
+            const tot = { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0, HAI: 0 };
+            FISCAL_MONTHS.forEach(m => {
+                const d = den[m] || { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0 };
+                const hai = byMonth[m].HAI;
+                tot.patientDay += d.patientDay; tot.cathDay += d.cathDay; tot.venDay += d.venDay;
+                tot.lineDay += d.lineDay; tot.op += d.op; tot.HAI += hai;
+                // ตารางสถิติบริการ
+                const trS = document.createElement('tr');
+                trS.className = 'hover:bg-slate-50 transition-colors';
+                trS.innerHTML =
+                    '<td class="py-3 px-4 font-medium text-slate-700">' + MONTH_LABELS[m] + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(d.patientDay).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(d.cathDay).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(d.venDay).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(d.lineDay).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(d.op).toLocaleString() + '</td>';
+                svcBody.appendChild(trS);
+                // ตารางสรุปอัตรา
+                const r = d.patientDay ? (hai / d.patientDay * 1000).toFixed(2) : '-';
+                const trR = document.createElement('tr');
+                trR.className = 'hover:bg-slate-50 transition-colors';
+                trR.innerHTML =
+                    '<td class="py-3 px-4 font-medium text-slate-700">' + MONTH_LABELS[m] + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + hai + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(d.patientDay).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right">1,000</td>' +
+                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + r + '</td>';
+                rateBody.appendChild(trR);
+            });
+            // แถวรวม
+            const trST = document.createElement('tr');
+            trST.className = 'bg-slate-50 font-semibold text-slate-800';
+            trST.innerHTML =
+                '<td class="py-3 px-4">รวม</td>' +
+                '<td class="py-3 px-4 text-right">' + Math.round(tot.patientDay).toLocaleString() + '</td>' +
+                '<td class="py-3 px-4 text-right">' + Math.round(tot.cathDay).toLocaleString() + '</td>' +
+                '<td class="py-3 px-4 text-right">' + Math.round(tot.venDay).toLocaleString() + '</td>' +
+                '<td class="py-3 px-4 text-right">' + Math.round(tot.lineDay).toLocaleString() + '</td>' +
+                '<td class="py-3 px-4 text-right">' + Math.round(tot.op).toLocaleString() + '</td>';
+            svcBody.appendChild(trST);
+            const rt = tot.patientDay ? (tot.HAI / tot.patientDay * 1000).toFixed(2) : '-';
+            const trRT = document.createElement('tr');
+            trRT.className = 'bg-slate-50 font-semibold text-slate-800';
+            trRT.innerHTML =
+                '<td class="py-3 px-4">รวม</td>' +
+                '<td class="py-3 px-4 text-right">' + tot.HAI + '</td>' +
+                '<td class="py-3 px-4 text-right">' + Math.round(tot.patientDay).toLocaleString() + '</td>' +
+                '<td class="py-3 px-4 text-right">1,000</td>' +
+                '<td class="py-3 px-4 text-right text-blue-700">' + rt + '</td>';
+            rateBody.appendChild(trRT);
         }
 
         // ประเภทแผลผ่าตัด (Wound class 1-4) + SSI แยกชนิดผ่าตัด (จากทุกแถวตามตัวกรอง)
