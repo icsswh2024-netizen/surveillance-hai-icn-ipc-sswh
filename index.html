@@ -227,21 +227,6 @@
             <div class="relative h-72 w-full"><canvas id="mdrDashChart"></canvas></div>
         </div>
 
-        <!-- Wound class & SSI by surgery -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-slate-800">ประเภทแผลผ่าตัด (Wound class)</h3>
-                    <span class="text-xs text-slate-400">ผ่าตัดรวม <b id="woundOp" class="text-slate-700">0</b> ครั้ง</span>
-                </div>
-                <div class="relative h-72 w-full"><canvas id="woundChart"></canvas></div>
-            </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h3 class="text-lg font-semibold text-slate-800 mb-4">SSI แยกตามชนิดผ่าตัด</h3>
-                <div class="relative h-72 w-full"><canvas id="ssiSiteChart"></canvas></div>
-            </div>
-        </div>
-
         <!-- Detailed Data Table -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
@@ -490,6 +475,21 @@
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <h3 class="text-lg font-semibold text-slate-800 mb-4">ปริมาณบริการรายเดือน (วัน/ครั้ง)</h3>
                 <div class="relative h-72 w-full"><canvas id="serviceChart"></canvas></div>
+            </div>
+
+            <!-- Wound class & SSI by surgery -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-slate-800">ประเภทแผลผ่าตัด (Wound class)</h3>
+                        <span class="text-xs text-slate-400">ผ่าตัดรวม <b id="woundOp" class="text-slate-700">0</b> ครั้ง</span>
+                    </div>
+                    <div class="relative h-72 w-full"><canvas id="woundChart"></canvas></div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">SSI แยกตามชนิดผ่าตัด</h3>
+                    <div class="relative h-72 w-full"><canvas id="ssiSiteChart"></canvas></div>
+                </div>
             </div>
 
             <!-- Ward service table -->
@@ -1103,7 +1103,6 @@
             updateRateChart(byMonth, den);
             updateHaiAreaChart(byMonth, den);
             updateMdrDashChart();
-            updateWoundCharts(getFilteredRows());
         }
 
         // ประเภทแผลผ่าตัด (Wound class 1-4) + SSI แยกชนิดผ่าตัด (จากทุกแถวตามตัวกรอง)
@@ -1767,6 +1766,7 @@
         // ===================== สถิติบริการ =====================
         function updateServiceView() {
             const rows = getRowsForWards();
+            updateWoundCharts(rows);
             const den = aggregateDenominatorsByMonth(rows);
             // การ์ดสรุป (ยอดรวมทั้งช่วง)
             const tot = { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0, cathN: 0, venN: 0, lineN: 0 };
