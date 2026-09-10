@@ -1970,13 +1970,21 @@
             seqBody.appendChild(trT);
         }
 
-        // ชนิดผ่าตัดจากรหัส pdx (ICD10)
-        function postdcSurgery(pdx) {
-            const c = (pdx || '').toString().toUpperCase().trim();
-            if (c.startsWith('H25')) return 'Phaco (ต้อกระจก)';
+        // จับชนิดผ่าตัดจากรหัส ICD10 เดียว (คืน type หรือ null)
+        function matchSurgeryCode(code) {
+            const c = (code || '').toString().toUpperCase().trim();
+            if (/^H25\d?$/.test(c) || c.startsWith('H25')) return 'Phaco (ต้อกระจก)';
             if (c.startsWith('M17')) return 'TKR (ข้อเข่า)';
             if (c.startsWith('M16')) return 'THR (ข้อสะโพก)';
             if (c.startsWith('D25')) return 'TAH (มดลูก)';
+            return null;
+        }
+        // ชนิดผ่าตัด: ดูโรคหลัก (pdx) ก่อน ถ้าไม่ใช่เป้าหมายให้สแกนโรครอง (otherdx)
+        function postdcSurgery(pdx, otherdx) {
+            const p = matchSurgeryCode(pdx);
+            if (p) return p;
+            const toks = (otherdx || '').toString().split(/[,\s]+/);
+            for (const t of toks) { const m = matchSurgeryCode(t); if (m) return m; }
             return 'อื่นๆ';
         }
         // สรุป Post-discharge: แมปคอลัมน์จริง (pdx, appoint_status, readmit_30_days, an) + จัดกลุ่มรายผู้ป่วย
@@ -1984,6 +1992,7 @@
             const low = s => (s || '').toString().toLowerCase().trim();
             const col = (exact, kws) => headers.find(h => low(h) === exact) || headers.find(h => (kws || []).some(k => low(h).includes(k)));
             const colPdx = col('pdx', ['pdx', 'principal', 'diag']);
+            const colOtherdx = col('otherdx', ['otherdx', 'other', 'secondary', 'โรครอง']);
             const colStatus = col('appoint_status', ['status', 'สถานะ', 'นัด']);
             const colReadmit = col('readmit_30_days', ['readmit', 'ซ้ำ', 'admit']);
             const colAn = col('an', ['an', 'vn']);
@@ -1997,7 +2006,7 @@
             rows.forEach(r => {
                 const an = (r[colAn] || '').toString().trim();
                 if (!an) return;
-                if (!g[an]) g[an] = { surgery: postdcSurgery(r[colPdx]), came: 0, missed: 0, pending: 0, none: 0, readmit: false, appts: [] };
+                if (!g[an]) g[an] = { surgery: postdcSurgery(r[colPdx], r[colOtherdx]), came: 0, missed: 0, pending: 0, none: 0, readmit: false, appts: [] };
                 const st = (r[colStatus] || '').toString();
                 const s = statusOf(st);
                 if (s === 'came') g[an].came++;
