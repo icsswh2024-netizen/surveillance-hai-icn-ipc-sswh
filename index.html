@@ -635,12 +635,12 @@
         <!-- ===================== VIEW: เฝ้าระวัง Post discharge ===================== -->
         <div id="viewPostDC" class="space-y-6" hidden>
             <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-800">
-                <b>เฝ้าระวัง SSI หลังจำหน่าย</b> — 4 หัตถการเป้าหมาย: Phacoemulsification (13.41), THR (81.51), TKR (81.54), TAH (68.4) · ติดตามการมาตามนัด / Admit ซ้ำ ใน VN
+                <b>เฝ้าระวัง SSI หลังจำหน่าย</b> — 4 หัตถการเป้าหมาย: Phaco (H25x), THR (M16x), TKR (M17x), TAH (D25x) · ชนิดดูจาก pdx · ติดตามการมาตามนัด (appoint_status) และ Re-admit ภายใน 30 วัน · นับรายผู้ป่วย (an)
             </div>
             <!-- Post-discharge KPI cards -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="kpi bg-gradient-to-r from-emerald-400 to-green-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">เคสเฝ้าระวังทั้งหมด</h6>
+                    <h6 class="text-xs font-medium text-white/90 z-10">ผู้ป่วยเฝ้าระวัง (ราย)</h6>
                     <h3 id="pdcTotal" class="text-2xl font-bold z-10">0</h3>
                 </div>
                 <div class="kpi bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
@@ -648,11 +648,11 @@
                     <h3 class="text-2xl font-bold z-10"><span id="pdcCame">0</span> <span class="text-sm font-normal">(<span id="pdcCamePct">0</span>%)</span></h3>
                 </div>
                 <div class="kpi bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">ไม่มาตามนัด</h6>
+                    <h6 class="text-xs font-medium text-white/90 z-10">ขาดนัด (ไม่มา)</h6>
                     <h3 id="pdcNotCame" class="text-2xl font-bold z-10">0</h3>
                 </div>
                 <div class="kpi bg-gradient-to-r from-rose-400 to-red-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">Admit ซ้ำ</h6>
+                    <h6 class="text-xs font-medium text-white/90 z-10">Re-admit ใน 30 วัน</h6>
                     <h3 id="pdcReadmit" class="text-2xl font-bold z-10">0</h3>
                 </div>
             </div>
@@ -1870,49 +1870,62 @@
         function loadIndicators(force) { return loadPubCsv(INDICATOR_CSV_URL, INDICATOR_OPTS, force); }
         function loadPostDC(force) { return loadPubCsv(POSTDC_CSV_URL, POSTDC_OPTS, force); }
 
-        // สรุป Post-discharge: ตรวจจับคอลัมน์จากคำสำคัญ + คำนวณการ์ด/กราฟ
+        // ชนิดผ่าตัดจากรหัส pdx (ICD10)
+        function postdcSurgery(pdx) {
+            const c = (pdx || '').toString().toUpperCase().trim();
+            if (c.startsWith('H25')) return 'Phaco (ต้อกระจก)';
+            if (c.startsWith('M17')) return 'TKR (ข้อเข่า)';
+            if (c.startsWith('M16')) return 'THR (ข้อสะโพก)';
+            if (c.startsWith('D25')) return 'TAH (มดลูก)';
+            return 'อื่นๆ';
+        }
+        // สรุป Post-discharge: แมปคอลัมน์จริง (pdx, appoint_status, readmit_30_days, an) + จัดกลุ่มรายผู้ป่วย
         function postdcSummarize(headers, rows) {
             const low = s => (s || '').toString().toLowerCase().trim();
-            const findCol = kws => headers.find(h => kws.some(k => low(h).includes(k)));
-            const colFollow = findCol(['มาตามนัด', 'ตามนัด', 'ติดตาม', 'follow', 'มานัด', 'นัด']);
-            const colReadmit = findCol(['re-admit', 'readmit', 're admit', 'admit ซ้ำ', 'admitซ้ำ', 'ซ้ำ', 'admit']);
-            const colType = findCol(['ชนิดผ่าตัด', 'ชนิดหัตถการ', 'หัตถการ', 'ผ่าตัด', 'operation', 'surgery', 'ประเภท', 'op']);
-            const isYes = v => { const s = low(v); return s === 'yes' || s === 'y' || s === 'ใช่' || s === 'true' || s === '1' || (s.includes('มา') && !s.includes('ไม่')); };
-            const isNo = v => { const s = low(v); return s === 'no' || s === 'n' || s === 'ไม่' || s === 'false' || s === '0' || s.includes('ไม่มา') || s.includes('ไม่ได้มา'); };
+            const col = (exact, kws) => headers.find(h => low(h) === exact) || headers.find(h => (kws || []).some(k => low(h).includes(k)));
+            const colPdx = col('pdx', ['pdx', 'principal', 'diag']);
+            const colStatus = col('appoint_status', ['status', 'สถานะ', 'นัด']);
+            const colReadmit = col('readmit_30_days', ['readmit', 'ซ้ำ', 'admit']);
+            const colAn = col('an', ['an', 'vn']);
 
-            const total = rows.length;
-            let came = 0, notCame = 0, readmit = 0;
+            // จัดกลุ่มรายผู้ป่วย (an = 1 การนอน/รอบผ่าตัด)
+            const g = {};
             rows.forEach(r => {
-                if (colFollow) { if (isYes(r[colFollow])) came++; else if (isNo(r[colFollow])) notCame++; }
-                if (colReadmit && isYes(r[colReadmit])) readmit++;
+                const an = (r[colAn] || '').toString().trim();
+                if (!an) return;
+                if (!g[an]) g[an] = { surgery: postdcSurgery(r[colPdx]), came: 0, missed: 0, pending: 0, none: 0, readmit: false };
+                const st = (r[colStatus] || '').toString();
+                if (st.includes('มาตามนัด')) g[an].came++;
+                else if (st.includes('ขาดนัด')) g[an].missed++;
+                else if (st.includes('ยังไม่ถึง')) g[an].pending++;
+                else if (st.includes('ไม่มีการนัด')) g[an].none++;
+                if (low(r[colReadmit]) === 'yes') g[an].readmit = true;
             });
+            const groups = Object.values(g);
+            const total = groups.length;
+            const cameP = groups.filter(x => x.came > 0).length;
+            const missedP = groups.filter(x => x.missed > 0).length;
+            const readmitP = groups.filter(x => x.readmit).length;
             document.getElementById('pdcTotal').textContent = total;
-            document.getElementById('pdcCame').textContent = came;
-            document.getElementById('pdcCamePct').textContent = total ? Math.round(came / total * 100) : 0;
-            document.getElementById('pdcNotCame').textContent = notCame;
-            document.getElementById('pdcReadmit').textContent = readmit;
+            document.getElementById('pdcCame').textContent = cameP;
+            document.getElementById('pdcCamePct').textContent = total ? Math.round(cameP / total * 100) : 0;
+            document.getElementById('pdcNotCame').textContent = missedP;
+            document.getElementById('pdcReadmit').textContent = readmitP;
 
-            // กราฟ: แยกตามชนิดผ่าตัด (ถ้าเจอคอลัมน์) มิฉะนั้นแยกตามผลติดตาม
-            const card = document.getElementById('postdcChartCard');
-            const title = document.getElementById('postdcChartTitle');
-            let labels, data, colors;
-            if (colType) {
-                const byType = {};
-                rows.forEach(r => { const t = (r[colType] || '(ไม่ระบุ)').toString().trim(); byType[t] = (byType[t] || 0) + 1; });
-                const ent = Object.entries(byType).sort((a, b) => b[1] - a[1]);
-                labels = ent.map(e => e[0]); data = ent.map(e => e[1]);
-                title.textContent = 'Post-discharge — จำนวนเคสแยกตามชนิดผ่าตัด';
-            } else if (colFollow) {
-                labels = ['มาตามนัด', 'ไม่มาตามนัด', 'Admit ซ้ำ']; data = [came, notCame, readmit];
-                title.textContent = 'Post-discharge — ผลการติดตาม';
-            } else { card.hidden = true; return; }
-            const palette = [CAT.HAI, CAT.CAUTI, CAT.VAP, CAT.SSI, CAT.Omphalitis, CAT.MDR, CAT.CLABSI];
-            card.hidden = false;
+            // กราฟ: จำนวนผู้ป่วยแยกตามชนิดผ่าตัด
+            const bySurg = {};
+            groups.forEach(x => bySurg[x.surgery] = (bySurg[x.surgery] || 0) + 1);
+            const order = ['Phaco (ต้อกระจก)', 'THR (ข้อสะโพก)', 'TKR (ข้อเข่า)', 'TAH (มดลูก)', 'อื่นๆ'];
+            const ent = Object.entries(bySurg).sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
+            const labels = ent.map(e => e[0]), data = ent.map(e => e[1]);
+            const palette = [CAT.CAUTI, CAT.VAP, CAT.SSI, CAT.Omphalitis, CAT.Other];
+            document.getElementById('postdcChartTitle').textContent = 'จำนวนผู้ป่วยแยกตามชนิดผ่าตัด (จาก pdx)';
+            document.getElementById('postdcChartCard').hidden = labels.length === 0;
             const ctx = document.getElementById('postdcChart').getContext('2d');
             if (postdcChartInstance) postdcChartInstance.destroy();
             postdcChartInstance = new Chart(ctx, {
                 type: 'bar',
-                data: { labels, datasets: [{ label: 'จำนวนเคส', data, backgroundColor: labels.map((_, i) => palette[i % palette.length]), borderRadius: 6, _badge: true, _badgeColor: '#334155' }] },
+                data: { labels, datasets: [{ label: 'จำนวนผู้ป่วย', data, backgroundColor: labels.map((_, i) => palette[i % palette.length]), borderRadius: 6, _badge: true, _badgeColor: '#334155' }] },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
