@@ -81,6 +81,10 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 บทวิเคราะห์
             </button>
+            <button id="menuSpecial" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                เฝ้าระวังหน่วยพิเศษ
+            </button>
         </nav>
         <div class="p-4 border-t border-slate-100 text-xs text-slate-400">
             <p>สถานะ: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
@@ -537,6 +541,68 @@
                 <div id="analysisContent" class="p-6 space-y-5 leading-relaxed text-slate-700"></div>
             </div>
         </div><!-- /viewAnalysis -->
+
+        <!-- ===================== VIEW: เฝ้าระวังหน่วยพิเศษ ===================== -->
+        <div id="viewSpecial" class="space-y-6" hidden>
+            <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-800">
+                <b>หน่วยพิเศษ / วิกฤต (HDU):</b> <span id="specialUnitList">ICU, NICU, HDU, Stroke unit, CCU</span> — เป็นหน่วยที่ใช้อุปกรณ์มากและเสี่ยงติดเชื้อสูง จึงเฝ้าระวังเข้มข้น
+            </div>
+            <!-- Special summary cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="kpi bg-gradient-to-r from-emerald-400 to-green-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">HAI หน่วยพิเศษ</h6>
+                    <h3 id="spHAI" class="text-2xl font-bold z-10">0</h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">อัตรา HAI /1000 วันนอน</h6>
+                    <h3 id="spRate" class="text-2xl font-bold z-10">-</h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">วันนอนรวม</h6>
+                    <h3 id="spPatientDay" class="text-2xl font-bold z-10">0</h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-purple-500 to-fuchsia-600 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">MDR หน่วยพิเศษ</h6>
+                    <h3 id="spMDR" class="text-2xl font-bold z-10">0</h3>
+                </div>
+            </div>
+            <!-- Special monthly chart -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">การติดเชื้อในหน่วยพิเศษ รายเดือน (แยกชนิด device)</h3>
+                <div class="relative h-72 w-full"><canvas id="specialChart"></canvas></div>
+            </div>
+            <!-- Special ward table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">เฝ้าระวังการติดเชื้อรายหน่วยพิเศษ</h3>
+                        <p class="text-xs text-slate-400 mt-1">อัตรา device ต่อ 1,000 วันคาอุปกรณ์ · คำนวณสดจากทะเบียน-1</p>
+                    </div>
+                    <button id="btnExportSpecial" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">หน่วย</th>
+                                <th class="py-3 px-4 text-right">วันนอน</th>
+                                <th class="py-3 px-4 text-right">HAI</th>
+                                <th class="py-3 px-4 text-right text-blue-700">อัตรา HAI</th>
+                                <th class="py-3 px-4 text-right">CAUTI</th>
+                                <th class="py-3 px-4 text-right text-amber-600">/1000</th>
+                                <th class="py-3 px-4 text-right">VAP</th>
+                                <th class="py-3 px-4 text-right text-teal-600">/1000</th>
+                                <th class="py-3 px-4 text-right">CLABSI</th>
+                                <th class="py-3 px-4 text-right text-red-600">/1000</th>
+                                <th class="py-3 px-4 text-right text-fuchsia-700">MDR</th>
+                            </tr>
+                        </thead>
+                        <tbody id="specialTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <p id="specialEmpty" class="text-xs text-slate-400 text-center" hidden>ไม่พบข้อมูลหน่วยพิเศษตามตัวกรอง (ตรวจสอบว่ารหัสหน่วยตรงกับ ICU/NICU/HDU/SU/CCU)</p>
+        </div><!-- /viewSpecial -->
     </div><!-- /max-w container -->
     </main>
   </div><!-- /flex wrapper -->
@@ -790,7 +856,14 @@
         let wardChartInstance = null;
         let mdrWardChartInstance = null;
         let indicatorChartInstance = null;
+        let specialChartInstance = null;
         let indicatorLoaded = false;
+        // รหัสหน่วยพิเศษ/วิกฤต (HDU) — เทียบแบบตัวใหญ่
+        const SPECIAL_UNITS = ['ICU', 'NICU', 'SICU', 'MICU', 'PICU', 'CCU', 'SU', 'HDU', 'STROKE'];
+        function isSpecialUnit(u) {
+            const s = (u || '').toString().toUpperCase();
+            return SPECIAL_UNITS.some(k => s === k || s.includes(k));
+        }
         const INDICATOR_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTj9sgM8ezxJ89owzZUnYwkQnzbNso4xZ3LQD6tH1gv7VSS2LY_CUi-Blc2MF1oGJOFWkeNumotrb54/pub?gid=1799512390&single=true&output=csv';
 
         async function loadData() {
@@ -1779,11 +1852,94 @@
                 new Date().toLocaleString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</p>';
         }
 
-        // สลับเมนู (sidebar) แดชบอร์ด / รายหอผู้ป่วย / MDR / สถิติบริการ / ตัวชี้วัด / บทวิเคราะห์
+        // ===================== เฝ้าระวังหน่วยพิเศษ (HDU) =====================
+        function updateSpecialView() {
+            const rows = getRowsForWards().filter(d => isSpecialUnit(d.unit));
+            const cases = rows.filter(d => d.isHAI);
+            const den = aggregateDenominatorsByMonth(rows);
+            const denTot = { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0 };
+            FISCAL_MONTHS.forEach(m => Object.keys(denTot).forEach(k => denTot[k] += den[m] ? den[m][k] : 0));
+            const hai = cases.length;
+            const mdr = cases.filter(c => c.isMDR).length;
+            document.getElementById('spHAI').textContent = hai;
+            document.getElementById('spMDR').textContent = mdr;
+            document.getElementById('spPatientDay').textContent = Math.round(denTot.patientDay).toLocaleString();
+            document.getElementById('spRate').textContent = denTot.patientDay ? (hai / denTot.patientDay * 1000).toFixed(2) : '-';
+            document.getElementById('specialEmpty').hidden = rows.length > 0;
+
+            // กราฟรายเดือน แยกชนิด device (CAUTI/VAP/CLABSI) ในหน่วยพิเศษ
+            const byMonth = aggregateByMonth(cases);
+            let months = FISCAL_MONTHS.filter(m => byMonth[m].HAI > 0 || (den[m] && den[m].patientDay));
+            if (months.length === 0) months = FISCAL_MONTHS;
+            const ctx = document.getElementById('specialChart').getContext('2d');
+            const defs = [
+                { k: 'CAUTI', color: CAT.CAUTI }, { k: 'VAP', color: CAT.VAP },
+                { k: 'CLABSI', color: CAT.CLABSI }, { k: 'HAI', color: CAT.HAI }
+            ];
+            const dss = defs.map(d => ({
+                label: d.k, data: months.map(m => byMonth[m][d.k]),
+                borderColor: d.color, backgroundColor: d.k === 'HAI' ? fadeFill(ctx, d.color) : d.color,
+                fill: d.k === 'HAI', tension: 0.4, borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6,
+                _badge: d.k === 'HAI', _badgeColor: darken(d.color)
+            }));
+            if (specialChartInstance) specialChartInstance.destroy();
+            specialChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: months.map(m => MONTH_LABELS[m]), datasets: dss },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } }
+                }
+            });
+
+            // ตารางรายหน่วยพิเศษ
+            const wards = aggregateByWard(rows).sort((a, b) => (rate(b.HAI, b.patientDay, 1000) ?? -1) - (rate(a.HAI, a.patientDay, 1000) ?? -1));
+            const tbody = document.getElementById('specialTableBody');
+            tbody.innerHTML = '';
+            wards.forEach(w => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.innerHTML =
+                    '<td class="py-3 px-4 font-medium text-slate-700">' + w.unit + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(w.patientDay).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right font-semibold">' + w.HAI + '</td>' +
+                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(rate(w.HAI, w.patientDay, 1000)) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + w.CAUTI + '</td>' +
+                    '<td class="py-3 px-4 text-right text-amber-600">' + fmtRate(rate(w.CAUTI, w.cathDay, 1000)) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + w.VAP + '</td>' +
+                    '<td class="py-3 px-4 text-right text-teal-600">' + fmtRate(rate(w.VAP, w.venDay, 1000)) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + w.CLABSI + '</td>' +
+                    '<td class="py-3 px-4 text-right text-red-600">' + fmtRate(rate(w.CLABSI, w.lineDay, 1000)) + '</td>' +
+                    '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + w.MDR + '</td>';
+                tbody.appendChild(tr);
+            });
+        }
+
+        function exportSpecialCSV() {
+            const head = ['หน่วย', 'วันนอน', 'HAI', 'อัตรา HAI/1000', 'CAUTI', 'CAUTI/1000', 'VAP', 'VAP/1000', 'CLABSI', 'CLABSI/1000', 'MDR'];
+            const wards = aggregateByWard(getRowsForWards().filter(d => isSpecialUnit(d.unit)))
+                .sort((a, b) => (rate(b.HAI, b.patientDay, 1000) ?? -1) - (rate(a.HAI, a.patientDay, 1000) ?? -1));
+            let csv = head.join(',') + '\n';
+            wards.forEach(w => {
+                csv += [w.unit, Math.round(w.patientDay), w.HAI, fmtRate(rate(w.HAI, w.patientDay, 1000)),
+                        w.CAUTI, fmtRate(rate(w.CAUTI, w.cathDay, 1000)), w.VAP, fmtRate(rate(w.VAP, w.venDay, 1000)),
+                        w.CLABSI, fmtRate(rate(w.CLABSI, w.lineDay, 1000)), w.MDR].join(',') + '\n';
+            });
+            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'hai-special-units.csv';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // สลับเมนู (sidebar)
         function switchView(view) {
-            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis' };
-            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์' };
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', special: 'viewSpecial' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', special: 'menuSpecial' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', special: 'เฝ้าระวังหน่วยพิเศษ' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
@@ -1800,11 +1956,12 @@
             if (view === 'service') updateServiceView();
             if (view === 'indicator') loadIndicators();
             if (view === 'analysis') updateAnalysisView();
+            if (view === 'special') updateSpecialView();
         }
 
         // Event listeners
         ['filterYear', 'filterQuarter', 'filterUnit', 'filterPCT'].forEach(id =>
-            document.getElementById(id).addEventListener('change', () => { updateDashboard(); updateWardTable(); updateMdrView(); updateServiceView(); updateAnalysisView(); }));
+            document.getElementById(id).addEventListener('change', () => { updateDashboard(); updateWardTable(); updateMdrView(); updateServiceView(); updateAnalysisView(); updateSpecialView(); }));
         document.getElementById('btnExport').addEventListener('click', exportCSV);
         document.getElementById('btnExportWards').addEventListener('click', exportWardsCSV);
         document.getElementById('btnExportMdr').addEventListener('click', exportMdrCSV);
@@ -1817,6 +1974,8 @@
         document.getElementById('btnReloadIndicator').addEventListener('click', () => loadIndicators(true));
         document.getElementById('menuAnalysis').addEventListener('click', () => switchView('analysis'));
         document.getElementById('btnPrintAnalysis').addEventListener('click', () => window.print());
+        document.getElementById('menuSpecial').addEventListener('click', () => switchView('special'));
+        document.getElementById('btnExportSpecial').addEventListener('click', exportSpecialCSV);
 
         // Initial load
         window.onload = async () => {
