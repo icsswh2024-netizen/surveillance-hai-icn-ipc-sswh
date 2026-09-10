@@ -27,9 +27,9 @@
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         /* เฟดสีตาราง: หัวตารางไล่สี + แถวสลับสี (zebra) */
-        table thead { background: linear-gradient(90deg, #eef2ff 0%, #f8fafc 60%, #ffffff 100%) !important; }
+        table thead { background: linear-gradient(90deg, #ecfdf5 0%, #f8fafc 60%, #ffffff 100%) !important; }
         table tbody tr:nth-child(even):not(.bg-slate-50):not(.bg-slate-100) { background-color: #f9fafb; }
-        table tbody tr.bg-slate-50 { background: linear-gradient(90deg, #eef2ff 0%, #f1f5f9 100%) !important; }
+        table tbody tr.bg-slate-50 { background: linear-gradient(90deg, #d1fae5 0%, #f1f5f9 100%) !important; }
     </style>
 </head>
 <body class="text-slate-800 p-4 md:p-6 lg:p-8">
@@ -37,9 +37,9 @@
     <div class="max-w-7xl mx-auto space-y-6">
 
         <!-- Header -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 border-t-4 border-t-emerald-500">
             <div>
-                <h1 class="text-2xl md:text-3xl font-bold text-blue-700 flex items-center gap-3">
+                <h1 class="text-2xl md:text-3xl font-bold text-emerald-700 flex items-center gap-3">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                     แดชบอร์ดทะเบียน-1
                 </h1>
@@ -53,7 +53,7 @@
 
         <!-- Menu -->
         <div class="flex flex-wrap gap-2">
-            <button id="menuDashboard" class="menu-btn px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white shadow-sm transition-colors">แดชบอร์ด</button>
+            <button id="menuDashboard" class="menu-btn px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white shadow-sm transition-colors">แดชบอร์ด</button>
             <button id="menuWards" class="menu-btn px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">สรุปรายหอผู้ป่วย</button>
             <button id="menuMdr" class="menu-btn px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">เชื้อดื้อยา (MDR)</button>
         </div>
@@ -63,11 +63,11 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-2">ปี งบประมาณ (พ.ศ.)</label>
-                    <select id="filterYear" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"></select>
+                    <select id="filterYear" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"></select>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-2">ไตรมาส</label>
-                    <select id="filterQuarter" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                    <select id="filterQuarter" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
                         <option value="ALL">ทุกไตรมาส</option>
                         <option value="Q1">ไตรมาส 1 (ต.ค. - ธ.ค.)</option>
                         <option value="Q2">ไตรมาส 2 (ม.ค. - มี.ค.)</option>
@@ -77,11 +77,11 @@
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-2">หอผู้ป่วย (Unit)</label>
-                    <select id="filterUnit" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"></select>
+                    <select id="filterUnit" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"></select>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-2">กลุ่มงาน (PCT)</label>
-                    <select id="filterPCT" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"></select>
+                    <select id="filterPCT" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"></select>
                 </div>
             </div>
         </div>
@@ -92,12 +92,12 @@
         <!-- KPI Cards (จำนวนเคส) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
 
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-5 text-white shadow-md relative overflow-hidden flex flex-col justify-between h-32">
-                <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-blue-400 opacity-30" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
-                <h6 class="font-medium text-blue-100 z-10">HAI ทั้งหมด</h6>
+            <div class="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-5 text-white shadow-md relative overflow-hidden flex flex-col justify-between h-32">
+                <svg class="absolute -bottom-4 -right-4 w-24 h-24 text-green-400 opacity-30" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
+                <h6 class="font-medium text-emerald-50 z-10">HAI ทั้งหมด</h6>
                 <div class="z-10">
                     <h3 id="kpiHAI" class="text-3xl font-bold">0</h3>
-                    <p class="text-xs text-blue-100 mt-1">จำนวนเคส</p>
+                    <p class="text-xs text-emerald-100 mt-1">จำนวนเคส</p>
                 </div>
             </div>
 
@@ -1244,7 +1244,7 @@
         function switchView(view) {
             const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr' };
             const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr' };
-            const on = 'bg-blue-600 text-white shadow-sm';
+            const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50';
             Object.keys(views).forEach(k => {
                 document.getElementById(views[k]).hidden = (k !== view);
