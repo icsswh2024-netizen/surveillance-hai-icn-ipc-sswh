@@ -73,6 +73,10 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                 สถิติบริการ
             </button>
+            <button id="menuIndicator" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                ตัวชี้วัด
+            </button>
         </nav>
         <div class="p-4 border-t border-slate-100 text-xs text-slate-400">
             <p>สถานะ: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
@@ -491,6 +495,30 @@
             </div>
             <p class="text-xs text-slate-400 text-center">เรียงตามวันนอนจากมากไปน้อย · DUR สูง = ใช้อุปกรณ์มาก (เสี่ยงติดเชื้อสูงขึ้น)</p>
         </div><!-- /viewService -->
+
+        <!-- ===================== VIEW: ตัวชี้วัด ===================== -->
+        <div id="viewIndicator" class="space-y-6" hidden>
+            <div id="indicatorChartCard" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100" hidden>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">ตัวชี้วัด (กราฟ)</h3>
+                <div class="relative h-80 w-full"><canvas id="indicatorChart"></canvas></div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">ตารางตัวชี้วัด</h3>
+                        <p class="text-xs text-slate-400 mt-1" id="indicatorStatus">กำลังโหลด...</p>
+                    </div>
+                    <button id="btnReloadIndicator" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">โหลดใหม่</button>
+                </div>
+                <div class="overflow-x-auto max-h-[36rem] overflow-y-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead id="indicatorHead" class="bg-slate-50 text-slate-700 font-semibold sticky top-0"></thead>
+                        <tbody id="indicatorBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="text-xs text-slate-400 text-center">แหล่งข้อมูล: Google Sheet (เผยแพร่เป็น CSV) — แยกจากชีตทะเบียน-1</p>
+        </div><!-- /viewIndicator -->
     </div><!-- /max-w container -->
     </main>
   </div><!-- /flex wrapper -->
@@ -743,6 +771,9 @@
         let serviceChartInstance = null;
         let wardChartInstance = null;
         let mdrWardChartInstance = null;
+        let indicatorChartInstance = null;
+        let indicatorLoaded = false;
+        const INDICATOR_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTj9sgM8ezxJ89owzZUnYwkQnzbNso4xZ3LQD6tH1gv7VSS2LY_CUi-Blc2MF1oGJOFWkeNumotrb54/pub?gid=1799512390&single=true&output=csv';
 
         async function loadData() {
             const res = await fetch(SHEET_CSV_URL);
@@ -1574,11 +1605,79 @@
             URL.revokeObjectURL(url);
         }
 
-        // สลับเมนู (sidebar) แดชบอร์ด / รายหอผู้ป่วย / MDR / สถิติบริการ
+        // ===================== ตัวชี้วัด (CSV ภายนอก) =====================
+        async function loadIndicators(force) {
+            if (indicatorLoaded && !force) return;
+            const status = document.getElementById('indicatorStatus');
+            status.textContent = 'กำลังโหลด...';
+            status.className = 'text-xs text-slate-400 mt-1';
+            try {
+                const res = await fetch(INDICATOR_CSV_URL + '&_=' + Date.now());
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const rows = parseCSV(await res.text());
+                if (!rows.length) throw new Error('ไม่มีข้อมูล');
+                const headers = Object.keys(rows[0]).filter(h => h !== '' && h !== '__norm');
+                renderIndicatorTable(headers, rows);
+                renderIndicatorChart(headers, rows);
+                indicatorLoaded = true;
+                status.textContent = 'โหลดสำเร็จ — ' + rows.length + ' รายการ (' +
+                    new Date().toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ')';
+            } catch (err) {
+                console.error(err);
+                status.textContent = '⚠️ โหลดตัวชี้วัดไม่สำเร็จ — ตรวจสอบว่าลิงก์ CSV เผยแพร่แบบ "ทุกคน" (' + err.message + ')';
+                status.className = 'text-xs text-rose-600 mt-1';
+            }
+        }
+
+        function renderIndicatorTable(headers, rows) {
+            document.getElementById('indicatorHead').innerHTML =
+                '<tr>' + headers.map(h => '<th class="py-3 px-4">' + h + '</th>').join('') + '</tr>';
+            const tbody = document.getElementById('indicatorBody');
+            tbody.innerHTML = '';
+            rows.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.innerHTML = headers.map(h => '<td class="py-2.5 px-4">' + (r[h] ?? '') + '</td>').join('');
+                tbody.appendChild(tr);
+            });
+        }
+
+        // กราฟอัตโนมัติ: คอลัมน์แรก = ป้าย, คอลัมน์ที่เป็นตัวเลข = แท่ง (สูงสุด 4 ชุด)
+        function renderIndicatorChart(headers, rows) {
+            const isNum = h => {
+                const vals = rows.map(r => (r[h] || '').toString().replace(/[,%]/g, '').trim()).filter(v => v !== '');
+                if (!vals.length) return false;
+                return vals.filter(v => !isNaN(parseFloat(v))).length / vals.length >= 0.6;
+            };
+            const numCols = headers.filter(isNum);
+            const labelCol = headers.find(h => !isNum(h)) || headers[0];
+            const card = document.getElementById('indicatorChartCard');
+            if (!numCols.length || numCols.length > 6) { card.hidden = true; return; }
+            card.hidden = false;
+            const palette = [CAT.HAI, CAT.CAUTI, CAT.VAP, CAT.SSI, CAT.Omphalitis, CAT.MDR];
+            const toNum = v => parseFloat((v || '').toString().replace(/[,%]/g, '').trim()) || 0;
+            const datasets = numCols.slice(0, 4).map((h, i) => ({
+                label: h, data: rows.map(r => toNum(r[h])),
+                backgroundColor: palette[i % palette.length], borderRadius: 6
+            }));
+            const ctx = document.getElementById('indicatorChart').getContext('2d');
+            if (indicatorChartInstance) indicatorChartInstance.destroy();
+            indicatorChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: rows.map(r => r[labelCol]), datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } } },
+                    scales: { y: { beginAtZero: true }, x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 60, minRotation: 0 } } }
+                }
+            });
+        }
+
+        // สลับเมนู (sidebar) แดชบอร์ด / รายหอผู้ป่วย / MDR / สถิติบริการ / ตัวชี้วัด
         function switchView(view) {
-            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService' };
-            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ' };
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
@@ -1593,6 +1692,7 @@
             if (view === 'wards') updateWardTable();
             if (view === 'mdr') updateMdrView();
             if (view === 'service') updateServiceView();
+            if (view === 'indicator') loadIndicators();
         }
 
         // Event listeners
@@ -1606,6 +1706,8 @@
         document.getElementById('menuWards').addEventListener('click', () => switchView('wards'));
         document.getElementById('menuMdr').addEventListener('click', () => switchView('mdr'));
         document.getElementById('menuService').addEventListener('click', () => switchView('service'));
+        document.getElementById('menuIndicator').addEventListener('click', () => switchView('indicator'));
+        document.getElementById('btnReloadIndicator').addEventListener('click', () => loadIndicators(true));
 
         // Initial load
         window.onload = async () => {
