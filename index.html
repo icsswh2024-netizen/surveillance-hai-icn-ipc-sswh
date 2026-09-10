@@ -579,6 +579,50 @@
             return grad;
         }
 
+        // ชุดสีตามโทนการ์ด KPI (ใช้ร่วมกันทุกกราฟ)
+        const CAT = {
+            HAI: '#10b981', CAUTI: '#f97316', VAP: '#14b8a6', CLABSI: '#ef4444',
+            SSI: '#3b82f6', HAP: '#6366f1', UTI: '#eab308', BSI: '#ec4899',
+            Omphalitis: '#f43f5e', Other: '#94a3b8', MDR: '#a855f7'
+        };
+        // ทำสีให้เข้มลง (สำหรับจุด badge)
+        function darken(hex, f = 0.72) {
+            const h = hex.replace('#', '');
+            const r = Math.round(parseInt(h.substring(0, 2), 16) * f);
+            const g = Math.round(parseInt(h.substring(2, 4), 16) * f);
+            const b = Math.round(parseInt(h.substring(4, 6), 16) * f);
+            return 'rgb(' + r + ',' + g + ',' + b + ')';
+        }
+
+        // Plugin: วาดจุดสีเข้มพร้อมตัวเลขบนกราฟ (เฉพาะ dataset ที่ตั้ง _badge)
+        const valueBadge = {
+            id: 'valueBadge',
+            afterDatasetsDraw(chart) {
+                const ctx = chart.ctx;
+                chart.data.datasets.forEach((ds, di) => {
+                    if (!ds._badge) return;
+                    const meta = chart.getDatasetMeta(di);
+                    if (meta.hidden) return;
+                    meta.data.forEach((pt, i) => {
+                        const v = ds.data[i];
+                        if (v == null) return;
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(pt.x, pt.y, 12, 0, Math.PI * 2);
+                        ctx.fillStyle = ds._badgeColor || darken(ds.borderColor);
+                        ctx.fill();
+                        ctx.fillStyle = '#fff';
+                        ctx.font = 'bold 11px Kanit, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(String(v), pt.x, pt.y);
+                        ctx.restore();
+                    });
+                });
+            }
+        };
+        if (window.Chart) Chart.register(valueBadge);
+
         // แปลงค่าเป็นตัวเลข (รองรับคอมมา/ช่องว่าง/ค่าว่าง -> 0)
         function num(x) {
             const n = parseFloat((x || '').toString().replace(/,/g, '').trim());
@@ -710,16 +754,15 @@
             const hasRate = rates.some(v => v != null);
 
             const ctx = document.getElementById('haiAreaChart').getContext('2d');
-            // ไล่เฉดสีน้ำเงินโปร่งใต้เส้น
-            const grad = ctx.createLinearGradient(0, 0, 0, 288);
-            grad.addColorStop(0, 'rgba(59,130,246,0.35)');
-            grad.addColorStop(1, 'rgba(59,130,246,0.02)');
+            // ไล่เฉดสีเขียว (โทนการ์ด HAI) โปร่งใต้เส้น
+            const grad = fadeFill(ctx, CAT.HAI, 0.35, 0.02);
 
             const datasets = [{
                 label: 'HAI รวม (เคส)', data: counts, yAxisID: 'y',
-                borderColor: '#2563eb', backgroundColor: grad,
+                borderColor: CAT.HAI, backgroundColor: grad,
                 fill: true, tension: 0.4, borderWidth: 2.5,
-                pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: '#2563eb'
+                pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: CAT.HAI,
+                _badge: true, _badgeColor: darken(CAT.HAI)
             }];
             if (hasRate) {
                 datasets.push({
@@ -754,11 +797,11 @@
         function updateRateChart(byMonth, den) {
             // สูตร: numerator = ชนิดเคส, denominator = คีย์ตัวหาร, factor = ต่อกี่หน่วย
             const RATE_DEFS = [
-                { label: 'CAUTI /1000 วันคาสาย', num: 'CAUTI', den: 'cathDay', factor: 1000, color: '#f59e0b' },
-                { label: 'VAP /1000 วันเครื่องช่วยหายใจ', num: 'VAP', den: 'venDay', factor: 1000, color: '#10b981' },
-                { label: 'CLABSI /1000 วันคาสายหลอดเลือด', num: 'CLABSI', den: 'lineDay', factor: 1000, color: '#ef4444' },
-                { label: 'HAI /1000 วันนอน', num: 'HAI', den: 'patientDay', factor: 1000, color: '#3b82f6' },
-                { label: 'SSI /100 การผ่าตัด', num: 'SSI', den: 'op', factor: 100, color: '#06b6d4' }
+                { label: 'CAUTI /1000 วันคาสาย', num: 'CAUTI', den: 'cathDay', factor: 1000, color: CAT.CAUTI },
+                { label: 'VAP /1000 วันเครื่องช่วยหายใจ', num: 'VAP', den: 'venDay', factor: 1000, color: CAT.VAP },
+                { label: 'CLABSI /1000 วันคาสายหลอดเลือด', num: 'CLABSI', den: 'lineDay', factor: 1000, color: CAT.CLABSI },
+                { label: 'HAI /1000 วันนอน', num: 'HAI', den: 'patientDay', factor: 1000, color: CAT.HAI },
+                { label: 'SSI /100 การผ่าตัด', num: 'SSI', den: 'op', factor: 100, color: CAT.SSI }
             ];
 
             // แสดงเฉพาะเดือนที่มีตัวหารอย่างน้อยหนึ่งชนิด
@@ -847,15 +890,15 @@
 
             // เลือกเส้นชนิดเชื้ออัตโนมัติ: แสดงเฉพาะชนิดที่มีเคส > 0 (พอเพิ่มข้อมูลทีหลังเส้นก็โผล่เอง)
             const TREND_TYPES = [
-                { key: 'CAUTI', color: '#f59e0b' },
-                { key: 'VAP', color: '#10b981' },
-                { key: 'HAP', color: '#8b5cf6' },
-                { key: 'CLABSI', color: '#ef4444' },
-                { key: 'SSI', color: '#06b6d4' },
-                { key: 'UTI', color: '#eab308' },
-                { key: 'BSI', color: '#ec4899' },
-                { key: 'Omphalitis', color: '#f43f5e' },
-                { key: 'Other', color: '#94a3b8' }
+                { key: 'CAUTI', color: CAT.CAUTI },
+                { key: 'VAP', color: CAT.VAP },
+                { key: 'HAP', color: CAT.HAP },
+                { key: 'CLABSI', color: CAT.CLABSI },
+                { key: 'SSI', color: CAT.SSI },
+                { key: 'UTI', color: CAT.UTI },
+                { key: 'BSI', color: CAT.BSI },
+                { key: 'Omphalitis', color: CAT.Omphalitis },
+                { key: 'Other', color: CAT.Other }
             ];
             const ctxTrend = document.getElementById('trendChart').getContext('2d');
             const mkDataset = (label, color) => ({
@@ -866,8 +909,10 @@
                 _rates: visibleMonths.map(m => rateFor(label, m, byMonth, den)),
                 _unit: (RATE_META[label] || {}).unit || ''
             });
-            // เส้น HAI (ยอดรวม) แสดงเสมอ + เส้นชนิดเชื้อที่มีข้อมูล
-            const trendDatasets = [mkDataset('HAI', '#3b82f6')];
+            // เส้น HAI (ยอดรวม) แสดงเสมอ — ใส่จุดสีเข้มโชว์ตัวเลข + เส้นชนิดเชื้อที่มีข้อมูล
+            const haiDs = mkDataset('HAI', CAT.HAI);
+            haiDs._badge = true; haiDs._badgeColor = darken(CAT.HAI);
+            const trendDatasets = [haiDs];
             TREND_TYPES.forEach(t => {
                 if (visibleMonths.some(m => byMonth[m][t.key] > 0)) trendDatasets.push(mkDataset(t.key, t.color));
             });
@@ -913,7 +958,7 @@
                     labels: siteKeys,
                     datasets: [{
                         data: siteVals,
-                        backgroundColor: ['#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4', '#eab308', '#ec4899', '#f43f5e', '#94a3b8']
+                        backgroundColor: siteKeys.map(k => CAT[k] || '#94a3b8')
                     }]
                 },
                 options: {
@@ -1121,8 +1166,9 @@
                 data: {
                     labels,
                     datasets: [
-                        { label: 'MDR (เคส)', data: counts, yAxisID: 'y', borderColor: '#a855f7',
-                          backgroundColor: grad, fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 4, pointHoverRadius: 6 },
+                        { label: 'MDR (เคส)', data: counts, yAxisID: 'y', borderColor: CAT.MDR,
+                          backgroundColor: grad, fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 4, pointHoverRadius: 6,
+                          _badge: true, _badgeColor: darken(CAT.MDR) },
                         { label: '%MDR ของ HAI', data: pcts, yAxisID: 'y1', borderColor: '#db2777',
                           backgroundColor: '#db2777', fill: false, tension: 0.3, borderWidth: 2, borderDash: [5, 4], pointRadius: 4, spanGaps: true }
                     ]
