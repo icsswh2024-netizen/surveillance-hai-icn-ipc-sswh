@@ -69,6 +69,10 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 เชื้อดื้อยา (MDR)
             </button>
+            <button id="menuService" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                สถิติบริการ
+            </button>
         </nav>
         <div class="p-4 border-t border-slate-100 text-xs text-slate-400">
             <p>สถานะ: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
@@ -390,6 +394,69 @@
                 </div>
             </div>
         </div><!-- /viewMdr -->
+
+        <!-- ===================== VIEW: สถิติบริการ ===================== -->
+        <div id="viewService" class="space-y-6" hidden>
+            <!-- Service summary cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div class="kpi bg-gradient-to-r from-emerald-400 to-green-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">วันนอนผู้ป่วย</h6>
+                    <h3 id="svcPatientDay" class="text-2xl font-bold z-10">0</h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">วันคาสายสวนปัสสาวะ</h6>
+                    <h3 id="svcCathDay" class="text-2xl font-bold z-10">0</h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-teal-400 to-cyan-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">วันใช้เครื่องช่วยหายใจ</h6>
+                    <h3 id="svcVenDay" class="text-2xl font-bold z-10">0</h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-rose-400 to-red-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">วันคาสายหลอดเลือด</h6>
+                    <h3 id="svcLineDay" class="text-2xl font-bold z-10">0</h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">จำนวนการผ่าตัด</h6>
+                    <h3 id="svcOp" class="text-2xl font-bold z-10">0</h3>
+                </div>
+            </div>
+
+            <!-- Monthly service chart -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">ปริมาณบริการรายเดือน (วัน/ครั้ง)</h3>
+                <div class="relative h-72 w-full"><canvas id="serviceChart"></canvas></div>
+            </div>
+
+            <!-- Ward service table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">สถิติบริการรายหอผู้ป่วย</h3>
+                        <p class="text-xs text-slate-400 mt-1">DUR = อัตราการใช้อุปกรณ์ (วันคาอุปกรณ์ ÷ วันนอน) · คำนวณสดจากทะเบียน-1</p>
+                    </div>
+                    <button id="btnExportService" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">หอผู้ป่วย</th>
+                                <th class="py-3 px-4 text-right">วันนอน</th>
+                                <th class="py-3 px-4 text-right">วันคาสายปัสสาวะ</th>
+                                <th class="py-3 px-4 text-right text-amber-600">DUR-CAUTI</th>
+                                <th class="py-3 px-4 text-right">วันเครื่องช่วยหายใจ</th>
+                                <th class="py-3 px-4 text-right text-teal-600">DUR-VAP</th>
+                                <th class="py-3 px-4 text-right">วันคาสายหลอดเลือด</th>
+                                <th class="py-3 px-4 text-right text-red-600">DUR-CLABSI</th>
+                                <th class="py-3 px-4 text-right">ผ่าตัด</th>
+                            </tr>
+                        </thead>
+                        <tbody id="serviceTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="text-xs text-slate-400 text-center">เรียงตามวันนอนจากมากไปน้อย · DUR สูง = ใช้อุปกรณ์มาก (เสี่ยงติดเชื้อสูงขึ้น)</p>
+        </div><!-- /viewService -->
     </div><!-- /max-w container -->
     </main>
   </div><!-- /flex wrapper -->
@@ -636,6 +703,7 @@
         let haiAreaChartInstance = null;
         let mdrChartInstance = null;
         let mdrDashChartInstance = null;
+        let serviceChartInstance = null;
 
         async function loadData() {
             const res = await fetch(SHEET_CSV_URL);
@@ -1312,11 +1380,108 @@
             if (cnt) cnt.textContent = list.length + ' ราย';
         }
 
-        // สลับเมนู (sidebar) แดชบอร์ด / รายหอผู้ป่วย / MDR
+        // ===================== สถิติบริการ =====================
+        function updateServiceView() {
+            const rows = getRowsForWards();
+            const den = aggregateDenominatorsByMonth(rows);
+            // การ์ดสรุป (ยอดรวมทั้งช่วง)
+            const tot = { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0 };
+            FISCAL_MONTHS.forEach(m => Object.keys(tot).forEach(k => tot[k] += den[m] ? den[m][k] : 0));
+            document.getElementById('svcPatientDay').textContent = Math.round(tot.patientDay).toLocaleString();
+            document.getElementById('svcCathDay').textContent = Math.round(tot.cathDay).toLocaleString();
+            document.getElementById('svcVenDay').textContent = Math.round(tot.venDay).toLocaleString();
+            document.getElementById('svcLineDay').textContent = Math.round(tot.lineDay).toLocaleString();
+            document.getElementById('svcOp').textContent = Math.round(tot.op).toLocaleString();
+
+            // กราฟรายเดือน
+            let months = FISCAL_MONTHS.filter(m => den[m] && (den[m].patientDay || den[m].cathDay || den[m].venDay || den[m].lineDay || den[m].op));
+            if (months.length === 0) months = FISCAL_MONTHS;
+            const labels = months.map(m => MONTH_LABELS[m]);
+            const ctx = document.getElementById('serviceChart').getContext('2d');
+            const S = [
+                { k: 'patientDay', label: 'วันนอน', color: CAT.HAI },
+                { k: 'cathDay', label: 'วันคาสายปัสสาวะ', color: CAT.CAUTI },
+                { k: 'venDay', label: 'วันเครื่องช่วยหายใจ', color: CAT.VAP },
+                { k: 'lineDay', label: 'วันคาสายหลอดเลือด', color: CAT.CLABSI },
+                { k: 'op', label: 'ผ่าตัด', color: CAT.SSI }
+            ];
+            const datasets = S.map(s => ({
+                label: s.label, data: months.map(m => den[m] ? den[m][s.k] : 0),
+                borderColor: s.color, backgroundColor: fadeFill(ctx, s.color),
+                fill: true, tension: 0.3, borderWidth: 2, pointRadius: 3, pointHoverRadius: 6
+            }));
+            if (serviceChartInstance) serviceChartInstance.destroy();
+            serviceChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } }
+                }
+            });
+
+            // ตารางรายหอ (reuse aggregateByWard)
+            const dur = (dev, pd) => pd ? +(dev / pd).toFixed(2) : null;
+            const wards = aggregateByWard(rows).sort((a, b) => b.patientDay - a.patientDay);
+            const tbody = document.getElementById('serviceTableBody');
+            tbody.innerHTML = '';
+            const T = { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0 };
+            wards.forEach(w => {
+                Object.keys(T).forEach(k => T[k] += w[k]);
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.innerHTML =
+                    '<td class="py-3 px-4 font-medium text-slate-700">' + w.unit + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(w.patientDay).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(w.cathDay).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right text-amber-600">' + fmtRate(dur(w.cathDay, w.patientDay)) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(w.venDay).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right text-teal-600">' + fmtRate(dur(w.venDay, w.patientDay)) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(w.lineDay).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right text-red-600">' + fmtRate(dur(w.lineDay, w.patientDay)) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(w.op).toLocaleString() + '</td>';
+                tbody.appendChild(tr);
+            });
+            const trT = document.createElement('tr');
+            trT.className = 'bg-slate-50 font-semibold text-slate-800';
+            trT.innerHTML =
+                '<td class="py-3 px-4">รวมทั้งหมด</td>' +
+                '<td class="py-3 px-4 text-right">' + Math.round(T.patientDay).toLocaleString() + '</td>' +
+                '<td class="py-3 px-4 text-right">' + Math.round(T.cathDay).toLocaleString() + '</td>' +
+                '<td class="py-3 px-4 text-right text-amber-600">' + fmtRate(dur(T.cathDay, T.patientDay)) + '</td>' +
+                '<td class="py-3 px-4 text-right">' + Math.round(T.venDay).toLocaleString() + '</td>' +
+                '<td class="py-3 px-4 text-right text-teal-600">' + fmtRate(dur(T.venDay, T.patientDay)) + '</td>' +
+                '<td class="py-3 px-4 text-right">' + Math.round(T.lineDay).toLocaleString() + '</td>' +
+                '<td class="py-3 px-4 text-right text-red-600">' + fmtRate(dur(T.lineDay, T.patientDay)) + '</td>' +
+                '<td class="py-3 px-4 text-right">' + Math.round(T.op).toLocaleString() + '</td>';
+            tbody.appendChild(trT);
+        }
+
+        function exportServiceCSV() {
+            const dur = (dev, pd) => pd ? (dev / pd).toFixed(2) : '';
+            const head = ['หอผู้ป่วย', 'วันนอน', 'วันคาสายปัสสาวะ', 'DUR-CAUTI', 'วันเครื่องช่วยหายใจ', 'DUR-VAP', 'วันคาสายหลอดเลือด', 'DUR-CLABSI', 'ผ่าตัด'];
+            const wards = aggregateByWard(getRowsForWards()).sort((a, b) => b.patientDay - a.patientDay);
+            let csv = head.join(',') + '\n';
+            wards.forEach(w => {
+                csv += [w.unit, Math.round(w.patientDay), Math.round(w.cathDay), dur(w.cathDay, w.patientDay),
+                        Math.round(w.venDay), dur(w.venDay, w.patientDay), Math.round(w.lineDay), dur(w.lineDay, w.patientDay),
+                        Math.round(w.op)].join(',') + '\n';
+            });
+            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'hai-service-stats.csv';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // สลับเมนู (sidebar) แดชบอร์ด / รายหอผู้ป่วย / MDR / สถิติบริการ
         function switchView(view) {
-            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr' };
-            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)' };
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
@@ -1330,17 +1495,20 @@
             if (pt) pt.textContent = titles[view] || '';
             if (view === 'wards') updateWardTable();
             if (view === 'mdr') updateMdrView();
+            if (view === 'service') updateServiceView();
         }
 
         // Event listeners
         ['filterYear', 'filterQuarter', 'filterUnit', 'filterPCT'].forEach(id =>
-            document.getElementById(id).addEventListener('change', () => { updateDashboard(); updateWardTable(); updateMdrView(); }));
+            document.getElementById(id).addEventListener('change', () => { updateDashboard(); updateWardTable(); updateMdrView(); updateServiceView(); }));
         document.getElementById('btnExport').addEventListener('click', exportCSV);
         document.getElementById('btnExportWards').addEventListener('click', exportWardsCSV);
         document.getElementById('btnExportMdr').addEventListener('click', exportMdrCSV);
+        document.getElementById('btnExportService').addEventListener('click', exportServiceCSV);
         document.getElementById('menuDashboard').addEventListener('click', () => switchView('dashboard'));
         document.getElementById('menuWards').addEventListener('click', () => switchView('wards'));
         document.getElementById('menuMdr').addEventListener('click', () => switchView('mdr'));
+        document.getElementById('menuService').addEventListener('click', () => switchView('service'));
 
         // Initial load
         window.onload = async () => {
