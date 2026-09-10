@@ -554,11 +554,11 @@
                     <h3 id="spHAI" class="text-2xl font-bold z-10">0</h3>
                 </div>
                 <div class="kpi bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">อัตรา /1000 วันนอน</h6>
+                    <h6 class="text-xs font-medium text-white/90 z-10">อัตรา /1000 (ล้างไต/คาสาย)</h6>
                     <h3 id="spRate" class="text-2xl font-bold z-10">-</h3>
                 </div>
                 <div class="kpi bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">วันนอนรวม</h6>
+                    <h6 class="text-xs font-medium text-white/90 z-10">ตัวหารรวม (ล้างไต/คาสาย)</h6>
                     <h3 id="spPatientDay" class="text-2xl font-bold z-10">0</h3>
                 </div>
                 <div class="kpi bg-gradient-to-r from-purple-500 to-fuchsia-600 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
@@ -576,7 +576,7 @@
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-800">เฝ้าระวังการติดเชื้อรายหน่วยพิเศษ</h3>
-                        <p class="text-xs text-slate-400 mt-1">นับเคส HAI = CI แยกตามหน่วย (SITE) · อัตราต่อ 1,000 วันนอน · คำนวณสดจากทะเบียน-1</p>
+                        <p class="text-xs text-slate-400 mt-1">นับเคส HAI = CI แยกตามหน่วย (SITE) · ตัวหาร = AVF,AVG + Perm + DLC + HD1 + HD2 + CAPD · อัตราต่อ 1,000 · คำนวณสดจากทะเบียน-1</p>
                     </div>
                     <button id="btnExportSpecial" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
                 </div>
@@ -586,7 +586,7 @@
                             <tr>
                                 <th class="py-3 px-4">หน่วย (SITE)</th>
                                 <th class="py-3 px-4 text-right">จำนวนเคส CI</th>
-                                <th class="py-3 px-4 text-right">วันนอน</th>
+                                <th class="py-3 px-4 text-right">ตัวหาร (ล้างไต/คาสาย)</th>
                                 <th class="py-3 px-4 text-right text-blue-700">อัตรา /1000</th>
                                 <th class="py-3 px-4 text-right text-fuchsia-700">MDR</th>
                                 <th class="py-3 px-4 text-right text-fuchsia-700">%MDR</th>
@@ -740,6 +740,9 @@
                     cathN: num(pick(r, ['CAUTI1'])),                      // จำนวนคนใช้สายสวนปัสสาวะ
                     venN: num(pick(r, ['VAP1'])),                         // จำนวนคนใช้เครื่องช่วยหายใจ
                     lineN: num(pick(r, ['CLABSI1'])),                     // จำนวนคนใช้สายหลอดเลือด
+                    // ตัวหารหน่วยพิเศษ (ล้างไต/คาสาย) = AVF,AVG + Perm + DLC + HD1 + HD2 + CAPD
+                    dialDen: num(pick(r, ['AVF,AVG', 'AVF', 'AVFAVG'])) + num(pick(r, ['Perm'])) +
+                             num(pick(r, ['DLC'])) + num(pick(r, ['HD1'])) + num(pick(r, ['HD2'])) + num(pick(r, ['CAPD'])),
                     patientDay: num(pick(r, ['วันนนอน', 'วันนอน', 'PatientDays'])), // วันนอนผู้ป่วย -> HAI รวม
                     op: num(pick(r, ['op', 'OP', 'จำนวนผ่าตัด'])),        // จำนวนผ่าตัด -> SSI
                     // ---- ข้อมูลรายบุคคล (PDPA): เก็บเฉพาะที่จำเป็น + มาสก์ตัวระบุตัวตน ----
@@ -1853,9 +1856,9 @@
             const g = {};
             rows.filter(rowIsCI).forEach(r => {
                 const u = specialUnitOf(r);
-                if (!g[u]) g[u] = { unit: u, n: 0, patientDay: 0, mdr: 0, byMonth: {} };
+                if (!g[u]) g[u] = { unit: u, n: 0, den: 0, mdr: 0, byMonth: {} };
                 g[u].n += 1;
-                g[u].patientDay += r.patientDay;
+                g[u].den += r.dialDen;   // ตัวหาร = ล้างไต/คาสาย (AVF,AVG+Perm+DLC+HD1+HD2+CAPD)
                 if (r.isMDR) g[u].mdr += 1;
                 if (r.month != null) g[u].byMonth[r.month] = (g[u].byMonth[r.month] || 0) + 1;
             });
@@ -1864,9 +1867,9 @@
 
         function updateSpecialView() {
             const rows = getRowsForWards();
-            const groups = aggregateSpecial(rows).sort((a, b) => (rate(b.n, b.patientDay, 1000) ?? -1) - (rate(a.n, a.patientDay, 1000) ?? -1) || b.n - a.n);
+            const groups = aggregateSpecial(rows).sort((a, b) => (rate(b.n, b.den, 1000) ?? -1) - (rate(a.n, a.den, 1000) ?? -1) || b.n - a.n);
             const totN = groups.reduce((a, g) => a + g.n, 0);
-            const totPD = groups.reduce((a, g) => a + g.patientDay, 0);
+            const totPD = groups.reduce((a, g) => a + g.den, 0);
             const totMDR = groups.reduce((a, g) => a + g.mdr, 0);
             document.getElementById('spHAI').textContent = totN;
             document.getElementById('spMDR').textContent = totMDR;
@@ -1910,8 +1913,8 @@
                 tr.innerHTML =
                     '<td class="py-3 px-4 font-medium text-slate-700">' + g.unit + '</td>' +
                     '<td class="py-3 px-4 text-right font-semibold">' + g.n + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + Math.round(g.patientDay).toLocaleString() + '</td>' +
-                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(rate(g.n, g.patientDay, 1000)) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(g.den).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(rate(g.n, g.den, 1000)) + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + g.mdr + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700">' + (g.n ? Math.round(g.mdr / g.n * 100) + '%' : '-') + '</td>';
                 tbody.appendChild(tr);
@@ -1931,12 +1934,12 @@
         }
 
         function exportSpecialCSV() {
-            const head = ['หน่วย(SITE)', 'จำนวนเคส CI', 'วันนอน', 'อัตรา/1000', 'MDR', '%MDR'];
+            const head = ['หน่วย(SITE)', 'จำนวนเคส CI', 'ตัวหาร(ล้างไต/คาสาย)', 'อัตรา/1000', 'MDR', '%MDR'];
             const groups = aggregateSpecial(getRowsForWards())
-                .sort((a, b) => (rate(b.n, b.patientDay, 1000) ?? -1) - (rate(a.n, a.patientDay, 1000) ?? -1));
+                .sort((a, b) => (rate(b.n, b.den, 1000) ?? -1) - (rate(a.n, a.den, 1000) ?? -1));
             let csv = head.join(',') + '\n';
             groups.forEach(g => {
-                csv += [g.unit, g.n, Math.round(g.patientDay), fmtRate(rate(g.n, g.patientDay, 1000)),
+                csv += [g.unit, g.n, Math.round(g.den), fmtRate(rate(g.n, g.den, 1000)),
                         g.mdr, (g.n ? Math.round(g.mdr / g.n * 100) : 0)].join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
