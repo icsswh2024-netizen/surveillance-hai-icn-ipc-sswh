@@ -531,18 +531,52 @@
                 <div class="relative h-72 w-full"><canvas id="serviceChart"></canvas></div>
             </div>
 
-            <!-- Wound class & SSI by surgery -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-slate-800">ประเภทแผลผ่าตัด (Wound class)</h3>
-                        <span class="text-xs text-slate-400">ผ่าตัดรวม <b id="woundOp" class="text-slate-700">0</b> ครั้ง</span>
-                    </div>
-                    <div class="relative h-72 w-full"><canvas id="woundChart"></canvas></div>
+            <!-- Wound class (cards) -->
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-semibold text-slate-800">ประเภทแผลผ่าตัด (Wound class)</h3>
+                    <span class="text-xs text-slate-400">ผ่าตัดรวม <b id="woundOp" class="text-slate-700">0</b> ครั้ง</span>
                 </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                    <h3 class="text-lg font-semibold text-slate-800 mb-4">SSI แยกตามชนิดผ่าตัด</h3>
-                    <div class="relative h-72 w-full"><canvas id="ssiSiteChart"></canvas></div>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="kpi bg-gradient-to-r from-emerald-400 to-green-500 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">1 สะอาด (Clean)</h6>
+                        <div class="z-10"><h3 id="wc1" class="text-2xl font-bold">0</h3><p id="wc1p" class="text-xs text-white/80">0%</p></div>
+                    </div>
+                    <div class="kpi bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">2 สะอาดปนเปื้อน</h6>
+                        <div class="z-10"><h3 id="wc2" class="text-2xl font-bold">0</h3><p id="wc2p" class="text-xs text-white/80">0%</p></div>
+                    </div>
+                    <div class="kpi bg-gradient-to-r from-orange-400 to-red-500 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">3 ปนเปื้อน</h6>
+                        <div class="z-10"><h3 id="wc3" class="text-2xl font-bold">0</h3><p id="wc3p" class="text-xs text-white/80">0%</p></div>
+                    </div>
+                    <div class="kpi bg-gradient-to-r from-rose-500 to-red-700 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">4 สกปรก/ติดเชื้อ</h6>
+                        <div class="z-10"><h3 id="wc4" class="text-2xl font-bold">0</h3><p id="wc4p" class="text-xs text-white/80">0%</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SSI by surgery (cards) -->
+            <div>
+                <h3 class="text-lg font-semibold text-slate-800 mb-3">SSI แยกตามชนิดผ่าตัด (เคส)</h3>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="kpi bg-gradient-to-r from-violet-400 to-purple-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">ตา (eye)</h6>
+                        <h3 id="ssiEyeN" class="text-2xl font-bold z-10">0</h3>
+                    </div>
+                    <div class="kpi bg-gradient-to-r from-teal-400 to-cyan-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">สะโพก (hip)</h6>
+                        <h3 id="ssiHipN" class="text-2xl font-bold z-10">0</h3>
+                    </div>
+                    <div class="kpi bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">เข่า (knee)</h6>
+                        <h3 id="ssiKneeN" class="text-2xl font-bold z-10">0</h3>
+                    </div>
+                    <div class="kpi bg-gradient-to-r from-pink-400 to-rose-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                        <h6 class="text-xs font-medium text-white/90 z-10">นรีเวช (gyn)</h6>
+                        <h3 id="ssiGynN" class="text-2xl font-bold z-10">0</h3>
+                    </div>
                 </div>
             </div>
 
@@ -1242,38 +1276,18 @@
             const op = sum('op');
             document.getElementById('woundOp').textContent = Math.round(op).toLocaleString();
 
-            // โดนัท Wound class
-            const wLabels = ['1 สะอาด (Clean)', '2 สะอาดปนเปื้อน', '3 ปนเปื้อน', '4 สกปรก/ติดเชื้อ'];
-            const wColors = [CAT.HAI, CAT.CAUTI, '#f97316', CAT.CLABSI];
-            const ctxW = document.getElementById('woundChart').getContext('2d');
-            if (woundChartInstance) woundChartInstance.destroy();
-            woundChartInstance = new Chart(ctxW, {
-                type: 'doughnut',
-                data: { labels: wLabels, datasets: [{ data: w, backgroundColor: wColors, borderColor: '#fff', borderWidth: 2, hoverOffset: 8 }] },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'right', labels: { usePointStyle: true, font: { family: 'Inter' } } },
-                        tooltip: { callbacks: { label: c => { const t = w.reduce((a, b) => a + b, 0); return c.label + ': ' + c.parsed + ' (' + (t ? Math.round(c.parsed / t * 100) : 0) + '%)'; } } }
-                    }
-                }
+            // การ์ด Wound class (จำนวน + ร้อยละ)
+            const wTotal = w.reduce((a, b) => a + b, 0);
+            w.forEach((v, i) => {
+                document.getElementById('wc' + (i + 1)).textContent = Math.round(v).toLocaleString();
+                document.getElementById('wc' + (i + 1) + 'p').textContent = (wTotal ? Math.round(v / wTotal * 100) : 0) + '%';
             });
 
-            // แท่ง SSI แยกชนิดผ่าตัด
-            const site = [sum('ssiEye'), sum('ssiHip'), sum('ssiKnee'), sum('ssiGyn')];
-            const sLabels = ['ตา (eye)', 'สะโพก (hip)', 'เข่า (knee)', 'นรีเวช (gyn)'];
-            const sColors = [CAT.SSI, CAT.VAP, CAT.Omphalitis, CAT.MDR];
-            const ctxS = document.getElementById('ssiSiteChart').getContext('2d');
-            if (ssiSiteChartInstance) ssiSiteChartInstance.destroy();
-            ssiSiteChartInstance = new Chart(ctxS, {
-                type: 'bar',
-                data: { labels: sLabels, datasets: [{ label: 'SSI (เคส)', data: site, backgroundColor: sColors, borderRadius: 6, _badge: true, _badgeColor: '#334155' }] },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } }
-                }
-            });
+            // การ์ด SSI แยกชนิดผ่าตัด
+            document.getElementById('ssiEyeN').textContent = Math.round(sum('ssiEye')).toLocaleString();
+            document.getElementById('ssiHipN').textContent = Math.round(sum('ssiHip')).toLocaleString();
+            document.getElementById('ssiKneeN').textContent = Math.round(sum('ssiKnee')).toLocaleString();
+            document.getElementById('ssiGynN').textContent = Math.round(sum('ssiGyn')).toLocaleString();
         }
 
         // กราฟ HAI รวมรายเดือน: จำนวนเคส (พื้นที่สี) + อัตรา /1000 วันนอน (เส้น) แกน 2 ด้าน
