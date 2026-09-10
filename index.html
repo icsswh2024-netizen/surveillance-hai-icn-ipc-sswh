@@ -660,6 +660,31 @@
                 <h3 id="postdcChartTitle" class="text-lg font-semibold text-slate-800 mb-4">Post-discharge — แยกตามกลุ่ม</h3>
                 <div class="relative h-80 w-full"><canvas id="postdcChart"></canvas></div>
             </div>
+
+            <!-- Visit-sequence breakdown -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h3 class="text-lg font-semibold text-slate-800">การมาตามนัด / ขาดนัด แยกตามครั้งที่นัด</h3>
+                    <p class="text-xs text-slate-400 mt-1">เรียงลำดับนัดของแต่ละผู้ป่วยตามวันที่ · ร้อยละคิดจากนัดที่ถึงกำหนดแล้ว (มา+ขาด) ในครั้งนั้น</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">ครั้งที่นัด</th>
+                                <th class="py-3 px-4 text-right text-emerald-700">มาตามนัด</th>
+                                <th class="py-3 px-4 text-right text-emerald-700">ร้อยละ</th>
+                                <th class="py-3 px-4 text-right text-rose-700">ขาดนัด</th>
+                                <th class="py-3 px-4 text-right text-rose-700">ร้อยละ</th>
+                                <th class="py-3 px-4 text-right text-slate-400">ยังไม่ถึงนัด</th>
+                                <th class="py-3 px-4 text-right">รวมนัด</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pdcSeqBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                     <div>
@@ -1887,20 +1912,69 @@
             const colStatus = col('appoint_status', ['status', 'สถานะ', 'นัด']);
             const colReadmit = col('readmit_30_days', ['readmit', 'ซ้ำ', 'admit']);
             const colAn = col('an', ['an', 'vn']);
+            const colDate = col('appoint_date', ['appoint_date', 'วันนัด', 'date']);
+            const parseDMY = s => { const m = (s || '').toString().trim().match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : null; };
+            const statusOf = st => st.includes('มาตามนัด') ? 'came' : st.includes('ขาดนัด') ? 'missed' : st.includes('ยังไม่ถึง') ? 'pending' : st.includes('ไม่มีการนัด') ? 'none' : '';
 
-            // จัดกลุ่มรายผู้ป่วย (an = 1 การนอน/รอบผ่าตัด)
+            // จัดกลุ่มรายผู้ป่วย (an = 1 การนอน/รอบผ่าตัด) + เก็บรายการนัดไว้เรียงลำดับ
             const g = {};
             rows.forEach(r => {
                 const an = (r[colAn] || '').toString().trim();
                 if (!an) return;
-                if (!g[an]) g[an] = { surgery: postdcSurgery(r[colPdx]), came: 0, missed: 0, pending: 0, none: 0, readmit: false };
+                if (!g[an]) g[an] = { surgery: postdcSurgery(r[colPdx]), came: 0, missed: 0, pending: 0, none: 0, readmit: false, appts: [] };
                 const st = (r[colStatus] || '').toString();
-                if (st.includes('มาตามนัด')) g[an].came++;
-                else if (st.includes('ขาดนัด')) g[an].missed++;
-                else if (st.includes('ยังไม่ถึง')) g[an].pending++;
-                else if (st.includes('ไม่มีการนัด')) g[an].none++;
+                const s = statusOf(st);
+                if (s === 'came') g[an].came++;
+                else if (s === 'missed') g[an].missed++;
+                else if (s === 'pending') g[an].pending++;
+                else if (s === 'none') g[an].none++;
+                // เก็บเฉพาะนัดจริง (มา/ขาด/ยังไม่ถึง) ไว้เรียงตามครั้ง
+                if (s === 'came' || s === 'missed' || s === 'pending') g[an].appts.push({ t: parseDMY(r[colDate]), s });
                 if (low(r[colReadmit]) === 'yes') g[an].readmit = true;
             });
+
+            // แจกแจงตามครั้งที่นัด
+            const seq = {}; // ครั้งที่ -> {came, missed, pending}
+            Object.values(g).forEach(p => {
+                p.appts.sort((a, b) => (a.t || 0) - (b.t || 0));
+                p.appts.forEach((ap, i) => {
+                    const k = i + 1;
+                    if (!seq[k]) seq[k] = { came: 0, missed: 0, pending: 0 };
+                    seq[k][ap.s]++;
+                });
+            });
+            const seqBody = document.getElementById('pdcSeqBody');
+            seqBody.innerHTML = '';
+            const maxK = Math.max(0, ...Object.keys(seq).map(Number));
+            let tC = 0, tM = 0, tP = 0;
+            for (let k = 1; k <= maxK; k++) {
+                const s = seq[k] || { came: 0, missed: 0, pending: 0 };
+                const decided = s.came + s.missed;
+                tC += s.came; tM += s.missed; tP += s.pending;
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.innerHTML =
+                    '<td class="py-3 px-4 font-medium text-slate-700">ครั้งที่ ' + k + '</td>' +
+                    '<td class="py-3 px-4 text-right text-emerald-700 font-semibold">' + s.came + '</td>' +
+                    '<td class="py-3 px-4 text-right text-emerald-700">' + (decided ? Math.round(s.came / decided * 100) + '%' : '-') + '</td>' +
+                    '<td class="py-3 px-4 text-right text-rose-700 font-semibold">' + s.missed + '</td>' +
+                    '<td class="py-3 px-4 text-right text-rose-700">' + (decided ? Math.round(s.missed / decided * 100) + '%' : '-') + '</td>' +
+                    '<td class="py-3 px-4 text-right text-slate-400">' + s.pending + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + (s.came + s.missed + s.pending) + '</td>';
+                seqBody.appendChild(tr);
+            }
+            const dT = tC + tM;
+            const trT = document.createElement('tr');
+            trT.className = 'bg-slate-50 font-semibold text-slate-800';
+            trT.innerHTML =
+                '<td class="py-3 px-4">รวมทุกครั้ง</td>' +
+                '<td class="py-3 px-4 text-right text-emerald-700">' + tC + '</td>' +
+                '<td class="py-3 px-4 text-right text-emerald-700">' + (dT ? Math.round(tC / dT * 100) + '%' : '-') + '</td>' +
+                '<td class="py-3 px-4 text-right text-rose-700">' + tM + '</td>' +
+                '<td class="py-3 px-4 text-right text-rose-700">' + (dT ? Math.round(tM / dT * 100) + '%' : '-') + '</td>' +
+                '<td class="py-3 px-4 text-right text-slate-400">' + tP + '</td>' +
+                '<td class="py-3 px-4 text-right">' + (tC + tM + tP) + '</td>';
+            if (maxK > 0) seqBody.appendChild(trT);
             const groups = Object.values(g);
             const total = groups.length;
             const cameP = groups.filter(x => x.came > 0).length;
