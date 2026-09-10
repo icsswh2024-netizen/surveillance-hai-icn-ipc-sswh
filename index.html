@@ -246,6 +246,11 @@
 
         <!-- ===================== VIEW: สรุปรายหอผู้ป่วย ===================== -->
         <div id="viewWards" class="space-y-6" hidden>
+            <!-- Ward HAI rate bar chart -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">อัตราการติดเชื้อ HAI รายหอผู้ป่วย (/1000 วันนอน)</h3>
+                <div class="relative h-80 w-full"><canvas id="wardChart"></canvas></div>
+            </div>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                     <div>
@@ -332,6 +337,12 @@
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <h3 class="text-lg font-semibold text-slate-800 mb-4">เชื้อดื้อยา (MDR) รายเดือน — จำนวน + %ของ HAI</h3>
                 <div class="relative h-72 w-full"><canvas id="mdrChart"></canvas></div>
+            </div>
+
+            <!-- MDR ward bar chart -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">เชื้อดื้อยา (MDR) รายหอผู้ป่วย (จำนวนเคส)</h3>
+                <div class="relative h-80 w-full"><canvas id="mdrWardChart"></canvas></div>
             </div>
 
             <!-- MDR ward table -->
@@ -730,6 +741,8 @@
         let mdrChartInstance = null;
         let mdrDashChartInstance = null;
         let serviceChartInstance = null;
+        let wardChartInstance = null;
+        let mdrWardChartInstance = null;
 
         async function loadData() {
             const res = await fetch(SHEET_CSV_URL);
@@ -1217,6 +1230,27 @@
 
             // ตารางรายบุคคล (เคส HAI ทั้งหมดตามตัวกรอง)
             renderDetailTable(getRowsForWards().filter(d => d.isHAI), 'wardDetailBody', 'wardDetailCount');
+
+            // กราฟแท่ง: อัตรา HAI รายหอ (เฉพาะหอที่มีอัตรา)
+            const barW = wards.filter(w => w.rHAI != null);
+            const ctxW = document.getElementById('wardChart').getContext('2d');
+            if (wardChartInstance) wardChartInstance.destroy();
+            wardChartInstance = new Chart(ctxW, {
+                type: 'bar',
+                data: {
+                    labels: barW.map(w => w.unit),
+                    datasets: [{
+                        label: 'อัตรา HAI /1000 วันนอน', data: barW.map(w => w.rHAI),
+                        backgroundColor: CAT.HAI, borderRadius: 6,
+                        _badge: true, _badgeColor: darken(CAT.HAI)
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: '/1000 วันนอน' } }, x: { grid: { display: false } } }
+                }
+            });
         }
 
         function exportWardsCSV() {
@@ -1362,6 +1396,27 @@
 
             // ตารางรายบุคคล (เฉพาะเคสดื้อยา MDR)
             renderDetailTable(getRowsForWards().filter(d => d.isHAI && d.isMDR), 'mdrDetailBody', 'mdrDetailCount');
+
+            // กราฟแท่ง: จำนวน MDR รายหอ (เฉพาะหอที่มี MDR)
+            const barM = wards.filter(w => w.MDR > 0);
+            const ctxMW = document.getElementById('mdrWardChart').getContext('2d');
+            if (mdrWardChartInstance) mdrWardChartInstance.destroy();
+            mdrWardChartInstance = new Chart(ctxMW, {
+                type: 'bar',
+                data: {
+                    labels: barM.map(w => w.unit),
+                    datasets: [{
+                        label: 'MDR (เคส)', data: barM.map(w => w.MDR),
+                        backgroundColor: CAT.MDR, borderRadius: 6,
+                        _badge: true, _badgeColor: darken(CAT.MDR)
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'จำนวนเคส' } }, x: { grid: { display: false } } }
+                }
+            });
         }
 
         function exportMdrCSV() {
