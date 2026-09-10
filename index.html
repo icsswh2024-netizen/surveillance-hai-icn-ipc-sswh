@@ -741,8 +741,10 @@
                     venN: num(pick(r, ['VAP1'])),                         // จำนวนคนใช้เครื่องช่วยหายใจ
                     lineN: num(pick(r, ['CLABSI1'])),                     // จำนวนคนใช้สายหลอดเลือด
                     // ตัวหารหน่วยพิเศษ (ล้างไต/คาสาย) = AVF,AVG + Perm + DLC + HD1 + HD2 + CAPD
-                    dialDen: num(pick(r, ['AVF,AVG', 'AVF', 'AVFAVG'])) + num(pick(r, ['Perm'])) +
-                             num(pick(r, ['DLC'])) + num(pick(r, ['HD1'])) + num(pick(r, ['HD2'])) + num(pick(r, ['CAPD'])),
+                    // "AVF,AVG" เป็นคอลัมน์เดียว — เผื่อ gviz แยกเป็น AVF/AVG จึงรวมทั้งสามแบบ (มีได้แบบเดียว ไม่ซ้ำ)
+                    dialDen: num(pick(r, ['AVF,AVG'])) + num(pick(r, ['AVF'])) + num(pick(r, ['AVG'])) +
+                             num(pick(r, ['Perm'])) + num(pick(r, ['DLC'])) +
+                             num(pick(r, ['HD1'])) + num(pick(r, ['HD2'])) + num(pick(r, ['CAPD'])),
                     patientDay: num(pick(r, ['วันนนอน', 'วันนอน', 'PatientDays'])), // วันนอนผู้ป่วย -> HAI รวม
                     op: num(pick(r, ['op', 'OP', 'จำนวนผ่าตัด'])),        // จำนวนผ่าตัด -> SSI
                     // ---- ข้อมูลรายบุคคล (PDPA): เก็บเฉพาะที่จำเป็น + มาสก์ตัวระบุตัวตน ----
