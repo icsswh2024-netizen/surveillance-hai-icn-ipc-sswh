@@ -730,6 +730,7 @@
                     month: month,
                     quarter: quarterFromCol || (month == null ? '' : monthQuarter(month)),
                     unit: pick(r, ['Unit', 'หอผู้ป่วย']).toString().trim().toUpperCase(),
+                    unit2: pick(r, ['Unit2']).toString().trim().toUpperCase(),
                     pct: pick(r, ['PCT', 'กลุ่มงาน']).toString().trim().toUpperCase(),
                     isHAI: pick(r, ['HAI']).toString().trim().toLowerCase() === 'hai', // นับเฉพาะแถวหลัก
                     siteType: classifySite(pick(r, ['SITE', 'ตำแหน่ง'])),
@@ -858,11 +859,12 @@
         let indicatorChartInstance = null;
         let specialChartInstance = null;
         let indicatorLoaded = false;
-        // หน่วยพิเศษ = HDU เท่านั้น (เทียบแบบตัวใหญ่)
-        const SPECIAL_UNITS = ['HDU'];
+        // หน่วยพิเศษ = HDU เท่านั้น — ตรวจทั้งคอลัมน์ Unit และ Unit2
         function isSpecialUnit(u) {
-            const s = (u || '').toString().toUpperCase();
-            return SPECIAL_UNITS.some(k => s === k || s.includes(k));
+            return (u || '').toString().toUpperCase().includes('HDU');
+        }
+        function rowIsHDU(d) {
+            return isSpecialUnit(d.unit) || isSpecialUnit(d.unit2);
         }
         const INDICATOR_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTj9sgM8ezxJ89owzZUnYwkQnzbNso4xZ3LQD6tH1gv7VSS2LY_CUi-Blc2MF1oGJOFWkeNumotrb54/pub?gid=1799512390&single=true&output=csv';
 
@@ -1854,7 +1856,7 @@
 
         // ===================== เฝ้าระวังหน่วยพิเศษ (HDU) =====================
         function updateSpecialView() {
-            const rows = getRowsForWards().filter(d => isSpecialUnit(d.unit));
+            const rows = getRowsForWards().filter(rowIsHDU);
             const cases = rows.filter(d => d.isHAI);
             const den = aggregateDenominatorsByMonth(rows);
             const denTot = { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0 };
@@ -1919,7 +1921,7 @@
 
         function exportSpecialCSV() {
             const head = ['หน่วย', 'วันนอน', 'HAI', 'อัตรา HAI/1000', 'CAUTI', 'CAUTI/1000', 'VAP', 'VAP/1000', 'CLABSI', 'CLABSI/1000', 'MDR'];
-            const wards = aggregateByWard(getRowsForWards().filter(d => isSpecialUnit(d.unit)))
+            const wards = aggregateByWard(getRowsForWards().filter(rowIsHDU))
                 .sort((a, b) => (rate(b.HAI, b.patientDay, 1000) ?? -1) - (rate(a.HAI, a.patientDay, 1000) ?? -1));
             let csv = head.join(',') + '\n';
             wards.forEach(w => {
