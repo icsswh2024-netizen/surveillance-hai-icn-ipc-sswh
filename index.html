@@ -25,6 +25,11 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* เฟดสีตาราง: หัวตารางไล่สี + แถวสลับสี (zebra) */
+        table thead { background: linear-gradient(90deg, #eef2ff 0%, #f8fafc 60%, #ffffff 100%) !important; }
+        table tbody tr:nth-child(even):not(.bg-slate-50):not(.bg-slate-100) { background-color: #f9fafb; }
+        table tbody tr.bg-slate-50 { background: linear-gradient(90deg, #eef2ff 0%, #f1f5f9 100%) !important; }
     </style>
 </head>
 <body class="text-slate-800 p-4 md:p-6 lg:p-8">
@@ -538,6 +543,16 @@
             return d ? +((byMonth[m][key] / d) * meta.factor).toFixed(2) : null;
         }
 
+        // สร้างไล่เฉดสีใต้เส้นกราฟจากสี hex (เข้มบน -> จางล่าง)
+        function fadeFill(ctx, hex, topA = 0.22, botA = 0.01) {
+            const h = hex.replace('#', '');
+            const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+            const grad = ctx.createLinearGradient(0, 0, 0, 300);
+            grad.addColorStop(0, 'rgba(' + r + ',' + g + ',' + b + ',' + topA + ')');
+            grad.addColorStop(1, 'rgba(' + r + ',' + g + ',' + b + ',' + botA + ')');
+            return grad;
+        }
+
         // แปลงค่าเป็นตัวเลข (รองรับคอมมา/ช่องว่าง/ค่าว่าง -> 0)
         function num(x) {
             const n = parseFloat((x || '').toString().replace(/,/g, '').trim());
@@ -727,6 +742,7 @@
             if (months.length === 0) months = FISCAL_MONTHS;
 
             const labels = months.map(m => MONTH_LABELS[m]);
+            const ctxRate = document.getElementById('rateChart').getContext('2d');
             const datasets = [];
             RATE_DEFS.forEach(def => {
                 // คำนวณอัตรา; เดือนที่ไม่มีตัวหาร -> null (ไม่ลากเส้นผ่านจุดที่หารไม่ได้)
@@ -738,7 +754,8 @@
                 // แสดงเส้นเฉพาะที่มีค่าจริงอย่างน้อยหนึ่งจุด
                 if (data.some(v => v != null)) {
                     datasets.push({
-                        label: def.label, data, borderColor: def.color, backgroundColor: def.color,
+                        label: def.label, data, borderColor: def.color,
+                        backgroundColor: fadeFill(ctxRate, def.color), fill: true,
                         tension: 0.3, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6, spanGaps: true,
                         _counts: months.map(m => byMonth[m][def.num]) // จำนวนเคสไว้ให้ tooltip
                     });
@@ -814,8 +831,10 @@
                 { key: 'Omphalitis', color: '#f43f5e' },
                 { key: 'Other', color: '#94a3b8' }
             ];
+            const ctxTrend = document.getElementById('trendChart').getContext('2d');
             const mkDataset = (label, color) => ({
-                label, data: series(label), borderColor: color, backgroundColor: color,
+                label, data: series(label), borderColor: color,
+                backgroundColor: fadeFill(ctxTrend, color), fill: true,
                 tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6,
                 // เก็บอัตรารายเดือนของชนิดนี้ไว้ให้ tooltip อ่าน
                 _rates: visibleMonths.map(m => rateFor(label, m, byMonth, den)),
@@ -827,7 +846,6 @@
                 if (visibleMonths.some(m => byMonth[m][t.key] > 0)) trendDatasets.push(mkDataset(t.key, t.color));
             });
 
-            const ctxTrend = document.getElementById('trendChart').getContext('2d');
             if (trendChartInstance) trendChartInstance.destroy();
             trendChartInstance = new Chart(ctxTrend, {
                 type: 'line',
