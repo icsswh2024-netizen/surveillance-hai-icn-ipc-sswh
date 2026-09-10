@@ -668,14 +668,20 @@
                         <h3 class="text-lg font-semibold text-slate-800">การมาตามนัด / ขาดนัด แยกตามครั้งที่นัด</h3>
                         <p class="text-xs text-slate-400 mt-1">เรียงลำดับนัดของแต่ละผู้ป่วยตามวันที่ · ร้อยละคิดจากนัดที่ถึงกำหนดแล้ว (มา+ขาด) ในครั้งนั้น</p>
                     </div>
-                    <select id="pdcSeqSurgery" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 self-start">
-                        <option value="ALL">ทุกชนิดผ่าตัด</option>
-                        <option value="Phaco (ต้อกระจก)">Phaco (ต้อกระจก)</option>
-                        <option value="THR (ข้อสะโพก)">THR (ข้อสะโพก)</option>
-                        <option value="TKR (ข้อเข่า)">TKR (ข้อเข่า)</option>
-                        <option value="TAH (มดลูก)">TAH (มดลูก)</option>
-                        <option value="อื่นๆ">อื่นๆ</option>
-                    </select>
+                    <div class="flex flex-col sm:items-end gap-2 self-start">
+                        <select id="pdcSeqSurgery" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                            <option value="ALL">ทุกชนิดผ่าตัด</option>
+                            <option value="Phaco (ต้อกระจก)">Phaco (ต้อกระจก)</option>
+                            <option value="THR (ข้อสะโพก)">THR (ข้อสะโพก)</option>
+                            <option value="TKR (ข้อเข่า)">TKR (ข้อเข่า)</option>
+                            <option value="TAH (มดลูก)">TAH (มดลูก)</option>
+                            <option value="อื่นๆ">อื่นๆ</option>
+                        </select>
+                        <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                            <input type="checkbox" id="pdcOnlyRelated" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                            เฉพาะนัดที่เกี่ยวกับการผ่าตัด (จับคู่แผนก)
+                        </label>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
@@ -1906,13 +1912,23 @@
         function loadIndicators(force) { return loadPubCsv(INDICATOR_CSV_URL, INDICATOR_OPTS, force); }
         function loadPostDC(force) { return loadPubCsv(POSTDC_CSV_URL, POSTDC_OPTS, force); }
 
-        // ตารางครั้งที่นัด (กรองตามชนิดผ่าตัด)
+        // นัดนี้เกี่ยวกับการผ่าตัดไหม (จับคู่ clinic_name กับแผนกของหัตถการ)
+        function pdcRelated(surgery, clinic) {
+            const c = (clinic || '').toString();
+            if (surgery.startsWith('Phaco')) return /จักษุ|ตา/.test(c);
+            if (surgery.startsWith('THR') || surgery.startsWith('TKR')) return /กระดูก|ออร์โธ|ortho/i.test(c) || (/smc/i.test(c) && !/จักษุ/.test(c));
+            if (surgery.startsWith('TAH')) return /สูติ|นรีเวช|gyn/i.test(c);
+            return true;
+        }
+        // ตารางครั้งที่นัด (กรองตามชนิดผ่าตัด + เฉพาะนัดที่เกี่ยวกับการผ่าตัด)
         function renderPdcSeq(surgeryFilter) {
+            const onlyRelated = document.getElementById('pdcOnlyRelated').checked;
             const groups = (surgeryFilter && surgeryFilter !== 'ALL')
                 ? postdcGroups.filter(p => p.surgery === surgeryFilter) : postdcGroups;
             const seq = {};
             groups.forEach(p => {
-                const appts = p.appts.slice().sort((a, b) => (a.t || 0) - (b.t || 0));
+                let appts = p.appts.slice().sort((a, b) => (a.t || 0) - (b.t || 0));
+                if (onlyRelated) appts = appts.filter(ap => pdcRelated(p.surgery, ap.clinic));
                 appts.forEach((ap, i) => {
                     const k = i + 1;
                     if (!seq[k]) seq[k] = { came: 0, missed: 0, pending: 0 };
@@ -1972,6 +1988,7 @@
             const colReadmit = col('readmit_30_days', ['readmit', 'ซ้ำ', 'admit']);
             const colAn = col('an', ['an', 'vn']);
             const colDate = col('appoint_date', ['appoint_date', 'วันนัด', 'date']);
+            const colClinic = col('clinic_name', ['clinic', 'คลินิก', 'แผนก']);
             const parseDMY = s => { const m = (s || '').toString().trim().match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : null; };
             const statusOf = st => st.includes('มาตามนัด') ? 'came' : st.includes('ขาดนัด') ? 'missed' : st.includes('ยังไม่ถึง') ? 'pending' : st.includes('ไม่มีการนัด') ? 'none' : '';
 
@@ -1987,8 +2004,8 @@
                 else if (s === 'missed') g[an].missed++;
                 else if (s === 'pending') g[an].pending++;
                 else if (s === 'none') g[an].none++;
-                // เก็บเฉพาะนัดจริง (มา/ขาด/ยังไม่ถึง) ไว้เรียงตามครั้ง
-                if (s === 'came' || s === 'missed' || s === 'pending') g[an].appts.push({ t: parseDMY(r[colDate]), s });
+                // เก็บเฉพาะนัดจริง (มา/ขาด/ยังไม่ถึง) ไว้เรียงตามครั้ง + คลินิก
+                if (s === 'came' || s === 'missed' || s === 'pending') g[an].appts.push({ t: parseDMY(r[colDate]), s, clinic: (r[colClinic] || '').toString() });
                 if (low(r[colReadmit]) === 'yes') g[an].readmit = true;
             });
 
@@ -2282,6 +2299,7 @@
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
         document.getElementById('btnReloadPostDC').addEventListener('click', () => loadPostDC(true));
         document.getElementById('pdcSeqSurgery').addEventListener('change', e => renderPdcSeq(e.target.value));
+        document.getElementById('pdcOnlyRelated').addEventListener('change', () => renderPdcSeq(document.getElementById('pdcSeqSurgery').value));
 
         // Initial load
         window.onload = async () => {
