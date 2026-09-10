@@ -545,7 +545,7 @@
         <!-- ===================== VIEW: เฝ้าระวังหน่วยพิเศษ ===================== -->
         <div id="viewSpecial" class="space-y-6" hidden>
             <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-800">
-                <b>หน่วยพิเศษ / วิกฤต (HDU):</b> <span id="specialUnitList">ICU, NICU, HDU, Stroke unit, CCU</span> — เป็นหน่วยที่ใช้อุปกรณ์มากและเสี่ยงติดเชื้อสูง จึงเฝ้าระวังเข้มข้น
+                <b>หน่วยพิเศษ:</b> <span id="specialUnitList">HDU (หน่วยดูแลผู้ป่วยกึ่งวิกฤต)</span> — เป็นหน่วยที่ใช้อุปกรณ์มากและเสี่ยงติดเชื้อสูง จึงเฝ้าระวังเข้มข้น
             </div>
             <!-- Special summary cards -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -601,7 +601,7 @@
                     </table>
                 </div>
             </div>
-            <p id="specialEmpty" class="text-xs text-slate-400 text-center" hidden>ไม่พบข้อมูลหน่วยพิเศษตามตัวกรอง (ตรวจสอบว่ารหัสหน่วยตรงกับ ICU/NICU/HDU/SU/CCU)</p>
+            <p id="specialEmpty" class="text-xs text-slate-400 text-center" hidden>ไม่พบข้อมูลหน่วย HDU ตามตัวกรอง (ตรวจสอบว่ารหัสหน่วยในชีตคือ HDU)</p>
         </div><!-- /viewSpecial -->
     </div><!-- /max-w container -->
     </main>
@@ -858,8 +858,8 @@
         let indicatorChartInstance = null;
         let specialChartInstance = null;
         let indicatorLoaded = false;
-        // รหัสหน่วยพิเศษ/วิกฤต (HDU) — เทียบแบบตัวใหญ่
-        const SPECIAL_UNITS = ['ICU', 'NICU', 'SICU', 'MICU', 'PICU', 'CCU', 'SU', 'HDU', 'STROKE'];
+        // หน่วยพิเศษ = HDU เท่านั้น (เทียบแบบตัวใหญ่)
+        const SPECIAL_UNITS = ['HDU'];
         function isSpecialUnit(u) {
             const s = (u || '').toString().toUpperCase();
             return SPECIAL_UNITS.some(k => s === k || s.includes(k));
