@@ -701,20 +701,9 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                    <div>
-                        <h3 class="text-lg font-semibold text-slate-800">ตารางเฝ้าระวัง Post-discharge</h3>
-                        <p class="text-xs text-slate-400 mt-1" id="postdcStatus">กำลังโหลด...</p>
-                    </div>
-                    <button id="btnReloadPostDC" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">โหลดใหม่</button>
-                </div>
-                <div class="overflow-x-auto max-h-[36rem] overflow-y-auto">
-                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
-                        <thead id="postdcHead" class="bg-slate-50 text-slate-700 font-semibold sticky top-0"></thead>
-                        <tbody id="postdcBody" class="divide-y divide-slate-100"></tbody>
-                    </table>
-                </div>
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <p class="text-xs text-slate-400" id="postdcStatus">กำลังโหลด...</p>
+                <button id="btnReloadPostDC" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">โหลดใหม่</button>
             </div>
             <p class="text-xs text-slate-400 text-center">แหล่งข้อมูล: Google Sheet (เผยแพร่เป็น CSV) — เฝ้าระวังการติดเชื้อหลังผู้ป่วยจำหน่าย</p>
         </div><!-- /viewPostDC -->
@@ -1831,7 +1820,7 @@
                 const rows = parseCSV(await res.text());
                 if (!rows.length) throw new Error('ไม่มีข้อมูล');
                 const headers = Object.keys(rows[0]).filter(h => h !== '' && h !== '__norm');
-                renderCsvTable(headers, rows, o.headId, o.bodyId);
+                if (!o.skipTable) renderCsvTable(headers, rows, o.headId, o.bodyId);
                 if (!o.skipAutoChart) renderCsvChart(headers, rows, o);
                 if (o.onLoaded) o.onLoaded(headers, rows);
                 o.setLoaded(true);
@@ -1907,7 +1896,7 @@
             chartCardId: 'postdcChartCard', chartCanvasId: 'postdcChart',
             getLoaded: () => postdcLoaded, setLoaded: v => postdcLoaded = v,
             destroyChart: () => { if (postdcChartInstance) postdcChartInstance.destroy(); }, setChart: c => postdcChartInstance = c,
-            skipAutoChart: true, onLoaded: (headers, rows) => postdcSummarize(headers, rows)
+            skipAutoChart: true, skipTable: true, onLoaded: (headers, rows) => postdcSummarize(headers, rows)
         };
         function loadIndicators(force) { return loadPubCsv(INDICATOR_CSV_URL, INDICATOR_OPTS, force); }
         function loadPostDC(force) { return loadPubCsv(POSTDC_CSV_URL, POSTDC_OPTS, force); }
