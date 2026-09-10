@@ -421,6 +421,29 @@
                 </div>
             </div>
 
+            <!-- Per-person analysis -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800 mb-1">วิเคราะห์ต่อคน (เฉลี่ยวันคาอุปกรณ์ต่อคน)</h3>
+                <p class="text-xs text-slate-400 mb-4">วันคาอุปกรณ์เฉลี่ยต่อคน = วันคาอุปกรณ์รวม ÷ จำนวนคนใช้</p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="rounded-xl border border-amber-100 bg-amber-50 p-4">
+                        <p class="text-sm text-amber-800 font-medium">สายสวนปัสสาวะ</p>
+                        <p class="text-2xl font-bold text-amber-600 mt-1"><span id="svcCathPer">0</span> <span class="text-sm font-normal">วัน/คน</span></p>
+                        <p class="text-xs text-slate-500 mt-1">คนใช้ <span id="svcCathN">0</span> คน</p>
+                    </div>
+                    <div class="rounded-xl border border-teal-100 bg-teal-50 p-4">
+                        <p class="text-sm text-teal-800 font-medium">เครื่องช่วยหายใจ</p>
+                        <p class="text-2xl font-bold text-teal-600 mt-1"><span id="svcVenPer">0</span> <span class="text-sm font-normal">วัน/คน</span></p>
+                        <p class="text-xs text-slate-500 mt-1">คนใช้ <span id="svcVenN">0</span> คน</p>
+                    </div>
+                    <div class="rounded-xl border border-red-100 bg-red-50 p-4">
+                        <p class="text-sm text-red-800 font-medium">สายหลอดเลือด</p>
+                        <p class="text-2xl font-bold text-red-600 mt-1"><span id="svcLinePer">0</span> <span class="text-sm font-normal">วัน/คน</span></p>
+                        <p class="text-xs text-slate-500 mt-1">คนใช้ <span id="svcLineN">0</span> คน</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Monthly service chart -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <h3 class="text-lg font-semibold text-slate-800 mb-4">ปริมาณบริการรายเดือน (วัน/ครั้ง)</h3>
@@ -593,6 +616,9 @@
                     cathDay: num(pick(r, ['CAUTI2'])),                    // วันคาสายสวนปัสสาวะ -> CAUTI
                     venDay: num(pick(r, ['VAP2'])),                       // วันใช้เครื่องช่วยหายใจ -> VAP
                     lineDay: num(pick(r, ['CLABSI2'])),                   // วันคาสายสวนหลอดเลือด -> CLABSI
+                    cathN: num(pick(r, ['CAUTI1'])),                      // จำนวนคนใช้สายสวนปัสสาวะ
+                    venN: num(pick(r, ['VAP1'])),                         // จำนวนคนใช้เครื่องช่วยหายใจ
+                    lineN: num(pick(r, ['CLABSI1'])),                     // จำนวนคนใช้สายหลอดเลือด
                     patientDay: num(pick(r, ['วันนนอน', 'วันนอน', 'PatientDays'])), // วันนอนผู้ป่วย -> HAI รวม
                     op: num(pick(r, ['op', 'OP', 'จำนวนผ่าตัด'])),        // จำนวนผ่าตัด -> SSI
                     // ---- ข้อมูลรายบุคคล (PDPA): เก็บเฉพาะที่จำเป็น + มาสก์ตัวระบุตัวตน ----
@@ -755,7 +781,7 @@
         // รวมตัวหารต่อเดือน: วัน device-days / วันนอน / จำนวนผ่าตัด (จากทุกแถว)
         function aggregateDenominatorsByMonth(rows) {
             const den = {};
-            FISCAL_MONTHS.forEach(m => { den[m] = { cathDay: 0, venDay: 0, lineDay: 0, patientDay: 0, op: 0 }; });
+            FISCAL_MONTHS.forEach(m => { den[m] = { cathDay: 0, venDay: 0, lineDay: 0, patientDay: 0, op: 0, cathN: 0, venN: 0, lineN: 0 }; });
             rows.forEach(r => {
                 if (r.month == null || !den[r.month]) return;
                 den[r.month].cathDay += r.cathDay;
@@ -763,6 +789,9 @@
                 den[r.month].lineDay += r.lineDay;
                 den[r.month].patientDay += r.patientDay;
                 den[r.month].op += r.op;
+                den[r.month].cathN += r.cathN;
+                den[r.month].venN += r.venN;
+                den[r.month].lineN += r.lineN;
             });
             return den;
         }
@@ -1109,10 +1138,12 @@
             rows.forEach(r => {
                 const u = r.unit || '(ไม่ระบุ)';
                 if (!byWard[u]) byWard[u] = { unit: u, patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0,
+                                              cathN: 0, venN: 0, lineN: 0,
                                               HAI: 0, CAUTI: 0, VAP: 0, CLABSI: 0, SSI: 0, MDR: 0 };
                 const w = byWard[u];
                 w.patientDay += r.patientDay; w.cathDay += r.cathDay; w.venDay += r.venDay;
                 w.lineDay += r.lineDay; w.op += r.op;
+                w.cathN += r.cathN; w.venN += r.venN; w.lineN += r.lineN;
                 if (r.isHAI) {
                     w.HAI += 1;
                     if (w[r.siteType] !== undefined) w[r.siteType] += 1;
@@ -1387,13 +1418,22 @@
             const rows = getRowsForWards();
             const den = aggregateDenominatorsByMonth(rows);
             // การ์ดสรุป (ยอดรวมทั้งช่วง)
-            const tot = { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0 };
+            const tot = { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0, cathN: 0, venN: 0, lineN: 0 };
             FISCAL_MONTHS.forEach(m => Object.keys(tot).forEach(k => tot[k] += den[m] ? den[m][k] : 0));
             document.getElementById('svcPatientDay').textContent = Math.round(tot.patientDay).toLocaleString();
             document.getElementById('svcCathDay').textContent = Math.round(tot.cathDay).toLocaleString();
             document.getElementById('svcVenDay').textContent = Math.round(tot.venDay).toLocaleString();
             document.getElementById('svcLineDay').textContent = Math.round(tot.lineDay).toLocaleString();
             document.getElementById('svcOp').textContent = Math.round(tot.op).toLocaleString();
+
+            // วิเคราะห์ต่อคน: วันคาอุปกรณ์เฉลี่ยต่อคน = วันรวม ÷ จำนวนคนใช้
+            const per = (day, n) => n ? (day / n).toFixed(1) : '-';
+            document.getElementById('svcCathPer').textContent = per(tot.cathDay, tot.cathN);
+            document.getElementById('svcVenPer').textContent = per(tot.venDay, tot.venN);
+            document.getElementById('svcLinePer').textContent = per(tot.lineDay, tot.lineN);
+            document.getElementById('svcCathN').textContent = Math.round(tot.cathN).toLocaleString();
+            document.getElementById('svcVenN').textContent = Math.round(tot.venN).toLocaleString();
+            document.getElementById('svcLineN').textContent = Math.round(tot.lineN).toLocaleString();
 
             // กราฟรายเดือน
             let months = FISCAL_MONTHS.filter(m => den[m] && (den[m].patientDay || den[m].cathDay || den[m].venDay || den[m].lineDay || den[m].op));
