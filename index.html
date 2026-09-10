@@ -32,30 +32,51 @@
         table tbody tr.bg-slate-50 { background: linear-gradient(90deg, #d1fae5 0%, #f1f5f9 100%) !important; }
     </style>
 </head>
-<body class="text-slate-800 p-4 md:p-6 lg:p-8">
+<body class="text-slate-800 bg-slate-50">
 
-    <div class="max-w-7xl mx-auto space-y-6">
+  <div class="flex flex-col md:flex-row min-h-screen">
 
-        <!-- Header -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 border-t-4 border-t-emerald-500">
+    <!-- Sidebar -->
+    <aside class="w-full md:w-64 md:shrink-0 md:h-screen md:sticky md:top-0 bg-white border-r border-slate-200 flex flex-col z-20">
+        <!-- Brand -->
+        <div class="bg-gradient-to-br from-emerald-500 to-green-600 text-white p-5 flex items-center gap-3">
+            <svg class="w-8 h-8 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
             <div>
-                <h1 class="text-2xl md:text-3xl font-bold text-emerald-700 flex items-center gap-3">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                    แดชบอร์ดทะเบียน-1
-                </h1>
-                <p class="text-slate-500 mt-1">จำนวนเคสติดเชื้อในโรงพยาบาล (HAI Case Surveillance)</p>
-            </div>
-            <div class="text-right">
-                <p class="text-sm text-slate-400">สถานะข้อมูล: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
-                <p class="text-xs text-slate-400 mt-1" id="debugInfo"></p>
+                <h1 class="text-lg font-bold leading-tight">แดชบอร์ดทะเบียน-1</h1>
+                <p class="text-xs text-emerald-50/90">ระบบเฝ้าระวังการติดเชื้อ (HAI)</p>
             </div>
         </div>
+        <!-- Nav -->
+        <nav class="p-3 space-y-1 flex-1">
+            <button id="menuDashboard" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors bg-emerald-600 text-white shadow-sm">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                แดชบอร์ด
+            </button>
+            <button id="menuWards" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                สรุปรายหอผู้ป่วย
+            </button>
+            <button id="menuMdr" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                เชื้อดื้อยา (MDR)
+            </button>
+        </nav>
+        <div class="p-4 border-t border-slate-100 text-xs text-slate-400">
+            <p>สถานะ: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
+            <p class="mt-1" id="debugInfo"></p>
+        </div>
+    </aside>
 
-        <!-- Menu -->
-        <div class="flex flex-wrap gap-2">
-            <button id="menuDashboard" class="menu-btn px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white shadow-sm transition-colors">แดชบอร์ด</button>
-            <button id="menuWards" class="menu-btn px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">สรุปรายหอผู้ป่วย</button>
-            <button id="menuMdr" class="menu-btn px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">เชื้อดื้อยา (MDR)</button>
+    <!-- Main -->
+    <main class="flex-1 min-w-0 p-4 md:p-6 lg:p-8">
+    <div class="max-w-6xl mx-auto space-y-6">
+
+        <!-- Page header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-800" id="pageTitle">แดชบอร์ด</h2>
+                <p class="text-slate-500 text-sm">จำนวนเคสติดเชื้อในโรงพยาบาล (HAI Case Surveillance)</p>
+            </div>
         </div>
 
         <!-- Filter Controls -->
@@ -366,7 +387,9 @@
                 </div>
             </div>
         </div><!-- /viewMdr -->
-    </div>
+    </div><!-- /max-w container -->
+    </main>
+  </div><!-- /flex wrapper -->
 
     <script>
         // ===================================================================
@@ -1240,16 +1263,22 @@
             if (cnt) cnt.textContent = list.length + ' ราย';
         }
 
-        // สลับเมนู แดชบอร์ด / รายหอผู้ป่วย / MDR
+        // สลับเมนู (sidebar) แดชบอร์ด / รายหอผู้ป่วย / MDR
         function switchView(view) {
             const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr' };
             const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)' };
+            const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
-            const off = 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50';
+            const off = 'text-slate-600 hover:bg-slate-100';
             Object.keys(views).forEach(k => {
                 document.getElementById(views[k]).hidden = (k !== view);
-                document.getElementById(menus[k]).className = 'menu-btn px-4 py-2 rounded-lg text-sm font-semibold transition-colors ' + (k === view ? on : off);
+                const btn = document.getElementById(menus[k]);
+                // เก็บไอคอน (svg) ไว้ แล้วเปลี่ยนเฉพาะคลาสสี
+                btn.className = base + (k === view ? on : off);
             });
+            const pt = document.getElementById('pageTitle');
+            if (pt) pt.textContent = titles[view] || '';
             if (view === 'wards') updateWardTable();
             if (view === 'mdr') updateMdrView();
         }
