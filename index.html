@@ -1026,7 +1026,8 @@
                     labels: siteKeys,
                     datasets: [{
                         data: siteVals,
-                        backgroundColor: siteKeys.map(k => CAT[k] || '#94a3b8')
+                        backgroundColor: siteKeys.map(k => CAT[k] || '#94a3b8'),
+                        borderColor: '#ffffff', borderWidth: 2, hoverOffset: 8
                     }]
                 },
                 options: {
