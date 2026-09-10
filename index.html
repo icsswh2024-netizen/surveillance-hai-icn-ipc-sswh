@@ -1001,13 +1001,16 @@
             return d ? +((byMonth[m][key] / d) * meta.factor).toFixed(2) : null;
         }
 
-        // สร้างไล่เฉดสีใต้เส้นกราฟจากสี hex (เข้มบน -> จางล่าง)
-        function fadeFill(ctx, hex, topA = 0.22, botA = 0.01) {
+        // สร้างไล่เฉดสีใต้เส้นกราฟจากสี hex (เข้มบน -> จางหายล่าง) แบบหลายจุด ผสมเนียนตา
+        function fadeFill(ctx, hex, topA = 0.34, botA = 0) {
             const h = hex.replace('#', '');
             const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+            const rgba = a => 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
             const grad = ctx.createLinearGradient(0, 0, 0, 300);
-            grad.addColorStop(0, 'rgba(' + r + ',' + g + ',' + b + ',' + topA + ')');
-            grad.addColorStop(1, 'rgba(' + r + ',' + g + ',' + b + ',' + botA + ')');
+            grad.addColorStop(0, rgba(topA));               // บนสุด เข้มสุด
+            grad.addColorStop(0.35, rgba(topA * 0.55));      // ช่วงบน-กลาง ไล่ลง
+            grad.addColorStop(0.7, rgba(topA * 0.2));        // ช่วงกลาง-ล่าง จางลง
+            grad.addColorStop(1, rgba(botA));                // ก้นกราฟ จางหายสนิท
             return grad;
         }
 
