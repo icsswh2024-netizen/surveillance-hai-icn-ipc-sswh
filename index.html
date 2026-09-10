@@ -545,16 +545,16 @@
         <!-- ===================== VIEW: เฝ้าระวังหน่วยพิเศษ ===================== -->
         <div id="viewSpecial" class="space-y-6" hidden>
             <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-800">
-                <b>หน่วยพิเศษ:</b> <span id="specialUnitList">HDU (หน่วยดูแลผู้ป่วยกึ่งวิกฤต)</span> — เป็นหน่วยที่ใช้อุปกรณ์มากและเสี่ยงติดเชื้อสูง จึงเฝ้าระวังเข้มข้น
+                <b>หน่วยพิเศษ:</b> <span id="specialUnitList">HDU, CAPD</span> — จับจากคอลัมน์ <b>HAI = "ci"</b> โดยดูหน่วยจากคอลัมน์ <b>SITE</b> (hdu / capd)
             </div>
             <!-- Special summary cards -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div class="kpi bg-gradient-to-r from-emerald-400 to-green-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">HAI หน่วยพิเศษ</h6>
+                    <h6 class="text-xs font-medium text-white/90 z-10">เคส CI ทั้งหมด</h6>
                     <h3 id="spHAI" class="text-2xl font-bold z-10">0</h3>
                 </div>
                 <div class="kpi bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">อัตรา HAI /1000 วันนอน</h6>
+                    <h6 class="text-xs font-medium text-white/90 z-10">อัตรา /1000 วันนอน</h6>
                     <h3 id="spRate" class="text-2xl font-bold z-10">-</h3>
                 </div>
                 <div class="kpi bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
@@ -562,13 +562,13 @@
                     <h3 id="spPatientDay" class="text-2xl font-bold z-10">0</h3>
                 </div>
                 <div class="kpi bg-gradient-to-r from-purple-500 to-fuchsia-600 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">MDR หน่วยพิเศษ</h6>
+                    <h6 class="text-xs font-medium text-white/90 z-10">MDR</h6>
                     <h3 id="spMDR" class="text-2xl font-bold z-10">0</h3>
                 </div>
             </div>
             <!-- Special monthly chart -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h3 class="text-lg font-semibold text-slate-800 mb-4">การติดเชื้อในหน่วยพิเศษ รายเดือน (แยกชนิด device)</h3>
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">การติดเชื้อหน่วยพิเศษ (CI) รายเดือน — แยกตามหน่วย</h3>
                 <div class="relative h-72 w-full"><canvas id="specialChart"></canvas></div>
             </div>
             <!-- Special ward table -->
@@ -576,7 +576,7 @@
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-800">เฝ้าระวังการติดเชื้อรายหน่วยพิเศษ</h3>
-                        <p class="text-xs text-slate-400 mt-1">อัตรา device ต่อ 1,000 วันคาอุปกรณ์ · คำนวณสดจากทะเบียน-1</p>
+                        <p class="text-xs text-slate-400 mt-1">นับเคส HAI = CI แยกตามหน่วย (SITE) · อัตราต่อ 1,000 วันนอน · คำนวณสดจากทะเบียน-1</p>
                     </div>
                     <button id="btnExportSpecial" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
                 </div>
@@ -584,24 +584,19 @@
                     <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
                         <thead class="bg-slate-50 text-slate-700 font-semibold">
                             <tr>
-                                <th class="py-3 px-4">หน่วย</th>
+                                <th class="py-3 px-4">หน่วย (SITE)</th>
+                                <th class="py-3 px-4 text-right">จำนวนเคส CI</th>
                                 <th class="py-3 px-4 text-right">วันนอน</th>
-                                <th class="py-3 px-4 text-right">HAI</th>
-                                <th class="py-3 px-4 text-right text-blue-700">อัตรา HAI</th>
-                                <th class="py-3 px-4 text-right">CAUTI</th>
-                                <th class="py-3 px-4 text-right text-amber-600">/1000</th>
-                                <th class="py-3 px-4 text-right">VAP</th>
-                                <th class="py-3 px-4 text-right text-teal-600">/1000</th>
-                                <th class="py-3 px-4 text-right">CLABSI</th>
-                                <th class="py-3 px-4 text-right text-red-600">/1000</th>
+                                <th class="py-3 px-4 text-right text-blue-700">อัตรา /1000</th>
                                 <th class="py-3 px-4 text-right text-fuchsia-700">MDR</th>
+                                <th class="py-3 px-4 text-right text-fuchsia-700">%MDR</th>
                             </tr>
                         </thead>
                         <tbody id="specialTableBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
             </div>
-            <p id="specialEmpty" class="text-xs text-slate-400 text-center" hidden>ไม่พบข้อมูลหน่วย HDU ตามตัวกรอง (ตรวจสอบว่ารหัสหน่วยในชีตคือ HDU)</p>
+            <p id="specialEmpty" class="text-xs text-slate-400 text-center" hidden>ไม่พบเคส HAI = "ci" ตามตัวกรอง (ตรวจสอบค่าในคอลัมน์ HAI และ SITE)</p>
         </div><!-- /viewSpecial -->
     </div><!-- /max-w container -->
     </main>
@@ -861,11 +856,9 @@
         let indicatorChartInstance = null;
         let specialChartInstance = null;
         let indicatorLoaded = false;
-        // หน่วยพิเศษ = HDU — จับจากคอลัมน์ HAI และ SITE (สำรอง Unit/Unit2)
-        function hasHDU(v) { return (v || '').toString().toUpperCase().includes('HDU'); }
-        function rowIsHDU(d) {
-            return hasHDU(d.rawHAI) || hasHDU(d.rawSITE) || hasHDU(d.unit) || hasHDU(d.unit2);
-        }
+        // หน่วยพิเศษ: เคสที่คอลัมน์ HAI = "ci" — หน่วยดูจากคอลัมน์ SITE (hdu / capd)
+        function rowIsCI(d) { return (d.rawHAI || '').toString().toUpperCase() === 'CI'; }
+        function specialUnitOf(d) { return (d.rawSITE || '').toString().toUpperCase() || '(ไม่ระบุ)'; }
         const INDICATOR_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTj9sgM8ezxJ89owzZUnYwkQnzbNso4xZ3LQD6tH1gv7VSS2LY_CUi-Blc2MF1oGJOFWkeNumotrb54/pub?gid=1799512390&single=true&output=csv';
 
         async function loadData() {
@@ -1854,36 +1847,48 @@
                 new Date().toLocaleString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</p>';
         }
 
-        // ===================== เฝ้าระวังหน่วยพิเศษ (HDU) =====================
-        function updateSpecialView() {
-            const rows = getRowsForWards().filter(rowIsHDU);
-            const cases = rows.filter(d => d.isHAI);
-            const den = aggregateDenominatorsByMonth(rows);
-            const denTot = { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0 };
-            FISCAL_MONTHS.forEach(m => Object.keys(denTot).forEach(k => denTot[k] += den[m] ? den[m][k] : 0));
-            const hai = cases.length;
-            const mdr = cases.filter(c => c.isMDR).length;
-            document.getElementById('spHAI').textContent = hai;
-            document.getElementById('spMDR').textContent = mdr;
-            document.getElementById('spPatientDay').textContent = Math.round(denTot.patientDay).toLocaleString();
-            document.getElementById('spRate').textContent = denTot.patientDay ? (hai / denTot.patientDay * 1000).toFixed(2) : '-';
-            document.getElementById('specialEmpty').hidden = rows.length > 0;
+        // ===================== เฝ้าระวังหน่วยพิเศษ (HAI=CI, SITE=หน่วย) =====================
+        // รวมเคส CI แยกตามหน่วย (SITE): { unit: {n, patientDay, mdr, byMonth{}} }
+        function aggregateSpecial(rows) {
+            const g = {};
+            rows.filter(rowIsCI).forEach(r => {
+                const u = specialUnitOf(r);
+                if (!g[u]) g[u] = { unit: u, n: 0, patientDay: 0, mdr: 0, byMonth: {} };
+                g[u].n += 1;
+                g[u].patientDay += r.patientDay;
+                if (r.isMDR) g[u].mdr += 1;
+                if (r.month != null) g[u].byMonth[r.month] = (g[u].byMonth[r.month] || 0) + 1;
+            });
+            return Object.values(g);
+        }
 
-            // กราฟรายเดือน แยกชนิด device (CAUTI/VAP/CLABSI) ในหน่วยพิเศษ
-            const byMonth = aggregateByMonth(cases);
-            let months = FISCAL_MONTHS.filter(m => byMonth[m].HAI > 0 || (den[m] && den[m].patientDay));
+        function updateSpecialView() {
+            const rows = getRowsForWards();
+            const groups = aggregateSpecial(rows).sort((a, b) => (rate(b.n, b.patientDay, 1000) ?? -1) - (rate(a.n, a.patientDay, 1000) ?? -1) || b.n - a.n);
+            const totN = groups.reduce((a, g) => a + g.n, 0);
+            const totPD = groups.reduce((a, g) => a + g.patientDay, 0);
+            const totMDR = groups.reduce((a, g) => a + g.mdr, 0);
+            document.getElementById('spHAI').textContent = totN;
+            document.getElementById('spMDR').textContent = totMDR;
+            document.getElementById('spPatientDay').textContent = Math.round(totPD).toLocaleString();
+            document.getElementById('spRate').textContent = totPD ? (totN / totPD * 1000).toFixed(2) : '-';
+            document.getElementById('specialEmpty').hidden = totN > 0;
+
+            // กราฟรายเดือน: เส้นจำนวนเคส CI แยกตามหน่วย (SITE)
+            const ciRows = rows.filter(rowIsCI);
+            let months = FISCAL_MONTHS.filter(m => ciRows.some(r => r.month === m));
             if (months.length === 0) months = FISCAL_MONTHS;
+            const palette = [CAT.HAI, CAT.CAUTI, CAT.VAP, CAT.CLABSI, CAT.MDR, CAT.SSI];
             const ctx = document.getElementById('specialChart').getContext('2d');
-            const defs = [
-                { k: 'CAUTI', color: CAT.CAUTI }, { k: 'VAP', color: CAT.VAP },
-                { k: 'CLABSI', color: CAT.CLABSI }, { k: 'HAI', color: CAT.HAI }
-            ];
-            const dss = defs.map(d => ({
-                label: d.k, data: months.map(m => byMonth[m][d.k]),
-                borderColor: d.color, backgroundColor: d.k === 'HAI' ? fadeFill(ctx, d.color) : d.color,
-                fill: d.k === 'HAI', tension: 0.4, borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6,
-                _badge: d.k === 'HAI', _badgeColor: darken(d.color)
-            }));
+            const dss = groups.map((g, i) => {
+                const color = palette[i % palette.length];
+                return {
+                    label: g.unit, data: months.map(m => g.byMonth[m] || 0),
+                    borderColor: color, backgroundColor: color, fill: false,
+                    tension: 0.4, borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6,
+                    _badge: true, _badgeColor: darken(color)
+                };
+            });
             if (specialChartInstance) specialChartInstance.destroy();
             specialChartInstance = new Chart(ctx, {
                 type: 'line',
@@ -1896,38 +1901,43 @@
                 }
             });
 
-            // ตารางรายหน่วยพิเศษ
-            const wards = aggregateByWard(rows).sort((a, b) => (rate(b.HAI, b.patientDay, 1000) ?? -1) - (rate(a.HAI, a.patientDay, 1000) ?? -1));
+            // ตารางรายหน่วย
             const tbody = document.getElementById('specialTableBody');
             tbody.innerHTML = '';
-            wards.forEach(w => {
+            groups.forEach(g => {
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-slate-50 transition-colors';
                 tr.innerHTML =
-                    '<td class="py-3 px-4 font-medium text-slate-700">' + w.unit + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + Math.round(w.patientDay).toLocaleString() + '</td>' +
-                    '<td class="py-3 px-4 text-right font-semibold">' + w.HAI + '</td>' +
-                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(rate(w.HAI, w.patientDay, 1000)) + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + w.CAUTI + '</td>' +
-                    '<td class="py-3 px-4 text-right text-amber-600">' + fmtRate(rate(w.CAUTI, w.cathDay, 1000)) + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + w.VAP + '</td>' +
-                    '<td class="py-3 px-4 text-right text-teal-600">' + fmtRate(rate(w.VAP, w.venDay, 1000)) + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + w.CLABSI + '</td>' +
-                    '<td class="py-3 px-4 text-right text-red-600">' + fmtRate(rate(w.CLABSI, w.lineDay, 1000)) + '</td>' +
-                    '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + w.MDR + '</td>';
+                    '<td class="py-3 px-4 font-medium text-slate-700">' + g.unit + '</td>' +
+                    '<td class="py-3 px-4 text-right font-semibold">' + g.n + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(g.patientDay).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(rate(g.n, g.patientDay, 1000)) + '</td>' +
+                    '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + g.mdr + '</td>' +
+                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + (g.n ? Math.round(g.mdr / g.n * 100) + '%' : '-') + '</td>';
                 tbody.appendChild(tr);
             });
+            if (groups.length) {
+                const trT = document.createElement('tr');
+                trT.className = 'bg-slate-50 font-semibold text-slate-800';
+                trT.innerHTML =
+                    '<td class="py-3 px-4">รวมทั้งหมด</td>' +
+                    '<td class="py-3 px-4 text-right">' + totN + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(totPD).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right text-blue-700">' + fmtRate(rate(totN, totPD, 1000)) + '</td>' +
+                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + totMDR + '</td>' +
+                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + (totN ? Math.round(totMDR / totN * 100) + '%' : '-') + '</td>';
+                tbody.appendChild(trT);
+            }
         }
 
         function exportSpecialCSV() {
-            const head = ['หน่วย', 'วันนอน', 'HAI', 'อัตรา HAI/1000', 'CAUTI', 'CAUTI/1000', 'VAP', 'VAP/1000', 'CLABSI', 'CLABSI/1000', 'MDR'];
-            const wards = aggregateByWard(getRowsForWards().filter(rowIsHDU))
-                .sort((a, b) => (rate(b.HAI, b.patientDay, 1000) ?? -1) - (rate(a.HAI, a.patientDay, 1000) ?? -1));
+            const head = ['หน่วย(SITE)', 'จำนวนเคส CI', 'วันนอน', 'อัตรา/1000', 'MDR', '%MDR'];
+            const groups = aggregateSpecial(getRowsForWards())
+                .sort((a, b) => (rate(b.n, b.patientDay, 1000) ?? -1) - (rate(a.n, a.patientDay, 1000) ?? -1));
             let csv = head.join(',') + '\n';
-            wards.forEach(w => {
-                csv += [w.unit, Math.round(w.patientDay), w.HAI, fmtRate(rate(w.HAI, w.patientDay, 1000)),
-                        w.CAUTI, fmtRate(rate(w.CAUTI, w.cathDay, 1000)), w.VAP, fmtRate(rate(w.VAP, w.venDay, 1000)),
-                        w.CLABSI, fmtRate(rate(w.CLABSI, w.lineDay, 1000)), w.MDR].join(',') + '\n';
+            groups.forEach(g => {
+                csv += [g.unit, g.n, Math.round(g.patientDay), fmtRate(rate(g.n, g.patientDay, 1000)),
+                        g.mdr, (g.n ? Math.round(g.mdr / g.n * 100) : 0)].join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
