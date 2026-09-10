@@ -77,6 +77,10 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 ตัวชี้วัด
             </button>
+            <button id="menuAnalysis" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                บทวิเคราะห์
+            </button>
         </nav>
         <div class="p-4 border-t border-slate-100 text-xs text-slate-400">
             <p>สถานะ: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
@@ -519,6 +523,20 @@
             </div>
             <p class="text-xs text-slate-400 text-center">แหล่งข้อมูล: Google Sheet (เผยแพร่เป็น CSV) — แยกจากชีตทะเบียน-1</p>
         </div><!-- /viewIndicator -->
+
+        <!-- ===================== VIEW: บทวิเคราะห์ ===================== -->
+        <div id="viewAnalysis" class="space-y-6" hidden>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">บทวิเคราะห์สถานการณ์การติดเชื้อในโรงพยาบาล</h3>
+                        <p class="text-xs text-slate-400 mt-1">สร้างอัตโนมัติจากข้อมูลจริงตามตัวกรองปัจจุบัน</p>
+                    </div>
+                    <button id="btnPrintAnalysis" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">🖨️ พิมพ์/บันทึก PDF</button>
+                </div>
+                <div id="analysisContent" class="p-6 space-y-5 leading-relaxed text-slate-700"></div>
+            </div>
+        </div><!-- /viewAnalysis -->
     </div><!-- /max-w container -->
     </main>
   </div><!-- /flex wrapper -->
@@ -1673,11 +1691,99 @@
             });
         }
 
-        // สลับเมนู (sidebar) แดชบอร์ด / รายหอผู้ป่วย / MDR / สถิติบริการ / ตัวชี้วัด
+        // ===================== บทวิเคราะห์ (สร้างอัตโนมัติ) =====================
+        function updateAnalysisView() {
+            const cases = getFilteredCases();
+            const rows = getFilteredRows();
+            const den = aggregateDenominatorsByMonth(rows);
+            const byMonth = aggregateByMonth(cases);
+            const el = document.getElementById('analysisContent');
+
+            if (cases.length === 0) {
+                el.innerHTML = '<p class="text-slate-500">ยังไม่มีข้อมูลเคส HAI ตามตัวกรองที่เลือก</p>';
+                return;
+            }
+
+            // รวมยอด
+            const totalHAI = cases.length;
+            const denTot = { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0 };
+            FISCAL_MONTHS.forEach(m => Object.keys(denTot).forEach(k => denTot[k] += den[m] ? den[m][k] : 0));
+            const siteCount = {};
+            cases.forEach(c => siteCount[c.siteType] = (siteCount[c.siteType] || 0) + 1);
+            const topSite = Object.entries(siteCount).sort((a, b) => b[1] - a[1])[0];
+            const mdr = cases.filter(c => c.isMDR).length;
+            const mdrPct = totalHAI ? Math.round(mdr / totalHAI * 100) : 0;
+            const overallRate = denTot.patientDay ? (totalHAI / denTot.patientDay * 1000).toFixed(2) : null;
+
+            // เดือนที่มีข้อมูล + แนวโน้ม
+            const mData = FISCAL_MONTHS.filter(m => byMonth[m].HAI > 0);
+            const firstL = mData.length ? MONTH_LABELS[mData[0]] : '-';
+            const lastL = mData.length ? MONTH_LABELS[mData[mData.length - 1]] : '-';
+            let trendTxt = 'คงที่';
+            if (mData.length >= 2) {
+                const a = byMonth[mData[mData.length - 2]].HAI, b = byMonth[mData[mData.length - 1]].HAI;
+                trendTxt = b > a ? 'เพิ่มขึ้น' : b < a ? 'ลดลง' : 'คงที่';
+            }
+
+            // หอที่อัตราสูงสุด
+            const wards = aggregateByWard(rows).map(w => ({ ...w, r: rate(w.HAI, w.patientDay, 1000) }))
+                .filter(w => w.HAI > 0);
+            const topWard = wards.slice().sort((a, b) => (b.r ?? -1) - (a.r ?? -1))[0];
+            const topWardMdr = aggregateMdrByWard(rows).filter(w => w.MDR > 0).sort((a, b) => b.MDR - a.MDR)[0];
+
+            // อัตรา device
+            const dRate = (n, d, f) => d ? +(n / d * f).toFixed(2) : null;
+            const rCAUTI = dRate(siteCount.CAUTI || 0, denTot.cathDay, 1000);
+            const rVAP = dRate(siteCount.VAP || 0, denTot.venDay, 1000);
+            const rCLABSI = dRate(siteCount.CLABSI || 0, denTot.lineDay, 1000);
+
+            const yv = document.getElementById('filterYear').value;
+            const qv = document.getElementById('filterQuarter').value;
+            const period = (yv === 'ALL' ? 'ทุกปีงบประมาณ' : 'ปีงบประมาณ ' + yv) + (qv === 'ALL' ? '' : ' ' + qv);
+
+            // ===== ประกอบบทวิเคราะห์ =====
+            const fmt = v => v == null ? 'ไม่สามารถคำนวณได้ (ไม่มีตัวหาร)' : v;
+            const bullets = [];
+            bullets.push('พบผู้ป่วยติดเชื้อในโรงพยาบาล (HAI) รวม <b>' + totalHAI + ' ราย</b> ในช่วง <b>' + firstL + '–' + lastL + '</b>' +
+                (overallRate ? ' คิดเป็นอัตรา <b>' + overallRate + ' ต่อ 1,000 วันนอน</b>' : ''));
+            if (topSite) bullets.push('ตำแหน่งการติดเชื้อที่พบมากที่สุดคือ <b>' + (SITE_LABEL[topSite[0]] || topSite[0]) + '</b> จำนวน <b>' + topSite[1] + ' ราย</b> (' + Math.round(topSite[1] / totalHAI * 100) + '% ของทั้งหมด)');
+            if (topWard && topWard.r != null) bullets.push('หอผู้ป่วยที่มีอัตราการติดเชื้อสูงที่สุดคือ <b>' + topWard.unit + '</b> ที่ <b>' + topWard.r + ' ต่อ 1,000 วันนอน</b> (' + topWard.HAI + ' ราย)');
+            bullets.push('แนวโน้มจำนวนเคสเดือนล่าสุดเทียบกับเดือนก่อนหน้า: <b>' + trendTxt + '</b>');
+            bullets.push('เชื้อดื้อยา (MDR) จำนวน <b>' + mdr + ' ราย</b> คิดเป็น <b>' + mdrPct + '% ของ HAI</b>' + (topWardMdr ? ' โดยพบมากที่สุดที่หอ <b>' + topWardMdr.unit + '</b> (' + topWardMdr.MDR + ' ราย)' : ''));
+            const devLines = [];
+            if (rCAUTI != null) devLines.push('CAUTI ' + rCAUTI + '/1000 วันคาสาย');
+            if (rVAP != null) devLines.push('VAP ' + rVAP + '/1000 วันเครื่องช่วยหายใจ');
+            if (rCLABSI != null) devLines.push('CLABSI ' + rCLABSI + '/1000 วันคาสายหลอดเลือด');
+            if (devLines.length) bullets.push('อัตราการติดเชื้อจากอุปกรณ์ (device-associated): ' + devLines.join(' · '));
+
+            // ข้อเสนอแนะ (rule-based)
+            const rec = [];
+            if (topWard && topWard.r != null && topWard.r >= 5) rec.push('หอ <b>' + topWard.unit + '</b> มีอัตราการติดเชื้อสูง (≥5/1000 วันนอน) ควรทบทวนการปฏิบัติตาม care bundle และเพิ่มการเฝ้าระวังเชิงรุก');
+            if (topSite && (topSite[0] === 'CAUTI')) rec.push('เนื่องจาก CAUTI พบมากที่สุด ควรเน้นมาตรการ <b>CAUTI prevention bundle</b> (ประเมินความจำเป็นของสายสวน ถอดเมื่อไม่จำเป็น เทคนิคปลอดเชื้อ)');
+            if (topSite && (topSite[0] === 'VAP')) rec.push('เนื่องจาก VAP พบมาก ควรเน้น <b>VAP bundle</b> (ยกหัวเตียง 30–45°, oral care, ประเมินการหย่าเครื่องช่วยหายใจ)');
+            if (mdrPct >= 25) rec.push('สัดส่วนเชื้อดื้อยาสูง (' + mdrPct + '%) ควรเสริม <b>antimicrobial stewardship</b> และมาตรการ contact precaution');
+            if (trendTxt === 'เพิ่มขึ้น') rec.push('จำนวนเคสมีแนวโน้มเพิ่มขึ้น ควรวิเคราะห์หาสาเหตุร่วม (cluster/outbreak) และทบทวนมาตรการควบคุมการติดเชื้อ');
+            if (rec.length === 0) rec.push('สถานการณ์โดยรวมอยู่ในเกณฑ์ที่ควบคุมได้ ควรคงมาตรฐานการเฝ้าระวังและป้องกันการติดเชื้ออย่างต่อเนื่อง');
+
+            const summary = 'ในช่วง ' + period + ' โรงพยาบาลพบผู้ป่วยติดเชื้อในโรงพยาบาลรวม ' + totalHAI + ' ราย' +
+                (overallRate ? ' (อัตรา ' + overallRate + ' ต่อ 1,000 วันนอน)' : '') +
+                (topSite ? ' โดยตำแหน่งที่พบมากที่สุดคือ ' + (SITE_LABEL[topSite[0]] || topSite[0]) : '') +
+                (topWard && topWard.r != null ? ' และหอที่มีอัตราสูงสุดคือ ' + topWard.unit : '') +
+                ' สัดส่วนเชื้อดื้อยาอยู่ที่ ' + mdrPct + '% ของผู้ติดเชื้อทั้งหมด แนวโน้มล่าสุด' + trendTxt + '.';
+
+            el.innerHTML =
+                '<div class="rounded-xl bg-emerald-50 border border-emerald-100 p-4"><h4 class="font-semibold text-emerald-800 mb-1">บทสรุปผู้บริหาร</h4><p class="text-slate-700">' + summary + '</p></div>' +
+                '<div><h4 class="font-semibold text-slate-800 mb-2">ประเด็นสำคัญ</h4><ul class="list-disc pl-6 space-y-1">' + bullets.map(b => '<li>' + b + '</li>').join('') + '</ul></div>' +
+                '<div><h4 class="font-semibold text-slate-800 mb-2">ข้อเสนอแนะ</h4><ul class="list-disc pl-6 space-y-1">' + rec.map(b => '<li>' + b + '</li>').join('') + '</ul></div>' +
+                '<p class="text-xs text-slate-400">* บทวิเคราะห์นี้สร้างอัตโนมัติจากข้อมูลเชิงสถิติ ควรใช้ประกอบดุลยพินิจของทีม IC · ข้อมูล ณ ' +
+                new Date().toLocaleString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</p>';
+        }
+
+        // สลับเมนู (sidebar) แดชบอร์ด / รายหอผู้ป่วย / MDR / สถิติบริการ / ตัวชี้วัด / บทวิเคราะห์
         function switchView(view) {
-            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator' };
-            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด' };
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
@@ -1693,11 +1799,12 @@
             if (view === 'mdr') updateMdrView();
             if (view === 'service') updateServiceView();
             if (view === 'indicator') loadIndicators();
+            if (view === 'analysis') updateAnalysisView();
         }
 
         // Event listeners
         ['filterYear', 'filterQuarter', 'filterUnit', 'filterPCT'].forEach(id =>
-            document.getElementById(id).addEventListener('change', () => { updateDashboard(); updateWardTable(); updateMdrView(); updateServiceView(); }));
+            document.getElementById(id).addEventListener('change', () => { updateDashboard(); updateWardTable(); updateMdrView(); updateServiceView(); updateAnalysisView(); }));
         document.getElementById('btnExport').addEventListener('click', exportCSV);
         document.getElementById('btnExportWards').addEventListener('click', exportWardsCSV);
         document.getElementById('btnExportMdr').addEventListener('click', exportMdrCSV);
@@ -1708,6 +1815,8 @@
         document.getElementById('menuService').addEventListener('click', () => switchView('service'));
         document.getElementById('menuIndicator').addEventListener('click', () => switchView('indicator'));
         document.getElementById('btnReloadIndicator').addEventListener('click', () => loadIndicators(true));
+        document.getElementById('menuAnalysis').addEventListener('click', () => switchView('analysis'));
+        document.getElementById('btnPrintAnalysis').addEventListener('click', () => window.print());
 
         // Initial load
         window.onload = async () => {
