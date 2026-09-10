@@ -733,6 +733,8 @@
                     unit2: pick(r, ['Unit2']).toString().trim().toUpperCase(),
                     pct: pick(r, ['PCT', 'กลุ่มงาน']).toString().trim().toUpperCase(),
                     isHAI: pick(r, ['HAI']).toString().trim().toLowerCase() === 'hai', // นับเฉพาะแถวหลัก
+                    rawHAI: pick(r, ['HAI']).toString().trim().toUpperCase(),   // ค่าดิบ HAI (ใช้จับ HDU)
+                    rawSITE: pick(r, ['SITE', 'ตำแหน่ง']).toString().trim().toUpperCase(), // ค่าดิบ SITE (ใช้จับ HDU)
                     siteType: classifySite(pick(r, ['SITE', 'ตำแหน่ง'])),
                     isMDR: isResistant(pick(r, ['AMR'])), // เชื้อดื้อยา (ใช้คอลัมน์ AMR)
                     // ตัวหารสำหรับคำนวณอัตราการติดเชื้อ (รวมจากทุกแถว ไม่ใช่แค่เคส HAI)
@@ -859,12 +861,10 @@
         let indicatorChartInstance = null;
         let specialChartInstance = null;
         let indicatorLoaded = false;
-        // หน่วยพิเศษ = HDU เท่านั้น — ตรวจทั้งคอลัมน์ Unit และ Unit2
-        function isSpecialUnit(u) {
-            return (u || '').toString().toUpperCase().includes('HDU');
-        }
+        // หน่วยพิเศษ = HDU — จับจากคอลัมน์ HAI และ SITE (สำรอง Unit/Unit2)
+        function hasHDU(v) { return (v || '').toString().toUpperCase().includes('HDU'); }
         function rowIsHDU(d) {
-            return isSpecialUnit(d.unit) || isSpecialUnit(d.unit2);
+            return hasHDU(d.rawHAI) || hasHDU(d.rawSITE) || hasHDU(d.unit) || hasHDU(d.unit2);
         }
         const INDICATOR_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTj9sgM8ezxJ89owzZUnYwkQnzbNso4xZ3LQD6tH1gv7VSS2LY_CUi-Blc2MF1oGJOFWkeNumotrb54/pub?gid=1799512390&single=true&output=csv';
 
