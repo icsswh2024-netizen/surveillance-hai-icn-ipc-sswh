@@ -2576,10 +2576,8 @@
                 else if (s === 'missed') g[an].missed++;
                 else if (s === 'pending') g[an].pending++;
                 else if (s === 'none') g[an].none++;
-                // เก็บเฉพาะนัดจริง (มา/ขาด/ยังไม่ถึง) ไว้เรียงตามครั้ง + คลินิก
-                if (s === 'came' || s === 'missed' || s === 'pending') g[an].appts.push({ t: parseDMY(r[colDate]), s, clinic: (r[colClinic] || '').toString() });
-                // Re-admit=Yes: นับเฉพาะแถวที่เป็นคลินิกเดิม (ตรงชนิดผ่าตัด) · นับ 1 ครั้งต่อ AN
-                if (/^(yes|y|ใช่|true|1)$/.test(low(r[colReadmit])) && pdcRelated(g[an].surgery, (r[colClinic] || '').toString())) g[an].readmit = true;
+                // เก็บเฉพาะนัดจริง (มา/ขาด/ยังไม่ถึง) ไว้เรียงตามครั้ง + คลินิก + flag re-admit ของนัดนั้น
+                if (s === 'came' || s === 'missed' || s === 'pending') g[an].appts.push({ t: parseDMY(r[colDate]), s, clinic: (r[colClinic] || '').toString(), re: /^(yes|y|ใช่|true|1)$/.test(low(r[colReadmit])) });
             });
 
             // เติมตัวเลือกเดือนใน dropdown ของหน้านี้ (ครั้งเดียว)
@@ -2593,9 +2591,13 @@
             const mv = mSel.value;
             let arr = Object.values(g);
             arr.forEach(p => {
-                const ts = p.appts.filter(a => pdcRelated(p.surgery, a.clinic)).map(a => a.t).filter(Boolean);
+                // นัดคลินิกเดิม เรียงตามวันที่ (ใช้ทั้ง cohort เดือน/ไตรมาส และการนับ re-admit)
+                const rel = p.appts.filter(a => pdcRelated(p.surgery, a.clinic)).sort((a, b) => (a.t || 0) - (b.t || 0));
+                const ts = rel.map(a => a.t).filter(Boolean);
                 if (ts.length) { const d = new Date(Math.min(...ts)); p.cohortM = d.getMonth() + 1; p.cohortQ = monthQuarter(p.cohortM); }
                 else { p.cohortM = null; p.cohortQ = null; }
+                // Re-admit: นับเมื่อ readmit=yes อยู่ที่นัดครั้งที่ 2 เป็นต้นไป (index >= 1) · 1 ครั้งต่อ AN
+                p.readmit = rel.some((a, i) => i >= 1 && a.re);
             });
             if (qv !== 'ALL') arr = arr.filter(p => p.cohortQ === qv);
             if (mv !== 'ALL') arr = arr.filter(p => String(p.cohortM) === mv);
