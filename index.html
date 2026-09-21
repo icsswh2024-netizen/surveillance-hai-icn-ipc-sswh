@@ -223,6 +223,7 @@
                     </div>
                 </div>
                 <div class="relative h-72 w-full"><canvas id="trendChart"></canvas></div>
+                <div id="trendLegend" class="mt-4 grid gap-2" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))"></div>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
@@ -230,6 +231,7 @@
                     <select id="trendRateYMax" title="สเกลแกน Y" class="self-start rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"></select>
                 </div>
                 <div class="relative h-72 w-full"><canvas id="trendRateChart"></canvas></div>
+                <div id="trendRateLegend" class="mt-4 grid gap-2" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))"></div>
             </div>
         </div>
 
@@ -1803,7 +1805,7 @@
             const ctxTrend = document.getElementById('trendChart').getContext('2d');
             // fill=true เฉพาะเส้นหลัก (HAI) ที่เหลือเป็นเส้นสีคมชัด กันพื้นทับกันจนขุ่น
             const mkDataset = (label, color, filled) => ({
-                label, data: series(label), borderColor: color,
+                label, data: series(label), borderColor: color, _legendColor: color,
                 backgroundColor: filled ? fadeFill(ctxTrend, color) : color, fill: !!filled,
                 tension: 0.4, borderWidth: filled ? 2.5 : 2.5, pointRadius: 3, pointHoverRadius: 6,
                 // เก็บอัตรารายเดือนของชนิดนี้ไว้ให้ tooltip อ่าน
@@ -1818,7 +1820,7 @@
             lineGrad.addColorStop(0, '#34d399'); lineGrad.addColorStop(1, '#047857');
             const badgeGrad = ctxTrend.createLinearGradient(0, 0, gW, 0);
             badgeGrad.addColorStop(0, '#059669'); badgeGrad.addColorStop(1, '#065f46');
-            haiDs.borderColor = lineGrad;
+            haiDs.borderColor = lineGrad; haiDs._legendColor = CAT.HAI;
             haiDs._badge = true; haiDs._badgeColor = badgeGrad;
             const trendDatasets = [haiDs];
             // ตัวกรอง SITE: ถ้าเลือกชนิดใดชนิดหนึ่ง แสดงเฉพาะเส้นนั้น (+ HAI) พร้อมตัวเลขกำกับ
@@ -1843,7 +1845,7 @@
                     responsive: true, maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
-                        legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } },
+                        legend: { display: false },
                         tooltip: { callbacks: { label: c => {
                             const r = c.dataset._rates ? c.dataset._rates[c.dataIndex] : null;
                             const rateTxt = r == null ? '' : ' · อัตรา ' + r + ' ' + (c.dataset._unit || '');
@@ -1853,13 +1855,14 @@
                     scales: { y: { beginAtZero: true, ticks: { precision: 0 }, max: (function () { const v = parseFloat((document.getElementById('trendYMax') || {}).value); return isFinite(v) && v > 0 ? v : undefined; })() }, x: { grid: { display: false } } }
                 }
             });
+            renderChartLegend(trendChartInstance, 'trendLegend');
 
             // ---- กราฟอัตราการติดเชื้อรายเดือน (คู่กับกราฟจำนวน ใช้ตัวกรอง SITE เดียวกัน) ----
             const ctxRate = document.getElementById('trendRateChart').getContext('2d');
             const rateSeries = key => visibleMonths.map(m => { const r = rateFor(key, m, byMonth, den); return r == null ? 0 : r; });
             const mkRateDs = (label, color, filled) => {
                 const ds = {
-                    label: label + ' (อัตรา)', data: rateSeries(label), borderColor: color,
+                    label: label + ' (อัตรา)', data: rateSeries(label), borderColor: color, _legendColor: color,
                     backgroundColor: filled ? fadeFill(ctxRate, color) : color, fill: !!filled,
                     tension: 0.4, borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6,
                     _unit: (RATE_META[label] || {}).unit || '', _isRate: true
@@ -1885,7 +1888,7 @@
                 const col = CAT[siteSel] || CAT.Other;
                 const gData = visibleMonths.map(m => { const d = den[m] ? den[m].patientDay : 0; return d ? +((byMonth[m][siteSel] / d) * 1000).toFixed(2) : 0; });
                 const ds = {
-                    label: siteSel + ' (อัตรา)', data: gData, borderColor: col, backgroundColor: col, fill: false,
+                    label: siteSel + ' (อัตรา)', data: gData, borderColor: col, backgroundColor: col, fill: false, _legendColor: col,
                     tension: 0.4, borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6, _unit: '/1,000 วันนอน',
                     _badge: true, _badgeColor: badgeGrad2(ctxRate, col)
                 };
@@ -1900,12 +1903,13 @@
                     responsive: true, maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
-                        legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } },
+                        legend: { display: false },
                         tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' ' + (c.dataset._unit || '') } }
                     },
                     scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา' }, max: (function () { const v = parseFloat((document.getElementById('trendRateYMax') || {}).value); return isFinite(v) && v > 0 ? v : undefined; })() }, x: { grid: { display: false } } }
                 }
             });
+            renderChartLegend(trendRateChartInstance, 'trendRateLegend');
 
             // เรียงมากไปน้อย (ชิ้นใหญ่เริ่มด้านขวา ไล่ลง)
             const siteKeys = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'Other']
@@ -2409,6 +2413,23 @@
         }
         // hex -> rgba
         function hexToRgba(hex, a) { const h = (hex || '#94a3b8').replace('#', ''); return 'rgba(' + parseInt(h.slice(0, 2), 16) + ',' + parseInt(h.slice(2, 4), 16) + ',' + parseInt(h.slice(4, 6), 16) + ',' + a + ')'; }
+
+        // legend การ์ดเฟดสีขอบมน ความกว้างเท่ากัน (คลิกเพื่อซ่อน/แสดงเส้น)
+        function renderChartLegend(chart, containerId) {
+            const el = document.getElementById(containerId); if (!el) return;
+            el.innerHTML = '';
+            chart.data.datasets.forEach((ds, i) => {
+                const meta = chart.getDatasetMeta(i);
+                const col = ds._legendColor || '#94a3b8';
+                const label = (ds.label || '').replace(' (อัตรา)', '');
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.style.cssText = 'border:none;border-radius:10px;padding:7px 6px;color:#fff;font:600 12px Kanit,sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 3px rgba(15,23,42,.15);background:linear-gradient(135deg,' + lighten(col, 0.18) + ',' + col + ');' + (meta.hidden ? 'opacity:.35;' : '');
+                b.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#fff;opacity:.9;flex:0 0 auto"></span><span style="overflow:hidden;text-overflow:ellipsis">' + label + '</span>';
+                b.addEventListener('click', () => { meta.hidden = !meta.hidden; chart.update(); renderChartLegend(chart, containerId); });
+                el.appendChild(b);
+            });
+        }
 
         function updateServiceView() {
             const rows = getRowsForWards();
