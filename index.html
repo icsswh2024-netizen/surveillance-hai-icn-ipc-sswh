@@ -1330,26 +1330,44 @@
                     const solid = (ds._solidColors && ds._solidColors[i]) || ds.backgroundColor[i];
                     items.push({ i, cx: arc.x, cy: arc.y, r: arc.outerRadius, x0, y0, side: Math.cos(mid) >= 0 ? 1 : -1, v, label: chart.data.labels[i], color: solid });
                 });
+                const roundRect = (x, y, w, h, r) => {
+                    ctx.beginPath();
+                    if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
+                    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+                    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+                };
                 ctx.save();
                 [-1, 1].forEach(side => {
                     const group = items.filter(it => it.side === side).sort((a, b) => a.y0 - b.y0);
-                    let prevY = -Infinity; const gap = 26;
+                    let prevY = -Infinity; const gap = 34;
                     group.forEach(it => { it.ly = Math.max(it.y0, prevY + gap); prevY = it.ly; });
                     group.forEach(it => {
                         const kneeX = it.cx + side * (it.r + 14);
-                        const labelX = it.cx + side * (it.r + 24);
-                        ctx.strokeStyle = it.color; ctx.lineWidth = 1.5;
-                        ctx.beginPath(); ctx.moveTo(it.x0, it.y0); ctx.lineTo(kneeX, it.ly); ctx.lineTo(labelX, it.ly); ctx.stroke();
-                        ctx.fillStyle = it.color; ctx.beginPath(); ctx.arc(it.x0, it.y0, 2.5, 0, Math.PI * 2); ctx.fill();
                         const pct = total ? Math.round(it.v / total * 100) : 0;
                         const rm = (cfg.rates || {})[it.label];
                         const l1 = it.label + '  ' + it.v + ' (' + pct + '%)';
                         const l2 = rm && rm.r != null ? ('อัตรา ' + rm.r + ' ' + rm.unit) : '';
-                        const tx = labelX + side * 4;
-                        ctx.textBaseline = 'middle'; ctx.textAlign = side === 1 ? 'left' : 'right';
-                        ctx.fillStyle = '#0f172a'; ctx.font = '600 11px Kanit, sans-serif';
-                        ctx.fillText(l1, tx, it.ly - (l2 ? 6 : 0));
-                        if (l2) { ctx.fillStyle = '#64748b'; ctx.font = '500 10px Kanit, sans-serif'; ctx.fillText(l2, tx, it.ly + 7); }
+                        ctx.font = '600 11px Kanit, sans-serif'; const w1 = ctx.measureText(l1).width;
+                        ctx.font = '500 10px Kanit, sans-serif'; const w2 = l2 ? ctx.measureText(l2).width : 0;
+                        const padX = 9, cardW = Math.max(w1, w2) + padX * 2, cardH = l2 ? 32 : 22;
+                        const cardX = side === 1 ? (kneeX + 8) : (kneeX - 8 - cardW);
+                        const cardY = it.ly - cardH / 2;
+                        // เส้นโยงจากชิ้น -> การ์ด
+                        ctx.strokeStyle = it.color; ctx.lineWidth = 1.5;
+                        ctx.beginPath(); ctx.moveTo(it.x0, it.y0); ctx.lineTo(kneeX, it.ly); ctx.lineTo(side === 1 ? cardX : cardX + cardW, it.ly); ctx.stroke();
+                        ctx.fillStyle = it.color; ctx.beginPath(); ctx.arc(it.x0, it.y0, 2.5, 0, Math.PI * 2); ctx.fill();
+                        // การ์ดเฟดสีขอบมน
+                        const g = ctx.createLinearGradient(cardX, 0, cardX + cardW, 0);
+                        g.addColorStop(0, lighten(it.color, 0.12)); g.addColorStop(1, it.color);
+                        ctx.save();
+                        ctx.shadowColor = 'rgba(15,23,42,.18)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
+                        roundRect(cardX, cardY, cardW, cardH, 9); ctx.fillStyle = g; ctx.fill();
+                        ctx.restore();
+                        // ข้อความในการ์ด (ขาว)
+                        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+                        ctx.fillStyle = '#ffffff'; ctx.font = '600 11px Kanit, sans-serif';
+                        ctx.fillText(l1, cardX + padX, it.ly - (l2 ? 6 : 0));
+                        if (l2) { ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.font = '500 10px Kanit, sans-serif'; ctx.fillText(l2, cardX + padX, it.ly + 7); }
                     });
                 });
                 ctx.restore();
@@ -1907,7 +1925,7 @@
             // เฉดสี 2 โทนต่อชิ้น (รัศมี: ในวงอ่อน -> ขอบนอกเข้ม) อ้างอิงสีตามการ์ด — เห็นเฟดชัดทุกชิ้น
             const cw = ctxSite.canvas.width || 800, ch = ctxSite.canvas.height || 400;
             const cxG = cw / 2, cyG = ch / 2;                         // จุดกลางโดนัท (padding ซ้าย/ขวาเท่ากัน)
-            const outerR = Math.max(60, Math.min(cw - 320, ch - 20) / 2);
+            const outerR = Math.max(60, Math.min(cw - 420, ch - 24) / 2);
             const siteGrads = siteKeys.map(k => {
                 const base = CAT[k] || '#94a3b8';
                 // เฟดแนวนอน: ขวาเข้ม -> ซ้ายอ่อน (ทั่วโดนัท)
@@ -1930,7 +1948,7 @@
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     cutout: '62%',
-                    layout: { padding: { left: 160, right: 160, top: 10, bottom: 10 } },
+                    layout: { padding: { left: 210, right: 210, top: 12, bottom: 12 } },
                     plugins: {
                         centerText: { display: true, value: siteTotal, label: 'เคสรวม' },
                         outLabels: { display: true, rates: Object.fromEntries(siteKeys.map(k => [k, { r: siteRate(k), unit: (RATE_META[k] || {}).unit || '' }])) },
