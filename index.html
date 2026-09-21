@@ -202,7 +202,7 @@
         </div>
 
         <!-- Charts Section -->
-        <div class="grid grid-cols-1 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
                     <h3 class="text-lg font-semibold text-slate-800">จำนวนเคสติดเชื้อรายเดือน (แยกชนิด)</h3>
@@ -221,6 +221,13 @@
                 </div>
                 <div class="relative h-72 w-full"><canvas id="trendChart"></canvas></div>
             </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">อัตราการติดเชื้อรายเดือน <span id="trendRateHint" class="text-xs font-normal text-slate-400">(ตามชนิดที่เลือก)</span></h3>
+                <div class="relative h-72 w-full"><canvas id="trendRateChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <h3 class="text-lg font-semibold text-slate-800 mb-4">สัดส่วนการติดเชื้อแยกตามตำแหน่ง (SITE)</h3>
                 <div class="relative h-72 w-full"><canvas id="siteChart"></canvas></div>
@@ -1228,6 +1235,7 @@
 
         let rawData = [];
         let trendChartInstance = null;
+        let trendRateChartInstance = null;
         let siteChartInstance = null;
         let rateChartInstance = null;
         let haiAreaChartInstance = null;
@@ -1663,11 +1671,15 @@
             haiDs.borderColor = lineGrad;
             haiDs._badge = true; haiDs._badgeColor = badgeGrad;
             const trendDatasets = [haiDs];
-            // ตัวกรอง SITE: ถ้าเลือกชนิดใดชนิดหนึ่ง แสดงเฉพาะเส้นนั้น (+ HAI)
+            // ตัวกรอง SITE: ถ้าเลือกชนิดใดชนิดหนึ่ง แสดงเฉพาะเส้นนั้น (+ HAI) พร้อมตัวเลขกำกับ
             const siteSel = (document.getElementById('trendSite') || {}).value || 'ALL';
             TREND_TYPES.forEach(t => {
                 if (siteSel !== 'ALL' && t.key !== siteSel) return;
-                if (visibleMonths.some(m => byMonth[m][t.key] > 0)) trendDatasets.push(mkDataset(t.key, t.color));
+                if (visibleMonths.some(m => byMonth[m][t.key] > 0)) {
+                    const ds = mkDataset(t.key, t.color);
+                    if (siteSel !== 'ALL') { ds._badge = true; ds._badgeColor = darken(t.color); } // เลือกชนิดเดียว -> โชว์ตัวเลข
+                    trendDatasets.push(ds);
+                }
             });
 
             if (trendChartInstance) trendChartInstance.destroy();
@@ -1689,6 +1701,42 @@
                         } } }
                     },
                     scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } }
+                }
+            });
+
+            // ---- กราฟอัตราการติดเชื้อรายเดือน (คู่กับกราฟจำนวน ใช้ตัวกรอง SITE เดียวกัน) ----
+            const ctxRate = document.getElementById('trendRateChart').getContext('2d');
+            const rateSeries = key => visibleMonths.map(m => { const r = rateFor(key, m, byMonth, den); return r == null ? 0 : r; });
+            const mkRateDs = (label, color, filled) => {
+                const ds = {
+                    label: label + ' (อัตรา)', data: rateSeries(label), borderColor: color,
+                    backgroundColor: filled ? fadeFill(ctxRate, color) : color, fill: !!filled,
+                    tension: 0.4, borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6,
+                    _unit: (RATE_META[label] || {}).unit || '', _isRate: true
+                };
+                return ds;
+            };
+            const rateDatasets = [];
+            if (siteSel !== 'ALL' && RATE_META[siteSel]) {
+                rateDatasets.push(mkRateDs(siteSel, CAT[siteSel] || CAT.Other, true));
+            } else {
+                // ALL หรือชนิดที่ไม่มีสูตรอัตรา (HAP/UTI/BSI/Other) -> แสดงอัตรา HAI รวม
+                rateDatasets.push(mkRateDs('HAI', CAT.HAI, true));
+            }
+            document.getElementById('trendRateHint').textContent = siteSel === 'ALL' ? '(HAI รวม /1,000 วันนอน)' :
+                RATE_META[siteSel] ? '(' + siteSel + ' ' + RATE_META[siteSel].unit + ')' : '(ชนิดนี้ไม่มีสูตรอัตรา — แสดง HAI รวม)';
+            if (trendRateChartInstance) trendRateChartInstance.destroy();
+            trendRateChartInstance = new Chart(ctxRate, {
+                type: 'line',
+                data: { labels, datasets: rateDatasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } },
+                        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' ' + (c.dataset._unit || '') } }
+                    },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา' } }, x: { grid: { display: false } } }
                 }
             });
 
