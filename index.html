@@ -1201,6 +1201,13 @@
             const b = Math.round(parseInt(h.substring(4, 6), 16) * f);
             return 'rgb(' + r + ',' + g + ',' + b + ')';
         }
+        // ทำสีอ่อนลง (ผสมขาว) สำหรับเฉดโมเดิร์น
+        function lighten(hex, f = 0.25) {
+            const h = (hex || '#94a3b8').replace('#', '');
+            const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+            const mix = (c) => Math.round(c + (255 - c) * f);
+            return 'rgb(' + mix(r) + ',' + mix(g) + ',' + mix(b) + ')';
+        }
         // เฉดสี 2 สีสำหรับป้าย badge (จากสี hex -> เข้ม 2 ระดับ ซ้าย->ขวา)
         function badgeGrad2(ctx, hex, w) {
             const g = ctx.createLinearGradient(0, 0, w || (ctx.canvas ? ctx.canvas.width : 800), 0);
@@ -1276,7 +1283,8 @@
                     const mid = (arc.startAngle + arc.endAngle) / 2;
                     const x0 = arc.x + Math.cos(mid) * arc.outerRadius;
                     const y0 = arc.y + Math.sin(mid) * arc.outerRadius;
-                    items.push({ i, cx: arc.x, cy: arc.y, r: arc.outerRadius, x0, y0, side: Math.cos(mid) >= 0 ? 1 : -1, v, label: chart.data.labels[i], color: ds.backgroundColor[i] });
+                    const solid = (ds._solidColors && ds._solidColors[i]) || ds.backgroundColor[i];
+                    items.push({ i, cx: arc.x, cy: arc.y, r: arc.outerRadius, x0, y0, side: Math.cos(mid) >= 0 ? 1 : -1, v, label: chart.data.labels[i], color: solid });
                 });
                 ctx.save();
                 [-1, 1].forEach(side => {
@@ -1837,7 +1845,9 @@
                 }
             });
 
-            const siteKeys = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'Other'];
+            // เรียงมากไปน้อย (ชิ้นใหญ่เริ่มด้านขวา ไล่ลง)
+            const siteKeys = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'Other']
+                .slice().sort((a, b) => (total[b] || 0) - (total[a] || 0));
             const siteVals = siteKeys.map(k => total[k]);
             const siteTotal = siteVals.reduce((a, b) => a + b, 0);
             // อัตรารวมของแต่ละชนิด (ยอดทั้งช่วง) สำหรับ tooltip โดนัท
@@ -1850,13 +1860,22 @@
             };
             const ctxSite = document.getElementById('siteChart').getContext('2d');
             if (siteChartInstance) siteChartInstance.destroy();
+            // เฉดสี 2 โทนต่อชิ้น (อ่อน -> เข้ม แนวทแยง) อ้างอิงสีตามการ์ด
+            const cw = ctxSite.canvas.width || 800, ch = ctxSite.canvas.height || 400;
+            const siteGrads = siteKeys.map(k => {
+                const base = CAT[k] || '#94a3b8';
+                const g = ctxSite.createLinearGradient(0, 0, cw, ch);
+                g.addColorStop(0, lighten(base, 0.28)); g.addColorStop(1, base);
+                return g;
+            });
             siteChartInstance = new Chart(ctxSite, {
                 type: 'doughnut',
                 data: {
                     labels: siteKeys,
                     datasets: [{
                         data: siteVals,
-                        backgroundColor: siteKeys.map(k => CAT[k] || '#94a3b8'),
+                        backgroundColor: siteGrads,
+                        _solidColors: siteKeys.map(k => CAT[k] || '#94a3b8'),
                         borderColor: '#ffffff', borderWidth: 2,
                         borderRadius: 8, spacing: 3, hoverOffset: 10   // ขอบมน + เว้นช่องระหว่างชิ้น
                     }]
