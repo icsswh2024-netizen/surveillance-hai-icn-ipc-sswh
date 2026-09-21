@@ -1164,7 +1164,7 @@
             HAP:    { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' },
             UTI:    { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' },
             BSI:    { den: 'ivDay',      factor: 1000, unit: '/1,000 วันให้สารน้ำ+NSS Lock' },
-            Omphalitis: { den: 'liveBirth', factor: 1000, unit: '/1,000 เด็กเกิดมีชีพ' }
+            Omphalitis: { den: 'liveBirth', factor: 100,  unit: '/100 เด็กเกิดมีชีพ' }
         };
         // อัตราของชนิด key ในเดือน m (คืน number หรือ null ถ้าไม่มีตัวหาร/ไม่มีสูตร)
         function rateFor(key, m, byMonth, den) {
