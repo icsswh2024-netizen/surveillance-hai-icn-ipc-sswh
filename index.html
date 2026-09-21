@@ -800,9 +800,14 @@
 
             <!-- สรุปสถานะนัด: ภาพรวม + รายโรค -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-6 border-b border-slate-100">
-                    <h3 class="text-lg font-semibold text-slate-800">สรุปสถานะนัด — ภาพรวมและรายชนิดผ่าตัด</h3>
-                    <p class="text-xs text-slate-400 mt-1">นับจำนวนนัด (คลินิกเดิม) ตามสถานะ · "ไม่มีการนัดหมาย" นับรายผู้ป่วย</p>
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">สรุปสถานะนัด — ภาพรวมและรายชนิดผ่าตัด</h3>
+                        <p class="text-xs text-slate-400 mt-1">นับจำนวนนัด (คลินิกเดิม) ตามสถานะ · "ไม่มีการนัดหมาย" นับรายผู้ป่วย</p>
+                    </div>
+                    <select id="pdcStatusVisit" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 self-start">
+                        <option value="ALL">ทุกครั้งที่นัด</option>
+                    </select>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
@@ -2360,14 +2365,30 @@
         // ตารางสรุปสถานะนัด: ภาพรวม + รายชนิดผ่าตัด (นับนัดคลินิกเดิม)
         function renderPdcStatusTable() {
             const ORDER = ['Phaco (ต้อกระจก)', 'THR (ข้อสะโพก)', 'TKR (ข้อเข่า)', 'TAH (มดลูก)', 'อื่นๆ'];
+            // เตรียมนัดคลินิกเดิม (เรียงตามวันที่) ต่อผู้ป่วย + หาจำนวนครั้งสูงสุด
+            const relOf = p => p.appts.filter(ap => pdcRelated(p.surgery, ap.clinic)).sort((a, b) => (a.t || 0) - (b.t || 0));
+            const maxK = Math.max(0, ...postdcGroups.map(p => relOf(p).length));
+            // เติมตัวเลือกครั้งที่นัดใน dropdown (คงค่าที่เลือกไว้)
+            const sel = document.getElementById('pdcStatusVisit');
+            const prev = sel.value || 'ALL';
+            sel.innerHTML = '<option value="ALL">ทุกครั้งที่นัด</option>' +
+                Array.from({ length: maxK }, (_, i) => '<option value="' + (i + 1) + '">นัดครั้งที่ ' + (i + 1) + '</option>').join('');
+            sel.value = (prev !== 'ALL' && +prev <= maxK) ? prev : 'ALL';
+            const pick = sel.value; // 'ALL' หรือเลขครั้งที่
+
             const acc = {}; // surgery -> {pt, came, missed, pending, none}
             const totalRow = { pt: 0, came: 0, missed: 0, pending: 0, none: 0 };
             postdcGroups.forEach(p => {
                 const a = acc[p.surgery] || (acc[p.surgery] = { pt: 0, came: 0, missed: 0, pending: 0, none: 0 });
-                const rel = p.appts.filter(ap => pdcRelated(p.surgery, ap.clinic));
-                a.pt++; totalRow.pt++;
-                rel.forEach(ap => { a[ap.s]++; totalRow[ap.s]++; });
-                a.none += p.none; totalRow.none += p.none;
+                const rel = relOf(p);
+                if (pick === 'ALL') {
+                    a.pt++; totalRow.pt++;
+                    rel.forEach(ap => { a[ap.s]++; totalRow[ap.s]++; });
+                    a.none += p.none; totalRow.none += p.none;
+                } else {
+                    const ap = rel[+pick - 1]; // นัดครั้งที่ pick ของผู้ป่วยรายนี้ (ถ้ามี)
+                    if (ap) { a.pt++; totalRow.pt++; a[ap.s]++; totalRow[ap.s]++; }
+                }
             });
             const body = document.getElementById('pdcStatusBody');
             body.innerHTML = '';
@@ -2701,6 +2722,7 @@
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
         document.getElementById('btnReloadPostDC').addEventListener('click', () => loadPostDC(true));
         document.getElementById('postdcYear').addEventListener('change', e => { postdcYearSel = e.target.value; loadPostDC(true); });
+        document.getElementById('pdcStatusVisit').addEventListener('change', () => renderPdcStatusTable());
         document.getElementById('pdcSeqSurgery').addEventListener('change', e => renderPdcSeq(e.target.value));
 
         // Initial load
