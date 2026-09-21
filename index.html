@@ -538,6 +538,14 @@
                     <h6 class="text-xs font-medium text-white/90 z-10">จำนวนการผ่าตัด</h6>
                     <h3 id="svcOp" class="text-2xl font-bold z-10">0</h3>
                 </div>
+                <div class="kpi bg-gradient-to-r from-violet-400 to-purple-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">Re-tube<br><span class="text-white/70">ใส่ท่อช่วยหายใจซ้ำ</span></h6>
+                    <h3 id="svcReTube" class="text-2xl font-bold z-10">0</h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-fuchsia-400 to-pink-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">Re-Cath<br><span class="text-white/70">ใส่สายสวนปัสสาวะซ้ำ</span></h6>
+                    <h3 id="svcReCath" class="text-2xl font-bold z-10">0</h3>
+                </div>
             </div>
 
             <!-- Per-person analysis -->
@@ -1167,6 +1175,8 @@
                     bsi4: num(pick(r, ['BSI non4', 'BSInon4'])),
                     bsiSum: num(pick(r, ['sum BSI', 'sumBSI'])),
                     liveBirth: num(pick(r, ['เด็กมีชีพ', 'เด็กเกิดมีชีพ', 'LiveBirth'])),
+                    reTube: num(pick(r, ['Re-tube', 'Retube', 'Re tube'])),   // ใส่ท่อช่วยหายใจซ้ำ
+                    reCath: num(pick(r, ['Re-Cath', 'ReCath', 'Re cath'])),   // ใส่สายสวนปัสสาวะซ้ำ
                     // ---- ข้อมูลรายบุคคล (PDPA): เก็บเฉพาะที่จำเป็น + มาสก์ตัวระบุตัวตน ----
                     hnMasked: maskId(pick(r, ['HN'])),                    // มาสก์ HN (ไม่เก็บเลขเต็ม)
                     sex: pick(r, ['เพศ', 'sex']).toString().trim(),
@@ -2444,6 +2454,8 @@
             document.getElementById('svcVenDay').textContent = Math.round(tot.venDay).toLocaleString();
             document.getElementById('svcLineDay').textContent = Math.round(tot.lineDay).toLocaleString();
             document.getElementById('svcOp').textContent = Math.round(tot.op).toLocaleString();
+            document.getElementById('svcReTube').textContent = Math.round(rows.reduce((a, r) => a + (r.reTube || 0), 0)).toLocaleString();
+            document.getElementById('svcReCath').textContent = Math.round(rows.reduce((a, r) => a + (r.reCath || 0), 0)).toLocaleString();
 
             // วิเคราะห์ต่อคน: วันคาอุปกรณ์เฉลี่ยต่อคน = วันรวม ÷ จำนวนคนใช้
             const per = (day, n) => n ? (day / n).toFixed(1) : '-';
