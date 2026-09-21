@@ -1740,7 +1740,16 @@
                 rateDatasets.push(badgeRate(mkRateDs(siteSel, CAT[siteSel] || CAT.Other, false), CAT[siteSel] || CAT.Other));
                 document.getElementById('trendRateHint').textContent = '(HAI รวม + ' + siteSel + ' ' + RATE_META[siteSel].unit + ')';
             } else {
-                document.getElementById('trendRateHint').textContent = '(HAI รวม — ชนิดนี้ไม่มีสูตรอัตรา)';
+                // ชนิดไม่มีสูตรอัตราเฉพาะ -> ใช้อัตราต่อ 1,000 วันนอน (incidence ทั่วไป) เพื่อให้ขึ้นเส้นคู่ครบ
+                const col = CAT[siteSel] || CAT.Other;
+                const gData = visibleMonths.map(m => { const d = den[m] ? den[m].patientDay : 0; return d ? +((byMonth[m][siteSel] / d) * 1000).toFixed(2) : 0; });
+                const ds = {
+                    label: siteSel + ' (อัตรา)', data: gData, borderColor: col, backgroundColor: col, fill: false,
+                    tension: 0.4, borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6, _unit: '/1,000 วันนอน',
+                    _badge: true, _badgeColor: badgeGrad2(ctxRate, col)
+                };
+                rateDatasets.push(ds);
+                document.getElementById('trendRateHint').textContent = '(HAI รวม + ' + siteSel + ' /1,000 วันนอน · ประมาณการ)';
             }
             if (trendRateChartInstance) trendRateChartInstance.destroy();
             trendRateChartInstance = new Chart(ctxRate, {
