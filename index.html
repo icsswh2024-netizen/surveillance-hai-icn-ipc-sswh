@@ -2384,11 +2384,11 @@
                 tr.innerHTML =
                     '<td class="py-3 px-4 font-medium text-slate-700">ครั้งที่ ' + k + '</td>' +
                     '<td class="py-3 px-4 text-right text-emerald-700 font-semibold">' + s.came + '</td>' +
-                    '<td class="py-3 px-4 text-right text-emerald-700">' + (tot ? Math.round(s.came / tot * 100) + '%' : '-') + '</td>' +
+                    '<td class="py-3 px-4 text-right text-emerald-700">' + (tot ? (s.came / tot * 100).toFixed(2) + '%' : '-') + '</td>' +
                     '<td class="py-3 px-4 text-right text-rose-700 font-semibold">' + s.missed + '</td>' +
-                    '<td class="py-3 px-4 text-right text-rose-700">' + (tot ? Math.round(s.missed / tot * 100) + '%' : '-') + '</td>' +
+                    '<td class="py-3 px-4 text-right text-rose-700">' + (tot ? (s.missed / tot * 100).toFixed(2) + '%' : '-') + '</td>' +
                     '<td class="py-3 px-4 text-right text-slate-400">' + s.pending + '</td>' +
-                    '<td class="py-3 px-4 text-right text-slate-400">' + (tot ? Math.round(s.pending / tot * 100) + '%' : '-') + '</td>' +
+                    '<td class="py-3 px-4 text-right text-slate-400">' + (tot ? (s.pending / tot * 100).toFixed(2) + '%' : '-') + '</td>' +
                     '<td class="py-3 px-4 text-right">' + tot + '</td>';
                 seqBody.appendChild(tr);
             }
@@ -2398,11 +2398,11 @@
             trT.innerHTML =
                 '<td class="py-3 px-4">รวมทุกครั้ง</td>' +
                 '<td class="py-3 px-4 text-right text-emerald-700">' + tC + '</td>' +
-                '<td class="py-3 px-4 text-right text-emerald-700">' + (tT ? Math.round(tC / tT * 100) + '%' : '-') + '</td>' +
+                '<td class="py-3 px-4 text-right text-emerald-700">' + (tT ? (tC / tT * 100).toFixed(2) + '%' : '-') + '</td>' +
                 '<td class="py-3 px-4 text-right text-rose-700">' + tM + '</td>' +
-                '<td class="py-3 px-4 text-right text-rose-700">' + (tT ? Math.round(tM / tT * 100) + '%' : '-') + '</td>' +
+                '<td class="py-3 px-4 text-right text-rose-700">' + (tT ? (tM / tT * 100).toFixed(2) + '%' : '-') + '</td>' +
                 '<td class="py-3 px-4 text-right text-slate-400">' + tP + '</td>' +
-                '<td class="py-3 px-4 text-right text-slate-400">' + (tT ? Math.round(tP / tT * 100) + '%' : '-') + '</td>' +
+                '<td class="py-3 px-4 text-right text-slate-400">' + (tT ? (tP / tT * 100).toFixed(2) + '%' : '-') + '</td>' +
                 '<td class="py-3 px-4 text-right">' + tT + '</td>';
             seqBody.appendChild(trT);
         }
