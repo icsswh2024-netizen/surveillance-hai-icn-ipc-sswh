@@ -2432,7 +2432,7 @@
                 else if (s === 'none') g[an].none++;
                 // เก็บเฉพาะนัดจริง (มา/ขาด/ยังไม่ถึง) ไว้เรียงตามครั้ง + คลินิก
                 if (s === 'came' || s === 'missed' || s === 'pending') g[an].appts.push({ t: parseDMY(r[colDate]), s, clinic: (r[colClinic] || '').toString() });
-                if (low(r[colReadmit]) === 'yes') g[an].readmit = true;
+                if (/^(yes|y|ใช่|true|1)$/.test(low(r[colReadmit]))) g[an].readmit = true; // Re-admit=Yes (นับ 1 ครั้งต่อ AN)
             });
 
             // เก็บกลุ่มผู้ป่วยไว้ให้ตารางครั้งที่นัดเรียกใช้ (กรองตามชนิดผ่าตัดได้)
