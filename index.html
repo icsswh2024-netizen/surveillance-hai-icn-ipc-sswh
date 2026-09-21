@@ -765,8 +765,14 @@
             <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-800">
                 <b>เฝ้าระวัง SSI หลังจำหน่าย</b> — 4 หัตถการเป้าหมาย: Phaco (H25x), THR (M16x), TKR (M17x), TAH (D25x) · ชนิดดูจาก pdx · ติดตามการมาตามนัด (appoint_status) และ Re-admit ภายใน 30 วัน · นับรายผู้ป่วย (an)
             </div>
-            <!-- ปีข้อมูลตามตัวกรอง "ปีงบประมาณ" ด้านบน -->
-            <p class="text-xs text-slate-500">ปีข้อมูล: <b id="pdcYearNote" class="text-indigo-700">-</b> <span class="text-slate-400">(เปลี่ยนได้ที่ตัวกรอง "ปีงบประมาณ" ด้านบน)</span></p>
+            <!-- ปีข้อมูลตามตัวกรอง "ปีงบประมาณ" ด้านบน + ตัวกรองเดือน -->
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                <p class="text-xs text-slate-500">ปีข้อมูล: <b id="pdcYearNote" class="text-indigo-700">-</b> <span class="text-slate-400">(เปลี่ยนที่ตัวกรอง "ปีงบประมาณ" ด้านบน)</span></p>
+                <div class="flex items-center gap-2">
+                    <label for="pdcMonth" class="text-sm font-medium text-slate-700">เดือน</label>
+                    <select id="pdcMonth" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"><option value="ALL">ทุกเดือน</option></select>
+                </div>
+            </div>
             <!-- Post-discharge KPI cards (จำแนกรายคน ไม่ทับกัน · นับเฉพาะนัดคลินิกเดิม) -->
             <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 <div class="kpi bg-gradient-to-r from-slate-500 to-slate-600 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
@@ -2499,14 +2505,23 @@
                 if (/^(yes|y|ใช่|true|1)$/.test(low(r[colReadmit])) && pdcRelated(g[an].surgery, (r[colClinic] || '').toString())) g[an].readmit = true;
             });
 
-            // กรองไตรมาส: ใช้ไตรมาสของนัดคลินิกเดิม "ครั้งแรก" (proxy ช่วงผ่าตัด) — คงผู้ป่วยทั้งรายในไตรมาสเดียว
+            // เติมตัวเลือกเดือนใน dropdown ของหน้านี้ (ครั้งเดียว)
+            const mSel = document.getElementById('pdcMonth');
+            if (mSel.options.length <= 1) {
+                mSel.innerHTML = '<option value="ALL">ทุกเดือน</option>' +
+                    FISCAL_MONTHS.map(m => '<option value="' + m + '">' + MONTH_LABELS[m] + '</option>').join('');
+            }
+            // กรองไตรมาส+เดือน: ใช้ค่าของนัดคลินิกเดิม "ครั้งแรก" (proxy ช่วงผ่าตัด) — คงผู้ป่วยทั้งรายไว้
             const qv = document.getElementById('filterQuarter').value;
+            const mv = mSel.value;
             let arr = Object.values(g);
             arr.forEach(p => {
                 const ts = p.appts.filter(a => pdcRelated(p.surgery, a.clinic)).map(a => a.t).filter(Boolean);
-                p.cohortQ = ts.length ? monthQuarter(new Date(Math.min(...ts)).getMonth() + 1) : null;
+                if (ts.length) { const d = new Date(Math.min(...ts)); p.cohortM = d.getMonth() + 1; p.cohortQ = monthQuarter(p.cohortM); }
+                else { p.cohortM = null; p.cohortQ = null; }
             });
             if (qv !== 'ALL') arr = arr.filter(p => p.cohortQ === qv);
+            if (mv !== 'ALL') arr = arr.filter(p => String(p.cohortM) === mv);
 
             // เก็บกลุ่มผู้ป่วยไว้ให้ตารางครั้งที่นัดเรียกใช้ (กรองตามชนิดผ่าตัดได้)
             postdcGroups = arr;
@@ -2804,6 +2819,7 @@
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
         document.getElementById('btnReloadPostDC').addEventListener('click', () => loadPostDC(true));
         document.getElementById('pdcStatusVisit').addEventListener('change', () => renderPdcStatusTable());
+        document.getElementById('pdcMonth').addEventListener('change', () => loadPostDC());
         document.getElementById('pdcSeqSurgery').addEventListener('change', e => renderPdcSeq(e.target.value));
 
         // Initial load
