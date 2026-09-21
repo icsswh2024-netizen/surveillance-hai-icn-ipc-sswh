@@ -1770,22 +1770,25 @@
             };
             const ctxSite = document.getElementById('siteChart').getContext('2d');
             if (siteChartInstance) siteChartInstance.destroy();
+            // แปลง hex -> rgba (โปร่งแสงสำหรับ polar area)
+            const hexA = (hex, a) => { const h = (hex || '#94a3b8').replace('#', ''); return 'rgba(' + parseInt(h.slice(0, 2), 16) + ',' + parseInt(h.slice(2, 4), 16) + ',' + parseInt(h.slice(4, 6), 16) + ',' + a + ')'; };
             siteChartInstance = new Chart(ctxSite, {
-                type: 'doughnut',
+                type: 'polarArea',
                 data: {
                     labels: siteKeys,
                     datasets: [{
                         data: siteVals,
-                        backgroundColor: siteKeys.map(k => CAT[k] || '#94a3b8'),
-                        borderColor: '#ffffff', borderWidth: 2, hoverOffset: 8
+                        backgroundColor: siteKeys.map(k => hexA(CAT[k], 0.7)),
+                        borderColor: siteKeys.map(k => CAT[k] || '#94a3b8'), borderWidth: 1.5
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
+                    scales: { r: { ticks: { backdropColor: 'transparent', color: '#94a3b8' }, grid: { color: '#e2e8f0' } } },
                     plugins: {
                         legend: { position: 'right', labels: { usePointStyle: true, font: { family: 'Inter' } } },
                         tooltip: { callbacks: { label: c => {
-                            const key = c.label, v = c.parsed;
+                            const key = c.label, v = (c.parsed && c.parsed.r != null) ? c.parsed.r : c.raw;
                             const pct = siteTotal ? Math.round(v / siteTotal * 100) : 0;
                             const r = siteRate(key);
                             const rateTxt = r == null ? '' : ' · อัตรา ' + r + ' ' + RATE_META[key].unit;
