@@ -558,7 +558,7 @@
 
             <!-- SSI by surgery (cards) -->
             <div>
-                <h3 class="text-lg font-semibold text-slate-800 mb-3">SSI แยกตามชนิดผ่าตัด (เคส)</h3>
+                <h3 class="text-lg font-semibold text-slate-800 mb-3">จำนวนการผ่าตัด แยกชนิด (ครั้ง)</h3>
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="kpi bg-gradient-to-r from-violet-400 to-purple-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
                         <h6 class="text-xs font-medium text-white/90 z-10">ตา (eye)</h6>
@@ -820,6 +820,27 @@
                             </tr>
                         </thead>
                         <tbody id="pdcStatusBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- เทียบจำนวนผ่าตัด (ทะเบียน-1) กับผู้ป่วยที่ติดตาม (Post-DC) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h3 class="text-lg font-semibold text-slate-800">เทียบจำนวนผ่าตัด กับ การติดตามหลังจำหน่าย</h3>
+                    <p class="text-xs text-slate-400 mt-1">ผ่าตัด (ครั้ง) จากทะเบียน-1 · ผู้ป่วยติดตาม (ราย AN) จากชีต Post-discharge ปีเดียวกัน · %ครอบคลุม = ติดตาม ÷ ผ่าตัด</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">ชนิดผ่าตัด</th>
+                                <th class="py-3 px-4 text-right text-sky-700">ผ่าตัด (ครั้ง)</th>
+                                <th class="py-3 px-4 text-right text-indigo-700">ผู้ป่วยติดตาม (ราย)</th>
+                                <th class="py-3 px-4 text-right text-emerald-700">%ครอบคลุม</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pdcVsBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
             </div>
@@ -2365,6 +2386,37 @@
             for (const t of toks) { const m = matchSurgeryCode(t); if (m) return m; }
             return 'อื่นๆ';
         }
+        // ตารางเทียบจำนวนผ่าตัด (ทะเบียน-1: eye/hip/knee/gyn) กับผู้ป่วยติดตาม (Post-DC)
+        function renderPdcVsSurgery() {
+            const rows = getFilteredRows(); // ทะเบียน-1 ตามตัวกรองปี/ไตรมาส/หอ
+            const opSum = k => rows.reduce((a, r) => a + (r[k] || 0), 0);
+            // ชนิดผ่าตัด: [ป้าย, คอลัมน์ผ่าตัดในทะเบียน-1, ชื่อ surgery ใน Post-DC]
+            const MAP = [
+                ['Phaco (ต้อกระจก)', 'ssiEye', 'Phaco (ต้อกระจก)'],
+                ['THR (ข้อสะโพก)', 'ssiHip', 'THR (ข้อสะโพก)'],
+                ['TKR (ข้อเข่า)', 'ssiKnee', 'TKR (ข้อเข่า)'],
+                ['TAH (มดลูก)', 'ssiGyn', 'TAH (มดลูก)']
+            ];
+            const body = document.getElementById('pdcVsBody');
+            body.innerHTML = '';
+            let tOp = 0, tPt = 0;
+            const rowHtml = (label, op, pt, isTotal) => {
+                const cov = op ? Math.round(pt / op * 100) + '%' : '-';
+                return '<tr class="' + (isTotal ? 'bg-slate-50 font-semibold text-slate-800' : 'hover:bg-slate-50 transition-colors') + '">' +
+                    '<td class="py-3 px-4 ' + (isTotal ? '' : 'font-medium text-slate-700') + '">' + label + '</td>' +
+                    '<td class="py-3 px-4 text-right text-sky-700">' + Math.round(op).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right text-indigo-700">' + pt + '</td>' +
+                    '<td class="py-3 px-4 text-right text-emerald-700 font-semibold">' + cov + '</td></tr>';
+            };
+            MAP.forEach(([label, opCol, surg]) => {
+                const op = opSum(opCol);
+                const pt = postdcGroups.filter(p => p.surgery === surg).length;
+                tOp += op; tPt += pt;
+                body.insertAdjacentHTML('beforeend', rowHtml(label, op, pt, false));
+            });
+            body.insertAdjacentHTML('beforeend', rowHtml('รวม 4 หัตถการ', tOp, tPt, true));
+        }
+
         // ตารางสรุปสถานะนัด: ภาพรวม + รายชนิดผ่าตัด (นับนัดคลินิกเดิม)
         function renderPdcStatusTable() {
             const ORDER = ['Phaco (ต้อกระจก)', 'THR (ข้อสะโพก)', 'TKR (ข้อเข่า)', 'TAH (มดลูก)', 'อื่นๆ'];
@@ -2447,6 +2499,7 @@
             postdcGroups = Object.values(g);
             renderPdcSeq(document.getElementById('pdcSeqSurgery').value || 'ALL'); // ตั้งค่าการ์ด KPI + ตารางในนี้
             renderPdcStatusTable();
+            renderPdcVsSurgery();
             const groups = Object.values(g);
             document.getElementById('pdcReadmit').textContent = groups.filter(x => x.readmit).length;
 
