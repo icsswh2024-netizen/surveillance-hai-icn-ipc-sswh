@@ -1868,12 +1868,14 @@
             };
             const ctxSite = document.getElementById('siteChart').getContext('2d');
             if (siteChartInstance) siteChartInstance.destroy();
-            // เฉดสี 2 โทนต่อชิ้น (อ่อน -> เข้ม แนวทแยง) อ้างอิงสีตามการ์ด
+            // เฉดสี 2 โทนต่อชิ้น (รัศมี: ในวงอ่อน -> ขอบนอกเข้ม) อ้างอิงสีตามการ์ด — เห็นเฟดชัดทุกชิ้น
             const cw = ctxSite.canvas.width || 800, ch = ctxSite.canvas.height || 400;
+            const cxG = cw / 2, cyG = ch / 2;                         // จุดกลางโดนัท (padding ซ้าย/ขวาเท่ากัน)
+            const outerR = Math.max(60, Math.min(cw - 320, ch - 20) / 2);
             const siteGrads = siteKeys.map(k => {
                 const base = CAT[k] || '#94a3b8';
-                const g = ctxSite.createLinearGradient(0, 0, cw, ch);
-                g.addColorStop(0, lighten(base, 0.28)); g.addColorStop(1, base);
+                const g = ctxSite.createRadialGradient(cxG, cyG, outerR * 0.55, cxG, cyG, outerR);
+                g.addColorStop(0, lighten(base, 0.38)); g.addColorStop(1, base);
                 return g;
             });
             siteChartInstance = new Chart(ctxSite, {
