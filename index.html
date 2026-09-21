@@ -1874,8 +1874,9 @@
             const outerR = Math.max(60, Math.min(cw - 320, ch - 20) / 2);
             const siteGrads = siteKeys.map(k => {
                 const base = CAT[k] || '#94a3b8';
-                const g = ctxSite.createRadialGradient(cxG, cyG, outerR * 0.55, cxG, cyG, outerR);
-                g.addColorStop(0, lighten(base, 0.38)); g.addColorStop(1, base);
+                // เฟดแนวนอน: ขวาเข้ม -> ซ้ายอ่อน (ทั่วโดนัท)
+                const g = ctxSite.createLinearGradient(cxG + outerR, 0, cxG - outerR, 0);
+                g.addColorStop(0, base); g.addColorStop(1, lighten(base, 0.4));
                 return g;
             });
             siteChartInstance = new Chart(ctxSite, {
