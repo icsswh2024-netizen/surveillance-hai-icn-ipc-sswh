@@ -2253,6 +2253,7 @@
             skipAutoChart: true, skipTable: true, onLoaded: (headers, rows) => postdcSummarize(headers, rows)
         };
         function loadIndicators(force) { return loadPubCsv(INDICATOR_CSV_URL, INDICATOR_OPTS, force); }
+        let postdcRaw = null; // เก็บข้อมูลดิบปีล่าสุดที่โหลด ไว้ re-summarize เมื่อเปลี่ยนไตรมาส
         function loadPostDC(force) {
             const years = Object.keys(POSTDC_YEARS);          // ปีที่มีแท็บข้อมูล (ใหม่->เก่า)
             const yv = document.getElementById('filterYear').value; // ค่าจากตัวกรองบน ('ALL' หรือ พ.ศ.)
@@ -2264,6 +2265,8 @@
             if (note) note.textContent = (yv === 'ALL' || !POSTDC_YEARS[yv]) ? ('ปี ' + useYear + ' (ล่าสุดที่มีข้อมูล)') : ('ปี ' + useYear);
             const url = POSTDC_YEARS[postdcYearSel];
             if (!url) { document.getElementById('postdcStatus').textContent = 'ยังไม่ได้ตั้งค่าลิงก์ข้อมูลของปีนี้'; return; }
+            // ปีไม่เปลี่ยน + มีข้อมูลแล้ว -> แค่ประมวลผลใหม่ตามไตรมาส (ไม่ต้องโหลดซ้ำ)
+            if (!force && !changed && postdcRaw) { postdcSummarize(postdcRaw.headers, postdcRaw.rows); return; }
             return loadPubCsv(url, POSTDC_OPTS, force || changed);
         }
 
@@ -2465,6 +2468,7 @@
 
         // สรุป Post-discharge: แมปคอลัมน์จริง (pdx, appoint_status, readmit_30_days, an) + จัดกลุ่มรายผู้ป่วย
         function postdcSummarize(headers, rows) {
+            postdcRaw = { headers, rows }; // เก็บดิบไว้ re-summarize เมื่อเปลี่ยนไตรมาส
             const low = s => (s || '').toString().toLowerCase().trim();
             const col = (exact, kws) => headers.find(h => low(h) === exact) || headers.find(h => (kws || []).some(k => low(h).includes(k)));
             const colPdx = col('pdx', ['pdx', 'principal', 'diag']);
@@ -2495,12 +2499,21 @@
                 if (/^(yes|y|ใช่|true|1)$/.test(low(r[colReadmit])) && pdcRelated(g[an].surgery, (r[colClinic] || '').toString())) g[an].readmit = true;
             });
 
+            // กรองไตรมาส: ใช้ไตรมาสของนัดคลินิกเดิม "ครั้งแรก" (proxy ช่วงผ่าตัด) — คงผู้ป่วยทั้งรายในไตรมาสเดียว
+            const qv = document.getElementById('filterQuarter').value;
+            let arr = Object.values(g);
+            arr.forEach(p => {
+                const ts = p.appts.filter(a => pdcRelated(p.surgery, a.clinic)).map(a => a.t).filter(Boolean);
+                p.cohortQ = ts.length ? monthQuarter(new Date(Math.min(...ts)).getMonth() + 1) : null;
+            });
+            if (qv !== 'ALL') arr = arr.filter(p => p.cohortQ === qv);
+
             // เก็บกลุ่มผู้ป่วยไว้ให้ตารางครั้งที่นัดเรียกใช้ (กรองตามชนิดผ่าตัดได้)
-            postdcGroups = Object.values(g);
+            postdcGroups = arr;
             renderPdcSeq(document.getElementById('pdcSeqSurgery').value || 'ALL'); // ตั้งค่าการ์ด KPI + ตารางในนี้
             renderPdcStatusTable();
             renderPdcVsSurgery();
-            const groups = Object.values(g);
+            const groups = postdcGroups; // ใช้ชุดที่กรองไตรมาสแล้ว
             document.getElementById('pdcReadmit').textContent = groups.filter(x => x.readmit).length;
 
             // กราฟ: จำนวนผู้ป่วยแยกตามชนิดผ่าตัด
@@ -2750,6 +2763,15 @@
             });
             const pt = document.getElementById('pageTitle');
             if (pt) pt.textContent = titles[view] || '';
+            // หน้า Post discharge ใช้ได้แค่ปี+ไตรมาส → ปิด Unit/PCT (ชีตนี้ไม่มีคอลัมน์นั้น)
+            const pdcOnly = view === 'postdc';
+            ['filterUnit', 'filterPCT'].forEach(id => {
+                const el = document.getElementById(id);
+                el.disabled = pdcOnly;
+                el.classList.toggle('opacity-40', pdcOnly);
+                el.classList.toggle('cursor-not-allowed', pdcOnly);
+                el.title = pdcOnly ? 'ตัวกรองนี้ใช้ไม่ได้ในหน้า Post discharge (ชีตไม่มีข้อมูลหอผู้ป่วย/กลุ่มงาน)' : '';
+            });
             if (view === 'wards') updateWardTable();
             if (view === 'mdr') updateMdrView();
             if (view === 'service') updateServiceView();
