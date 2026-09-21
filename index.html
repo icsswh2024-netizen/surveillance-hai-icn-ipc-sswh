@@ -1240,6 +1240,26 @@
         };
         if (window.Chart) Chart.register(valueBadge);
 
+        // Plugin: ข้อความ (เลขรวม + ป้าย) ตรงกลางโดนัท
+        const centerText = {
+            id: 'centerText',
+            afterDraw(chart) {
+                const c = chart.config.options.plugins && chart.config.options.plugins.centerText;
+                if (!c || !c.display) return;
+                const { ctx, chartArea } = chart;
+                if (!chartArea) return;
+                const x = (chartArea.left + chartArea.right) / 2, y = (chartArea.top + chartArea.bottom) / 2;
+                ctx.save();
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#0f172a'; ctx.font = 'bold 30px Kanit, sans-serif';
+                ctx.fillText(String(c.value), x, y - 8);
+                ctx.fillStyle = '#94a3b8'; ctx.font = '500 13px Kanit, sans-serif';
+                ctx.fillText(c.label || '', x, y + 18);
+                ctx.restore();
+            }
+        };
+        if (window.Chart) Chart.register(centerText);
+
         // แปลงค่าเป็นตัวเลข (รองรับคอมมา/ช่องว่าง/ค่าว่าง -> 0)
         function num(x) {
             const n = parseFloat((x || '').toString().replace(/,/g, '').trim());
@@ -1785,25 +1805,25 @@
             };
             const ctxSite = document.getElementById('siteChart').getContext('2d');
             if (siteChartInstance) siteChartInstance.destroy();
-            // แปลง hex -> rgba (โปร่งแสงสำหรับ polar area)
-            const hexA = (hex, a) => { const h = (hex || '#94a3b8').replace('#', ''); return 'rgba(' + parseInt(h.slice(0, 2), 16) + ',' + parseInt(h.slice(2, 4), 16) + ',' + parseInt(h.slice(4, 6), 16) + ',' + a + ')'; };
             siteChartInstance = new Chart(ctxSite, {
-                type: 'polarArea',
+                type: 'doughnut',
                 data: {
                     labels: siteKeys,
                     datasets: [{
                         data: siteVals,
-                        backgroundColor: siteKeys.map(k => hexA(CAT[k], 0.7)),
-                        borderColor: siteKeys.map(k => CAT[k] || '#94a3b8'), borderWidth: 1.5
+                        backgroundColor: siteKeys.map(k => CAT[k] || '#94a3b8'),
+                        borderColor: '#ffffff', borderWidth: 2,
+                        borderRadius: 8, spacing: 3, hoverOffset: 10   // ขอบมน + เว้นช่องระหว่างชิ้น
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    scales: { r: { ticks: { backdropColor: 'transparent', color: '#94a3b8' }, grid: { color: '#e2e8f0' } } },
+                    cutout: '68%',
                     plugins: {
+                        centerText: { display: true, value: siteTotal, label: 'เคสรวม' },
                         legend: { position: 'right', labels: { usePointStyle: true, font: { family: 'Inter' } } },
                         tooltip: { callbacks: { label: c => {
-                            const key = c.label, v = (c.parsed && c.parsed.r != null) ? c.parsed.r : c.raw;
+                            const key = c.label, v = c.parsed;
                             const pct = siteTotal ? Math.round(v / siteTotal * 100) : 0;
                             const r = siteRate(key);
                             const rateTxt = r == null ? '' : ' · อัตรา ' + r + ' ' + RATE_META[key].unit;
