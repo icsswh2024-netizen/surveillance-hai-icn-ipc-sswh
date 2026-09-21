@@ -1127,9 +1127,12 @@
         let postdcYearSel = null; // ปีที่กำลังเลือกอยู่
         // ปี (พ.ศ.) -> ลิงก์ CSV ของแท็บปีนั้น (เผยแพร่เป็น CSV ต่อแท็บ)
         // เพิ่มปีใหม่: เผยแพร่แท็บปีนั้นเป็น CSV แล้ววางลิงก์ตรงนี้ เรียงปีใหม่ไว้บนสุด
+        const POSTDC_PUB = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUsIGlcFC6itNI9BDMt44HiTpFvUPLBHTkg7CU0_zaP7iyim693r5inKdwx489eRbIZKAWpNrLhQtS/pub';
         const POSTDC_YEARS = {
-            '2568': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUsIGlcFC6itNI9BDMt44HiTpFvUPLBHTkg7CU0_zaP7iyim693r5inKdwx489eRbIZKAWpNrLhQtS/pub?output=csv'
-            // '2569': 'https://docs.google.com/.../pub?gid=<gid ของแท็บปี 2569>&single=true&output=csv',
+            '2569': POSTDC_PUB + '?output=csv&gid=698581068',
+            '2568': POSTDC_PUB + '?output=csv&gid=1764095849',
+            '2567': POSTDC_PUB + '?output=csv&gid=1236199399',
+            '2566': POSTDC_PUB + '?output=csv&gid=1599034641'
         };
 
         async function loadData() {
