@@ -642,6 +642,23 @@
                 </div>
             </div>
 
+            <!-- ปฏิทินระยะเวลาก่อนเกิดอาการ (heatmap แยกชนิด) -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800">ระยะเวลาก่อนเกิดอาการ (วัน)</h3>
+                <p class="text-xs text-slate-400 mt-1 mb-4">แต่ละช่อง = 1 วัน · ตัวเลข = จำนวนเคสที่เริ่มมีอาการในวันนั้น · สีเข้ม = เคสมาก · คำนวณจาก "วันที่มีอาการ − วันเริ่ม"</p>
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="text-sm font-semibold text-slate-700 mb-2">หลัง Admit กี่วันจึงเกิดอาการ (แยกชนิด)</h4>
+                        <div id="calAdmit" class="space-y-3"></div>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-semibold text-slate-700 mb-2">หลังใส่อุปกรณ์กี่วันจึงเกิดอาการ (device-associated)</h4>
+                        <div id="calDevice" class="space-y-3"></div>
+                    </div>
+                </div>
+                <p id="calEmpty" class="text-xs text-slate-400 mt-3" hidden>ยังไม่มีข้อมูลวันที่ครบพอจะคำนวณ (ต้องมี Admit / Day On [อุปกรณ์] / วันที่มีอาการ)</p>
+            </div>
+
             <!-- Ward service table -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
@@ -1030,6 +1047,19 @@
             return null;
         }
 
+        // แปลงวันที่หลายรูปแบบ (d/m/yyyy, yyyy-mm-dd) -> timestamp (ms) หรือ null
+        function parseAnyDate(s) {
+            s = (s || '').toString().trim();
+            if (!s) return null;
+            let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/); // d/m/y
+            if (m) { let y = +m[3]; if (y > 2400) y -= 543; if (y < 100) y += 2000; return new Date(y, +m[2] - 1, +m[1]).getTime(); }
+            m = s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);       // y-m-d
+            if (m) { let y = +m[1]; if (y > 2400) y -= 543; return new Date(y, +m[2] - 1, +m[3]).getTime(); }
+            const t = Date.parse(s); return isNaN(t) ? null : t;
+        }
+        // จำนวนวันระหว่าง 2 วันที่ (b - a) เป็นวัน (คืน null ถ้าข้อมูลไม่ครบหรือค่าติดลบ)
+        function daysDiff(a, b) { if (a == null || b == null) return null; const d = Math.round((b - a) / 86400000); return d >= 0 ? d : null; }
+
         // ชนิดการติดเชื้อ (numerator) — จับจากค่า SITE (พิมพ์เล็ก)
         const SITE_TYPES = [
             { key: 'CAUTI',      test: s => s.includes('cauti') },
@@ -1139,7 +1169,13 @@
                     hnMasked: maskId(pick(r, ['HN'])),                    // มาสก์ HN (ไม่เก็บเลขเต็ม)
                     sex: pick(r, ['เพศ', 'sex']).toString().trim(),
                     age: pick(r, ['อายุ', 'age']).toString().trim(),
-                    amr: pick(r, ['AMR']).toString().trim()               // ชนิดผลดื้อยา (แสดงได้ ไม่ใช่ข้อมูลส่วนบุคคล)
+                    amr: pick(r, ['AMR']).toString().trim(),              // ชนิดผลดื้อยา (แสดงได้ ไม่ใช่ข้อมูลส่วนบุคคล)
+                    // ---- วันที่สำหรับคำนวณ "กี่วันจึงเกิดอาการ" ----
+                    dAdmit: parseAnyDate(pick(r, ['Admit', 'admit', 'วันนอน', 'date_admit'])),
+                    dOnset: parseAnyDate(pick(r, ['วันที่มีอาการ', 'onset', 'date_onset'])),
+                    dOnVen: parseAnyDate(pick(r, ['Day On Ven', 'DayOnVen'])),
+                    dOnCath: parseAnyDate(pick(r, ['Day On Cath', 'DayOnCath'])),
+                    dOnLine: parseAnyDate(pick(r, ['Day On Line', 'DayOnLine']))
                     // หมายเหตุ: ไม่เก็บ ชื่อ/สกุล/AN เพื่อความเป็นส่วนตัวตาม PDPA
                 };
             });
@@ -2303,9 +2339,55 @@
         }
 
         // ===================== สถิติบริการ =====================
+        // ปฏิทิน heatmap ระยะเวลาก่อนเกิดอาการ (แยกชนิด)
+        function renderOnsetCalendars() {
+            const cases = getFilteredCases(); // เฉพาะเคส HAI
+            // เก็บจำนวนวัน (admit) แยกตามชนิด SITE  และ (device) แยกตามอุปกรณ์
+            const admitByType = {};   // siteType -> {day: count}
+            const devByType = { CAUTI: {}, VAP: {}, CLABSI: {} };
+            const devOnField = { CAUTI: 'dOnCath', VAP: 'dOnVen', CLABSI: 'dOnLine' };
+            let any = false;
+            cases.forEach(c => {
+                const dA = daysDiff(c.dAdmit, c.dOnset);
+                if (dA != null) { const t = c.siteType || 'Other'; (admitByType[t] || (admitByType[t] = {}))[dA] = ((admitByType[t] || {})[dA] || 0) + 1; any = true; }
+                if (devByType[c.siteType]) {
+                    const dD = daysDiff(c[devOnField[c.siteType]], c.dOnset);
+                    if (dD != null) { devByType[c.siteType][dD] = (devByType[c.siteType][dD] || 0) + 1; any = true; }
+                }
+            });
+            document.getElementById('calEmpty').hidden = any;
+
+            // สร้างแถวปฏิทิน 1 แถว: label + ช่องรายวัน (0..maxDay) ไล่เฉดสีตามจำนวน
+            const buildRow = (label, color, dayMap) => {
+                const days = Object.keys(dayMap).map(Number);
+                if (days.length === 0) return '';
+                const maxDay = Math.max(...days), maxCnt = Math.max(...Object.values(dayMap));
+                let cells = '';
+                for (let d = 0; d <= maxDay; d++) {
+                    const c = dayMap[d] || 0;
+                    const a = c ? (0.2 + 0.8 * c / maxCnt) : 0; // ความเข้มตามจำนวน
+                    const bg = c ? hexToRgba(color, a) : '#f1f5f9';
+                    const tc = a > 0.55 ? '#fff' : '#334155';
+                    cells += '<div class="flex flex-col items-center" style="min-width:26px">' +
+                        '<div title="วันที่ ' + d + ' : ' + c + ' เคส" style="width:24px;height:24px;border-radius:6px;background:' + bg + ';color:' + tc + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">' + (c || '') + '</div>' +
+                        '<div style="font-size:9px;color:#94a3b8;margin-top:2px">' + d + '</div></div>';
+                }
+                return '<div><div class="flex items-center gap-2 mb-1"><span style="width:10px;height:10px;border-radius:3px;background:' + color + ';display:inline-block"></span><span class="text-xs font-medium text-slate-600">' + label + '</span></div>' +
+                    '<div class="flex flex-wrap gap-1">' + cells + '</div></div>';
+            };
+            const admitEl = document.getElementById('calAdmit');
+            const order = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'Other'];
+            admitEl.innerHTML = order.filter(t => admitByType[t]).map(t => buildRow(t, CAT[t] || '#94a3b8', admitByType[t])).join('') || '<p class="text-xs text-slate-400">ไม่มีข้อมูล</p>';
+            const devEl = document.getElementById('calDevice');
+            devEl.innerHTML = ['CAUTI', 'VAP', 'CLABSI'].filter(t => Object.keys(devByType[t]).length).map(t => buildRow(t + ' (ใส่สาย)', CAT[t], devByType[t])).join('') || '<p class="text-xs text-slate-400">ไม่มีข้อมูลวันใส่อุปกรณ์</p>';
+        }
+        // hex -> rgba
+        function hexToRgba(hex, a) { const h = (hex || '#94a3b8').replace('#', ''); return 'rgba(' + parseInt(h.slice(0, 2), 16) + ',' + parseInt(h.slice(2, 4), 16) + ',' + parseInt(h.slice(4, 6), 16) + ',' + a + ')'; }
+
         function updateServiceView() {
             const rows = getRowsForWards();
             updateWoundCharts(rows);
+            renderOnsetCalendars();
             const den = aggregateDenominatorsByMonth(rows);
             // การ์ดสรุป (ยอดรวมทั้งช่วง)
             const tot = { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0, cathN: 0, venN: 0, lineN: 0 };
