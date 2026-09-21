@@ -765,6 +765,11 @@
             <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-800">
                 <b>เฝ้าระวัง SSI หลังจำหน่าย</b> — 4 หัตถการเป้าหมาย: Phaco (H25x), THR (M16x), TKR (M17x), TAH (D25x) · ชนิดดูจาก pdx · ติดตามการมาตามนัด (appoint_status) และ Re-admit ภายใน 30 วัน · นับรายผู้ป่วย (an)
             </div>
+            <!-- เลือกปีข้อมูล (แต่ละปีคือแท็บหนึ่งในชีต) -->
+            <div class="flex items-center gap-3">
+                <label for="postdcYear" class="text-sm font-medium text-slate-700">ปีข้อมูล</label>
+                <select id="postdcYear" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></select>
+            </div>
             <!-- Post-discharge KPI cards -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="kpi bg-gradient-to-r from-emerald-400 to-green-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
@@ -1119,7 +1124,13 @@
         let postdcChartInstance = null;
         let postdcLoaded = false;
         let postdcGroups = [];
-        const POSTDC_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUsIGlcFC6itNI9BDMt44HiTpFvUPLBHTkg7CU0_zaP7iyim693r5inKdwx489eRbIZKAWpNrLhQtS/pub?output=csv';
+        let postdcYearSel = null; // ปีที่กำลังเลือกอยู่
+        // ปี (พ.ศ.) -> ลิงก์ CSV ของแท็บปีนั้น (เผยแพร่เป็น CSV ต่อแท็บ)
+        // เพิ่มปีใหม่: เผยแพร่แท็บปีนั้นเป็น CSV แล้ววางลิงก์ตรงนี้ เรียงปีใหม่ไว้บนสุด
+        const POSTDC_YEARS = {
+            '2568': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUsIGlcFC6itNI9BDMt44HiTpFvUPLBHTkg7CU0_zaP7iyim693r5inKdwx489eRbIZKAWpNrLhQtS/pub?output=csv'
+            // '2569': 'https://docs.google.com/.../pub?gid=<gid ของแท็บปี 2569>&single=true&output=csv',
+        };
 
         async function loadData() {
             const res = await fetch(SHEET_CSV_URL);
@@ -2169,7 +2180,21 @@
             skipAutoChart: true, skipTable: true, onLoaded: (headers, rows) => postdcSummarize(headers, rows)
         };
         function loadIndicators(force) { return loadPubCsv(INDICATOR_CSV_URL, INDICATOR_OPTS, force); }
-        function loadPostDC(force) { return loadPubCsv(POSTDC_CSV_URL, POSTDC_OPTS, force); }
+        // เติมตัวเลือกปีลง dropdown (ครั้งเดียว) แล้วตั้งค่าปีเริ่มต้นเป็นปีบนสุด
+        function initPostdcYears() {
+            const sel = document.getElementById('postdcYear');
+            if (sel.options.length) return;
+            const years = Object.keys(POSTDC_YEARS);
+            years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = 'ปี ' + y; sel.appendChild(o); });
+            postdcYearSel = years[0] || null;
+            if (postdcYearSel) sel.value = postdcYearSel;
+        }
+        function loadPostDC(force) {
+            initPostdcYears();
+            const url = POSTDC_YEARS[postdcYearSel];
+            if (!url) { document.getElementById('postdcStatus').textContent = 'ยังไม่ได้ตั้งค่าลิงก์ข้อมูลของปีนี้'; return; }
+            return loadPubCsv(url, POSTDC_OPTS, force);
+        }
 
         // นัดนี้เกี่ยวกับการผ่าตัดไหม (จับคู่ clinic_name กับแผนกของหัตถการ)
         function pdcRelated(surgery, clinic) {
@@ -2566,6 +2591,7 @@
         document.getElementById('btnExportSpecial').addEventListener('click', exportSpecialCSV);
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
         document.getElementById('btnReloadPostDC').addEventListener('click', () => loadPostDC(true));
+        document.getElementById('postdcYear').addEventListener('change', e => { postdcYearSel = e.target.value; loadPostDC(true); });
         document.getElementById('pdcSeqSurgery').addEventListener('change', e => renderPdcSeq(e.target.value));
         document.getElementById('pdcOnlyRelated').addEventListener('change', () => renderPdcSeq(document.getElementById('pdcSeqSurgery').value));
 
