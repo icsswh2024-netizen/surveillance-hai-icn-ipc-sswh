@@ -1728,19 +1728,19 @@
             // สะท้อนเส้นเดียวกับกราฟจำนวน (ตัวกรองเดียวกัน) แต่พล็อตเป็น "อัตรา"
             const rateDatasets = [];
             const badgeRate = (ds, hex) => { ds._badge = true; ds._badgeColor = badgeGrad2(ctxRate, hex); return ds; };
+            // เส้น HAI รวม (พื้น) แสดงเสมอ + ตัวเลขกำกับ
+            rateDatasets.push(badgeRate(mkRateDs('HAI', CAT.HAI, true), CAT.HAI));
             if (siteSel === 'ALL') {
-                rateDatasets.push(badgeRate(mkRateDs('HAI', CAT.HAI, true), CAT.HAI)); // เส้น HAI รวม (พื้น) + ตัวเลข
                 TREND_TYPES.forEach(t => {
                     if (!RATE_META[t.key]) return; // เฉพาะชนิดที่มีสูตรอัตรา
                     if (visibleMonths.some(m => byMonth[m][t.key] > 0)) rateDatasets.push(mkRateDs(t.key, t.color));
                 });
                 document.getElementById('trendRateHint').textContent = '(HAI /1,000 วันนอน · ชนิดอื่นตามสูตรของแต่ละชนิด)';
             } else if (RATE_META[siteSel]) {
-                rateDatasets.push(badgeRate(mkRateDs(siteSel, CAT[siteSel] || CAT.Other, true), CAT[siteSel] || CAT.Other));
-                document.getElementById('trendRateHint').textContent = '(' + siteSel + ' ' + RATE_META[siteSel].unit + ')';
+                rateDatasets.push(badgeRate(mkRateDs(siteSel, CAT[siteSel] || CAT.Other, false), CAT[siteSel] || CAT.Other));
+                document.getElementById('trendRateHint').textContent = '(HAI รวม + ' + siteSel + ' ' + RATE_META[siteSel].unit + ')';
             } else {
-                rateDatasets.push(badgeRate(mkRateDs('HAI', CAT.HAI, true), CAT.HAI));
-                document.getElementById('trendRateHint').textContent = '(ชนิดนี้ไม่มีสูตรอัตรา — แสดง HAI รวม)';
+                document.getElementById('trendRateHint').textContent = '(HAI รวม — ชนิดนี้ไม่มีสูตรอัตรา)';
             }
             if (trendRateChartInstance) trendRateChartInstance.destroy();
             trendRateChartInstance = new Chart(ctxRate, {
