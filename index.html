@@ -207,7 +207,7 @@
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
                     <h3 class="text-lg font-semibold text-slate-800">จำนวนเคสติดเชื้อรายเดือน (แยกชนิด)</h3>
                     <div class="flex items-center gap-2 self-start">
-                    <input id="trendYMax" type="number" min="1" step="1" placeholder="สเกล Y อัตโนมัติ" title="กำหนดค่าสูงสุดแกน Y (เว้นว่าง = อัตโนมัติ)" class="w-32 rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <select id="trendYMax" title="สเกลแกน Y" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"></select>
                     <select id="trendSite" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                         <option value="ALL">ทุกชนิด (SITE)</option>
                         <option value="CAUTI">CAUTI</option>
@@ -227,7 +227,7 @@
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
                     <h3 class="text-lg font-semibold text-slate-800">อัตราการติดเชื้อรายเดือน <span id="trendRateHint" class="text-xs font-normal text-slate-400">(ตามชนิดที่เลือก)</span></h3>
-                    <input id="trendRateYMax" type="number" min="0.1" step="0.5" placeholder="สเกล Y อัตโนมัติ" title="กำหนดค่าสูงสุดแกน Y (เว้นว่าง = อัตโนมัติ)" class="w-32 self-start rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <select id="trendRateYMax" title="สเกลแกน Y" class="self-start rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"></select>
                 </div>
                 <div class="relative h-72 w-full"><canvas id="trendRateChart"></canvas></div>
             </div>
@@ -1230,9 +1230,11 @@
                     if (!ds._badge) return;
                     const meta = chart.getDatasetMeta(di);
                     if (meta.hidden) return;
+                    const area = chart.chartArea;
                     meta.data.forEach((pt, i) => {
                         const v = ds.data[i];
                         if (v == null) return;
+                        if (area && (pt.y < area.top - 0.5 || pt.y > area.bottom + 0.5)) return; // จุดเกินสเกล -> ไม่วาดป้าย
                         // จัดรูปตัวเลข: ทศนิยมโชว์ 2 ตำแหน่ง (สำหรับกราฟอัตรา), จำนวนเต็มโชว์ตามเดิม
                         const txt = (typeof v === 'number' && !Number.isInteger(v)) ? v.toFixed(2) : String(v);
                         ctx.save();
@@ -3127,8 +3129,15 @@
         document.getElementById('btnReloadPostDC').addEventListener('click', () => loadPostDC(true));
         document.getElementById('pdcStatusVisit').addEventListener('change', () => renderPdcStatusTable());
         document.getElementById('trendSite').addEventListener('change', () => updateDashboard());
-        document.getElementById('trendYMax').addEventListener('input', () => updateDashboard());
-        document.getElementById('trendRateYMax').addEventListener('input', () => updateDashboard());
+        // เติมตัวเลือกสเกลแกน Y: อัตโนมัติ + 10,15,20,...,100
+        (function () {
+            const opts = '<option value="">สเกล: อัตโนมัติ</option>' +
+                Array.from({ length: 19 }, (_, i) => { const v = 10 + i * 5; return '<option value="' + v + '">สูงสุด ' + v + '</option>'; }).join('');
+            document.getElementById('trendYMax').innerHTML = opts;
+            document.getElementById('trendRateYMax').innerHTML = opts;
+        })();
+        document.getElementById('trendYMax').addEventListener('change', () => updateDashboard());
+        document.getElementById('trendRateYMax').addEventListener('change', () => updateDashboard());
         document.getElementById('pdcMonth').addEventListener('change', () => loadPostDC());
         // dropdown เลือกหลายเดือนของกราฟเปรียบเทียบ
         document.getElementById('pdcCmpBtn').addEventListener('click', e => {
