@@ -33,9 +33,19 @@
 
         /* การ์ด KPI สไตล์เหมือนภาพ: วงกลมโปร่ง + วงซ้อน + ไอคอนในวงกลม */
         .kpi { position: relative; overflow: hidden; }
-        .kpi .ring { display: none; }
-        .kpi .ring-lg { width: 8.5rem; height: 8.5rem; right: -2.5rem; }
-        .kpi .ring-sm { width: 5rem; height: 5rem; right: 0.75rem; }
+        /* ฟองบับเบิลลอยในการ์ด (reuse .ring spans เป็นฟอง) */
+        .kpi .ring { position: absolute; border-radius: 9999px;
+            background: radial-gradient(circle at 32% 30%, rgba(255,255,255,.45), rgba(255,255,255,.12) 60%, rgba(255,255,255,.04));
+            pointer-events: none; animation: kpiFloat 6s ease-in-out infinite; }
+        .kpi .ring-lg { width: 6.5rem; height: 6.5rem; right: -1.5rem; top: -1.25rem; animation-duration: 7s; }
+        .kpi .ring-sm { width: 3rem; height: 3rem; right: 3.2rem; bottom: -0.75rem; top: auto; animation-delay: 1.2s; }
+        .kpi::before, .kpi::after { content: ""; position: absolute; border-radius: 9999px;
+            background: radial-gradient(circle at 32% 30%, rgba(255,255,255,.4), rgba(255,255,255,.08) 65%);
+            pointer-events: none; animation: kpiFloat 5.5s ease-in-out infinite; }
+        .kpi::before { width: 1.6rem; height: 1.6rem; right: 1rem; bottom: 0.6rem; animation-delay: .6s; }
+        .kpi::after { width: 1rem; height: 1rem; right: 5.5rem; top: 1rem; animation-delay: 2s; }
+        @keyframes kpiFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @media (prefers-reduced-motion: reduce) { .kpi .ring, .kpi::before, .kpi::after { animation: none; } }
         .kpi .kpi-icon { position: absolute; top: 50%; right: 1.35rem; transform: translateY(-50%);
             width: 3rem; height: 3rem; border-radius: 9999px; background: rgba(255,255,255,.22);
             display: flex; align-items: center; justify-content: center; color: #fff; z-index: 5; }
