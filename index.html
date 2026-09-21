@@ -230,7 +230,7 @@
         <div class="grid grid-cols-1 gap-6">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <h3 class="text-lg font-semibold text-slate-800 mb-4">สัดส่วนการติดเชื้อแยกตามตำแหน่ง (SITE)</h3>
-                <div class="relative h-72 w-full"><canvas id="siteChart"></canvas></div>
+                <div class="relative h-96 w-full"><canvas id="siteChart"></canvas></div>
             </div>
         </div>
 
@@ -1260,6 +1260,51 @@
         };
         if (window.Chart) Chart.register(centerText);
 
+        // Plugin: โยงเส้นจากชิ้นโดนัทออกมาที่ป้าย (SITE + จำนวน + ร้อยละ + อัตรา)
+        const donutOutLabels = {
+            id: 'donutOutLabels',
+            afterDatasetsDraw(chart) {
+                const cfg = chart.config.options.plugins && chart.config.options.plugins.outLabels;
+                if (!cfg || !cfg.display) return;
+                const ctx = chart.ctx;
+                const meta = chart.getDatasetMeta(0);
+                const ds = chart.data.datasets[0];
+                const total = ds.data.reduce((a, b) => a + (+b || 0), 0);
+                const items = [];
+                meta.data.forEach((arc, i) => {
+                    const v = +ds.data[i] || 0; if (v <= 0) return;
+                    const mid = (arc.startAngle + arc.endAngle) / 2;
+                    const x0 = arc.x + Math.cos(mid) * arc.outerRadius;
+                    const y0 = arc.y + Math.sin(mid) * arc.outerRadius;
+                    items.push({ i, cx: arc.x, cy: arc.y, r: arc.outerRadius, x0, y0, side: Math.cos(mid) >= 0 ? 1 : -1, v, label: chart.data.labels[i], color: ds.backgroundColor[i] });
+                });
+                ctx.save();
+                [-1, 1].forEach(side => {
+                    const group = items.filter(it => it.side === side).sort((a, b) => a.y0 - b.y0);
+                    let prevY = -Infinity; const gap = 26;
+                    group.forEach(it => { it.ly = Math.max(it.y0, prevY + gap); prevY = it.ly; });
+                    group.forEach(it => {
+                        const kneeX = it.cx + side * (it.r + 14);
+                        const labelX = it.cx + side * (it.r + 24);
+                        ctx.strokeStyle = it.color; ctx.lineWidth = 1.5;
+                        ctx.beginPath(); ctx.moveTo(it.x0, it.y0); ctx.lineTo(kneeX, it.ly); ctx.lineTo(labelX, it.ly); ctx.stroke();
+                        ctx.fillStyle = it.color; ctx.beginPath(); ctx.arc(it.x0, it.y0, 2.5, 0, Math.PI * 2); ctx.fill();
+                        const pct = total ? Math.round(it.v / total * 100) : 0;
+                        const rm = (cfg.rates || {})[it.label];
+                        const l1 = it.label + '  ' + it.v + ' (' + pct + '%)';
+                        const l2 = rm && rm.r != null ? ('อัตรา ' + rm.r + ' ' + rm.unit) : '';
+                        const tx = labelX + side * 4;
+                        ctx.textBaseline = 'middle'; ctx.textAlign = side === 1 ? 'left' : 'right';
+                        ctx.fillStyle = '#0f172a'; ctx.font = '600 11px Kanit, sans-serif';
+                        ctx.fillText(l1, tx, it.ly - (l2 ? 6 : 0));
+                        if (l2) { ctx.fillStyle = '#64748b'; ctx.font = '500 10px Kanit, sans-serif'; ctx.fillText(l2, tx, it.ly + 7); }
+                    });
+                });
+                ctx.restore();
+            }
+        };
+        if (window.Chart) Chart.register(donutOutLabels);
+
         // แปลงค่าเป็นตัวเลข (รองรับคอมมา/ช่องว่าง/ค่าว่าง -> 0)
         function num(x) {
             const n = parseFloat((x || '').toString().replace(/,/g, '').trim());
@@ -1818,10 +1863,12 @@
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    cutout: '68%',
+                    cutout: '62%',
+                    layout: { padding: { left: 160, right: 160, top: 10, bottom: 10 } },
                     plugins: {
                         centerText: { display: true, value: siteTotal, label: 'เคสรวม' },
-                        legend: { position: 'right', labels: { usePointStyle: true, font: { family: 'Inter' } } },
+                        outLabels: { display: true, rates: Object.fromEntries(siteKeys.map(k => [k, { r: siteRate(k), unit: (RATE_META[k] || {}).unit || '' }])) },
+                        legend: { display: false },
                         tooltip: { callbacks: { label: c => {
                             const key = c.label, v = c.parsed;
                             const pct = siteTotal ? Math.round(v / siteTotal * 100) : 0;
