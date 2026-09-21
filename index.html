@@ -204,7 +204,21 @@
         <!-- Charts Section -->
         <div class="grid grid-cols-1 gap-6">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h3 class="text-lg font-semibold text-slate-800 mb-4">จำนวนเคสติดเชื้อรายเดือน (แยกชนิด)</h3>
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                    <h3 class="text-lg font-semibold text-slate-800">จำนวนเคสติดเชื้อรายเดือน (แยกชนิด)</h3>
+                    <select id="trendSite" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 self-start">
+                        <option value="ALL">ทุกชนิด (SITE)</option>
+                        <option value="CAUTI">CAUTI</option>
+                        <option value="VAP">VAP</option>
+                        <option value="HAP">HAP</option>
+                        <option value="CLABSI">CLABSI</option>
+                        <option value="SSI">SSI</option>
+                        <option value="UTI">UTI</option>
+                        <option value="BSI">BSI</option>
+                        <option value="Omphalitis">Omphalitis</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
                 <div class="relative h-72 w-full"><canvas id="trendChart"></canvas></div>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -1640,9 +1654,19 @@
             });
             // เส้น HAI (ยอดรวม) แสดงเสมอ — พื้นเขียว + จุดสีเข้มโชว์ตัวเลข + เส้นชนิดเชื้อที่มีข้อมูล
             const haiDs = mkDataset('HAI', CAT.HAI, true);
-            haiDs._badge = true; haiDs._badgeColor = darken(CAT.HAI);
+            // ไล่เฉดเขียว 2 สี (อ่อน -> เข้ม) ทั้งเส้นและจุดตัวเลข
+            const gW = ctxTrend.canvas.width || 800;
+            const lineGrad = ctxTrend.createLinearGradient(0, 0, gW, 0);
+            lineGrad.addColorStop(0, '#34d399'); lineGrad.addColorStop(1, '#047857');
+            const badgeGrad = ctxTrend.createLinearGradient(0, 0, gW, 0);
+            badgeGrad.addColorStop(0, '#059669'); badgeGrad.addColorStop(1, '#065f46');
+            haiDs.borderColor = lineGrad;
+            haiDs._badge = true; haiDs._badgeColor = badgeGrad;
             const trendDatasets = [haiDs];
+            // ตัวกรอง SITE: ถ้าเลือกชนิดใดชนิดหนึ่ง แสดงเฉพาะเส้นนั้น (+ HAI)
+            const siteSel = (document.getElementById('trendSite') || {}).value || 'ALL';
             TREND_TYPES.forEach(t => {
+                if (siteSel !== 'ALL' && t.key !== siteSel) return;
                 if (visibleMonths.some(m => byMonth[m][t.key] > 0)) trendDatasets.push(mkDataset(t.key, t.color));
             });
 
@@ -2927,6 +2951,7 @@
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
         document.getElementById('btnReloadPostDC').addEventListener('click', () => loadPostDC(true));
         document.getElementById('pdcStatusVisit').addEventListener('change', () => renderPdcStatusTable());
+        document.getElementById('trendSite').addEventListener('change', () => updateDashboard());
         document.getElementById('pdcMonth').addEventListener('change', () => loadPostDC());
         // dropdown เลือกหลายเดือนของกราฟเปรียบเทียบ
         document.getElementById('pdcCmpBtn').addEventListener('click', e => {
