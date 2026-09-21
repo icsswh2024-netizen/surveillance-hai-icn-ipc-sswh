@@ -1197,6 +1197,12 @@
             const b = Math.round(parseInt(h.substring(4, 6), 16) * f);
             return 'rgb(' + r + ',' + g + ',' + b + ')';
         }
+        // เฉดสี 2 สีสำหรับป้าย badge (จากสี hex -> เข้ม 2 ระดับ ซ้าย->ขวา)
+        function badgeGrad2(ctx, hex, w) {
+            const g = ctx.createLinearGradient(0, 0, w || (ctx.canvas ? ctx.canvas.width : 800), 0);
+            g.addColorStop(0, darken(hex, 0.9)); g.addColorStop(1, darken(hex, 0.55));
+            return g;
+        }
 
         // Plugin: วาดจุดสีเข้มพร้อมตัวเลขบนกราฟ (เฉพาะ dataset ที่ตั้ง _badge)
         const valueBadge = {
@@ -1210,16 +1216,19 @@
                     meta.data.forEach((pt, i) => {
                         const v = ds.data[i];
                         if (v == null) return;
+                        // จัดรูปตัวเลข: ทศนิยมโชว์ 2 ตำแหน่ง (สำหรับกราฟอัตรา), จำนวนเต็มโชว์ตามเดิม
+                        const txt = (typeof v === 'number' && !Number.isInteger(v)) ? v.toFixed(2) : String(v);
                         ctx.save();
-                        ctx.beginPath();
-                        ctx.arc(pt.x, pt.y, 12, 0, Math.PI * 2);
-                        ctx.fillStyle = ds._badgeColor || darken(ds.borderColor);
-                        ctx.fill();
-                        ctx.fillStyle = '#fff';
                         ctx.font = 'bold 11px Kanit, sans-serif';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(String(v), pt.x, pt.y);
+                        const r = Math.max(12, ctx.measureText(txt).width / 2 + 7); // วงกลมพอดีข้อความ
+                        ctx.beginPath();
+                        ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+                        ctx.fillStyle = ds._badgeColor || darken(ds.borderColor);
+                        ctx.fill();
+                        ctx.fillStyle = '#fff';
+                        ctx.fillText(txt, pt.x, pt.y);
                         ctx.restore();
                     });
                 });
@@ -1718,18 +1727,19 @@
             };
             // สะท้อนเส้นเดียวกับกราฟจำนวน (ตัวกรองเดียวกัน) แต่พล็อตเป็น "อัตรา"
             const rateDatasets = [];
+            const badgeRate = (ds, hex) => { ds._badge = true; ds._badgeColor = badgeGrad2(ctxRate, hex); return ds; };
             if (siteSel === 'ALL') {
-                rateDatasets.push(mkRateDs('HAI', CAT.HAI, true)); // เส้น HAI รวม (พื้น)
+                rateDatasets.push(badgeRate(mkRateDs('HAI', CAT.HAI, true), CAT.HAI)); // เส้น HAI รวม (พื้น) + ตัวเลข
                 TREND_TYPES.forEach(t => {
                     if (!RATE_META[t.key]) return; // เฉพาะชนิดที่มีสูตรอัตรา
                     if (visibleMonths.some(m => byMonth[m][t.key] > 0)) rateDatasets.push(mkRateDs(t.key, t.color));
                 });
                 document.getElementById('trendRateHint').textContent = '(HAI /1,000 วันนอน · ชนิดอื่นตามสูตรของแต่ละชนิด)';
             } else if (RATE_META[siteSel]) {
-                rateDatasets.push(mkRateDs(siteSel, CAT[siteSel] || CAT.Other, true));
+                rateDatasets.push(badgeRate(mkRateDs(siteSel, CAT[siteSel] || CAT.Other, true), CAT[siteSel] || CAT.Other));
                 document.getElementById('trendRateHint').textContent = '(' + siteSel + ' ' + RATE_META[siteSel].unit + ')';
             } else {
-                rateDatasets.push(mkRateDs('HAI', CAT.HAI, true));
+                rateDatasets.push(badgeRate(mkRateDs('HAI', CAT.HAI, true), CAT.HAI));
                 document.getElementById('trendRateHint').textContent = '(ชนิดนี้ไม่มีสูตรอัตรา — แสดง HAI รวม)';
             }
             if (trendRateChartInstance) trendRateChartInstance.destroy();
