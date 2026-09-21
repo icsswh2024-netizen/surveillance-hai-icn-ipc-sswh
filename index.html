@@ -851,6 +851,18 @@
                 </div>
             </div>
 
+            <!-- กราฟเปรียบเทียบการมาตามนัด รายเดือน (เลือกหลายเดือน) -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">เปรียบเทียบการมาตามนัด รายเดือน</h3>
+                        <p class="text-xs text-slate-400 mt-1">แท่ง = จำนวนมา/ขาด (ราย) · เส้น = %มาตามนัด · เลือกเดือนที่ต้องการเทียบด้านขวา</p>
+                    </div>
+                    <div id="pdcCmpMonths" class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600 max-w-md"></div>
+                </div>
+                <div class="relative h-80 w-full"><canvas id="pdcCmpChart"></canvas></div>
+            </div>
+
             <!-- Visit-sequence breakdown -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
@@ -1197,6 +1209,8 @@
         function specialUnitOf(d) { return (d.rawSITE || '').toString().toUpperCase() || '(ไม่ระบุ)'; }
         const INDICATOR_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTj9sgM8ezxJ89owzZUnYwkQnzbNso4xZ3LQD6tH1gv7VSS2LY_CUi-Blc2MF1oGJOFWkeNumotrb54/pub?gid=1799512390&single=true&output=csv';
         let postdcChartInstance = null;
+        let pdcCmpChartInstance = null;
+        let postdcMonthAgg = {};   // {month: {came, missed}} รวมทั้งปี (ไม่ขึ้นกับตัวกรอง cohort)
         let postdcLoaded = false;
         let postdcGroups = [];
         let postdcYearSel = null; // ปีที่กำลังเลือกอยู่
@@ -2395,6 +2409,46 @@
             for (const t of toks) { const m = matchSurgeryCode(t); if (m) return m; }
             return 'อื่นๆ';
         }
+        // สร้าง checkbox เลือกเดือน (เฉพาะเดือนที่มีข้อมูล) — ครั้งเดียวต่อการโหลด
+        function initPdcCmpMonths() {
+            const box = document.getElementById('pdcCmpMonths');
+            const avail = FISCAL_MONTHS.filter(m => postdcMonthAgg[m]);
+            box.innerHTML = (avail.length ? avail : FISCAL_MONTHS).map(m =>
+                '<label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="pdcCmpM rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" value="' + m + '" checked> ' + MONTH_LABELS[m] + '</label>'
+            ).join('');
+            box.querySelectorAll('.pdcCmpM').forEach(c => c.addEventListener('change', renderPdcCmpChart));
+        }
+        // กราฟ combo เปรียบเทียบรายเดือน: แท่งมา/ขาด + เส้น %มาตามนัด
+        function renderPdcCmpChart() {
+            const months = Array.from(document.querySelectorAll('.pdcCmpM:checked')).map(c => +c.value);
+            const labels = months.map(m => MONTH_LABELS[m]);
+            const came = months.map(m => (postdcMonthAgg[m] || {}).came || 0);
+            const missed = months.map(m => (postdcMonthAgg[m] || {}).missed || 0);
+            const pct = months.map(m => { const d = (postdcMonthAgg[m] || {}); const t = (d.came || 0) + (d.missed || 0); return t ? +(d.came / t * 100).toFixed(1) : 0; });
+            const ctx = document.getElementById('pdcCmpChart').getContext('2d');
+            if (pdcCmpChartInstance) pdcCmpChartInstance.destroy();
+            pdcCmpChartInstance = new Chart(ctx, {
+                data: {
+                    labels,
+                    datasets: [
+                        { type: 'bar', label: 'มาตามนัด (ราย)', data: came, backgroundColor: CAT.HAI, borderRadius: 6, yAxisID: 'y', order: 2 },
+                        { type: 'bar', label: 'ขาดนัด (ราย)', data: missed, backgroundColor: CAT.CLABSI, borderRadius: 6, yAxisID: 'y', order: 2 },
+                        { type: 'line', label: '%มาตามนัด', data: pct, borderColor: CAT.SSI, backgroundColor: CAT.SSI, tension: 0.3, yAxisID: 'y1', order: 1, _badge: true, _badgeColor: darken(CAT.SSI) }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { usePointStyle: true } },
+                        tooltip: { callbacks: { label: c => c.dataset.yAxisID === 'y1' ? c.dataset.label + ': ' + c.parsed.y + '%' : c.dataset.label + ': ' + c.parsed.y } } },
+                    scales: {
+                        y: { beginAtZero: true, position: 'left', ticks: { precision: 0 }, title: { display: true, text: 'จำนวน (ราย)' } },
+                        y1: { beginAtZero: true, max: 100, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '%มาตามนัด' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
         // ตารางเทียบจำนวนผ่าตัด (ทะเบียน-1: eye/hip/knee/gyn) กับผู้ป่วยติดตาม (Post-DC)
         function renderPdcVsSurgery() {
             const rows = getFilteredRows(); // ทะเบียน-1 ตามตัวกรองปี/ไตรมาส/หอ
@@ -2525,9 +2579,20 @@
 
             // เก็บกลุ่มผู้ป่วยไว้ให้ตารางครั้งที่นัดเรียกใช้ (กรองตามชนิดผ่าตัดได้)
             postdcGroups = arr;
+            // รวมมา/ขาด รายเดือน (ทั้งปี ไม่ขึ้นกับตัวกรอง cohort) สำหรับกราฟเปรียบเทียบ
+            postdcMonthAgg = {};
+            Object.values(g).forEach(p => {
+                p.appts.filter(a => pdcRelated(p.surgery, a.clinic) && a.t).forEach(a => {
+                    if (a.s !== 'came' && a.s !== 'missed') return;
+                    const mo = new Date(a.t).getMonth() + 1;
+                    (postdcMonthAgg[mo] || (postdcMonthAgg[mo] = { came: 0, missed: 0 }))[a.s]++;
+                });
+            });
             renderPdcSeq(document.getElementById('pdcSeqSurgery').value || 'ALL'); // ตั้งค่าการ์ด KPI + ตารางในนี้
             renderPdcStatusTable();
             renderPdcVsSurgery();
+            initPdcCmpMonths();
+            renderPdcCmpChart();
             const groups = postdcGroups; // ใช้ชุดที่กรองไตรมาสแล้ว
             document.getElementById('pdcReadmit').textContent = groups.filter(x => x.readmit).length;
 
