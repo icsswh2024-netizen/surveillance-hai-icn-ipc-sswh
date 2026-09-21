@@ -1716,15 +1716,22 @@
                 };
                 return ds;
             };
+            // สะท้อนเส้นเดียวกับกราฟจำนวน (ตัวกรองเดียวกัน) แต่พล็อตเป็น "อัตรา"
             const rateDatasets = [];
-            if (siteSel !== 'ALL' && RATE_META[siteSel]) {
+            if (siteSel === 'ALL') {
+                rateDatasets.push(mkRateDs('HAI', CAT.HAI, true)); // เส้น HAI รวม (พื้น)
+                TREND_TYPES.forEach(t => {
+                    if (!RATE_META[t.key]) return; // เฉพาะชนิดที่มีสูตรอัตรา
+                    if (visibleMonths.some(m => byMonth[m][t.key] > 0)) rateDatasets.push(mkRateDs(t.key, t.color));
+                });
+                document.getElementById('trendRateHint').textContent = '(HAI /1,000 วันนอน · ชนิดอื่นตามสูตรของแต่ละชนิด)';
+            } else if (RATE_META[siteSel]) {
                 rateDatasets.push(mkRateDs(siteSel, CAT[siteSel] || CAT.Other, true));
+                document.getElementById('trendRateHint').textContent = '(' + siteSel + ' ' + RATE_META[siteSel].unit + ')';
             } else {
-                // ALL หรือชนิดที่ไม่มีสูตรอัตรา (HAP/UTI/BSI/Other) -> แสดงอัตรา HAI รวม
                 rateDatasets.push(mkRateDs('HAI', CAT.HAI, true));
+                document.getElementById('trendRateHint').textContent = '(ชนิดนี้ไม่มีสูตรอัตรา — แสดง HAI รวม)';
             }
-            document.getElementById('trendRateHint').textContent = siteSel === 'ALL' ? '(HAI รวม /1,000 วันนอน)' :
-                RATE_META[siteSel] ? '(' + siteSel + ' ' + RATE_META[siteSel].unit + ')' : '(ชนิดนี้ไม่มีสูตรอัตรา — แสดง HAI รวม)';
             if (trendRateChartInstance) trendRateChartInstance.destroy();
             trendRateChartInstance = new Chart(ctxRate, {
                 type: 'line',
