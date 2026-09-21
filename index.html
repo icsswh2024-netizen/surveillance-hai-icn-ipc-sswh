@@ -1160,7 +1160,11 @@
             CAUTI:  { den: 'cathDay',    factor: 1000, unit: '/1000 วันคาสาย' },
             VAP:    { den: 'venDay',     factor: 1000, unit: '/1000 วันเครื่องช่วยหายใจ' },
             CLABSI: { den: 'lineDay',    factor: 1000, unit: '/1000 วันคาสายหลอดเลือด' },
-            SSI:    { den: 'op',         factor: 100,  unit: '/100 ผ่าตัด' }
+            SSI:    { den: 'op',         factor: 100,  unit: '/100 ผ่าตัด' },
+            HAP:    { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' },
+            UTI:    { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' },
+            BSI:    { den: 'ivDay',      factor: 1000, unit: '/1,000 วันให้สารน้ำ+NSS Lock' },
+            Omphalitis: { den: 'liveBirth', factor: 1000, unit: '/1,000 เด็กเกิดมีชีพ' }
         };
         // อัตราของชนิด key ในเดือน m (คืน number หรือ null ถ้าไม่มีตัวหาร/ไม่มีสูตร)
         function rateFor(key, m, byMonth, den) {
@@ -1329,7 +1333,7 @@
         // รวมตัวหารต่อเดือน: วัน device-days / วันนอน / จำนวนผ่าตัด (จากทุกแถว)
         function aggregateDenominatorsByMonth(rows) {
             const den = {};
-            FISCAL_MONTHS.forEach(m => { den[m] = { cathDay: 0, venDay: 0, lineDay: 0, patientDay: 0, op: 0, cathN: 0, venN: 0, lineN: 0 }; });
+            FISCAL_MONTHS.forEach(m => { den[m] = { cathDay: 0, venDay: 0, lineDay: 0, patientDay: 0, op: 0, cathN: 0, venN: 0, lineN: 0, ivDay: 0, liveBirth: 0 }; });
             rows.forEach(r => {
                 if (r.month == null || !den[r.month]) return;
                 den[r.month].cathDay += r.cathDay;
@@ -1340,6 +1344,8 @@
                 den[r.month].cathN += r.cathN;
                 den[r.month].venN += r.venN;
                 den[r.month].lineN += r.lineN;
+                den[r.month].ivDay += (r.bsi2 || 0) + (r.bsi4 || 0);   // วันให้สารน้ำ + วัน NSS Lock (ตัวหาร BSI)
+                den[r.month].liveBirth += (r.liveBirth || 0);          // เด็กเกิดมีชีพ (ตัวหาร Omphalitis)
             });
             return den;
         }
