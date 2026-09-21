@@ -34,11 +34,7 @@
         /* การ์ด KPI สไตล์เหมือนภาพ: วงกลมโปร่ง + วงซ้อน + ไอคอนในวงกลม */
         .kpi { position: relative; overflow: hidden; }
         /* ฟองบับเบิลลอยในการ์ด (reuse .ring spans เป็นฟอง) */
-        .kpi .ring { position: absolute; border-radius: 9999px;
-            background: radial-gradient(circle closest-side at 50% 50%, rgba(255,255,255,.32) 0%, rgba(255,255,255,.1) 45%, rgba(255,255,255,0) 100%);
-            pointer-events: none; animation: kpiFloat 6s ease-in-out infinite; }
-        .kpi .ring-lg { width: 6.5rem; height: 6.5rem; right: -1.5rem; top: -1.25rem; animation-duration: 7s; }
-        .kpi .ring-sm { width: 3rem; height: 3rem; right: 3.2rem; bottom: -0.75rem; top: auto; animation-delay: 1.2s; }
+        .kpi .ring { display: none; }
         .kpi::before, .kpi::after { content: ""; position: absolute; border-radius: 9999px;
             background: radial-gradient(circle closest-side at 50% 50%, rgba(255,255,255,.3) 0%, rgba(255,255,255,.08) 45%, rgba(255,255,255,0) 100%);
             pointer-events: none; animation: kpiFloat 5.5s ease-in-out infinite; }
