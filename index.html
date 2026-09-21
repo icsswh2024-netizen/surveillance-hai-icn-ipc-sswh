@@ -2380,6 +2380,14 @@
                 const days = Object.keys(dayMap).map(Number);
                 if (days.length === 0) return '';
                 const maxDay = Math.max(...days), maxCnt = Math.max(...Object.values(dayMap));
+                // ค่าเฉลี่ยถ่วงน้ำหนัก + จำนวนเคสรวม
+                let sumDC = 0, sumC = 0;
+                days.forEach(d => { sumDC += d * dayMap[d]; sumC += dayMap[d]; });
+                const avg = sumC ? (sumDC / sumC).toFixed(1) : '-';
+                const avgBox = '<div class="flex flex-col items-center justify-center rounded-lg text-white shrink-0" style="min-width:64px;padding:4px 8px;background:' + color + '">' +
+                    '<span style="font-size:15px;font-weight:700;line-height:1.1">' + avg + '</span>' +
+                    '<span style="font-size:9px;opacity:.9">วันเฉลี่ย</span>' +
+                    '<span style="font-size:9px;opacity:.85">n=' + sumC + '</span></div>';
                 let cells = '';
                 for (let d = 0; d <= maxDay; d++) {
                     const c = dayMap[d] || 0;
@@ -2391,7 +2399,7 @@
                         '<div style="font-size:9px;color:#94a3b8;margin-top:2px">' + d + '</div></div>';
                 }
                 return '<div><div class="flex items-center gap-2 mb-1"><span style="width:10px;height:10px;border-radius:3px;background:' + color + ';display:inline-block"></span><span class="text-xs font-medium text-slate-600">' + label + '</span></div>' +
-                    '<div class="flex flex-wrap gap-1">' + cells + '</div></div>';
+                    '<div class="flex items-center gap-2"><div>' + avgBox + '</div><div class="flex flex-wrap gap-1">' + cells + '</div></div></div>';
             };
             const admitEl = document.getElementById('calAdmit');
             const order = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'Other'];
