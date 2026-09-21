@@ -2247,15 +2247,19 @@
         }
 
         // นัดนี้เกี่ยวกับการผ่าตัดไหม (จับคู่ clinic_name กับแผนกของหัตถการ)
+        // รายการคลินิกที่เลือกไว้ (whitelist) — ใช้กับทุกตัวกรอง/ทุกส่วน คลินิกนอกรายการนี้ไม่นับเลย
+        //   จักษุ · ศัลยกรรม · ศัลยกรรมกระดูกและข้อ · สูติ-นรีเวช · คลินิก smc
+        const PDC_CLINICS = /จักษุ|ตา|ศัลยกรรม|กระดูก|ออร์โธ|ortho|สูติ|นรีเวช|gyn|smc/i;
         // clinic_name ที่นับเข้าเงื่อนไข (คลินิกเดิมตรงชนิดผ่าตัด):
         //   จักษุ->Phaco · ศัลยกรรมกระดูกและข้อ/ศัลยกรรม->THR,TKR · สูติ-นรีเวช->TAH · คลินิก smc->ทุกชนิด
         function pdcRelated(surgery, clinic) {
             const c = (clinic || '').toString();
+            if (!PDC_CLINICS.test(c)) return false; // ต้องเป็นคลินิกในรายการที่เลือกเท่านั้น
             if (/smc/i.test(c)) return true; // คลินิก smc นับได้ทุกชนิดผ่าตัด
             if (surgery.startsWith('Phaco')) return /จักษุ|ตา/.test(c);
             if (surgery.startsWith('THR') || surgery.startsWith('TKR')) return /ศัลยกรรม|กระดูก|ออร์โธ|ortho/i.test(c);
             if (surgery.startsWith('TAH')) return /สูติ|นรีเวช|gyn/i.test(c);
-            return true;
+            return true; // กลุ่มอื่นๆ: นับได้เฉพาะคลินิกในรายการที่เลือก (ผ่านด่าน whitelist แล้ว)
         }
         // ตารางครั้งที่นัด (กรองตามชนิดผ่าตัด + เฉพาะนัดที่เกี่ยวกับการผ่าตัด)
         function renderPdcSeq(surgeryFilter) {
