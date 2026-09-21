@@ -1349,19 +1349,27 @@
                     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
                 };
                 ctx.save();
+                // วัดความกว้างทุกป้ายก่อน แล้วใช้ความกว้างการ์ดเท่ากันทั้งหมด
+                const padX = 9;
+                let maxTextW = 0;
+                items.forEach(it => {
+                    const pct = total ? Math.round(it.v / total * 100) : 0;
+                    const rm = (cfg.rates || {})[it.label];
+                    it.l1 = it.label + '  ' + it.v + ' (' + pct + '%)';
+                    it.l2 = rm && rm.r != null ? ('อัตรา ' + rm.r + ' ' + rm.unit) : '';
+                    ctx.font = '600 11px Kanit, sans-serif'; const w1 = ctx.measureText(it.l1).width;
+                    ctx.font = '500 10px Kanit, sans-serif'; const w2 = it.l2 ? ctx.measureText(it.l2).width : 0;
+                    maxTextW = Math.max(maxTextW, w1, w2);
+                });
+                const cardW = maxTextW + padX * 2;
                 [-1, 1].forEach(side => {
                     const group = items.filter(it => it.side === side).sort((a, b) => a.y0 - b.y0);
                     let prevY = -Infinity; const gap = 34;
                     group.forEach(it => { it.ly = Math.max(it.y0, prevY + gap); prevY = it.ly; });
                     group.forEach(it => {
                         const kneeX = it.cx + side * (it.r + 14);
-                        const pct = total ? Math.round(it.v / total * 100) : 0;
-                        const rm = (cfg.rates || {})[it.label];
-                        const l1 = it.label + '  ' + it.v + ' (' + pct + '%)';
-                        const l2 = rm && rm.r != null ? ('อัตรา ' + rm.r + ' ' + rm.unit) : '';
-                        ctx.font = '600 11px Kanit, sans-serif'; const w1 = ctx.measureText(l1).width;
-                        ctx.font = '500 10px Kanit, sans-serif'; const w2 = l2 ? ctx.measureText(l2).width : 0;
-                        const padX = 9, cardW = Math.max(w1, w2) + padX * 2, cardH = l2 ? 32 : 22;
+                        const l1 = it.l1, l2 = it.l2;
+                        const cardH = l2 ? 32 : 22;
                         const cardX = side === 1 ? (kneeX + 8) : (kneeX - 8 - cardW);
                         const cardY = it.ly - cardH / 2;
                         // เส้นโยงจากชิ้น -> การ์ด
