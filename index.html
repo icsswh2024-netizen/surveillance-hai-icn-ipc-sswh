@@ -765,11 +765,8 @@
             <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-800">
                 <b>เฝ้าระวัง SSI หลังจำหน่าย</b> — 4 หัตถการเป้าหมาย: Phaco (H25x), THR (M16x), TKR (M17x), TAH (D25x) · ชนิดดูจาก pdx · ติดตามการมาตามนัด (appoint_status) และ Re-admit ภายใน 30 วัน · นับรายผู้ป่วย (an)
             </div>
-            <!-- เลือกปีข้อมูล (แต่ละปีคือแท็บหนึ่งในชีต) -->
-            <div class="flex items-center gap-3">
-                <label for="postdcYear" class="text-sm font-medium text-slate-700">ปีข้อมูล</label>
-                <select id="postdcYear" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></select>
-            </div>
+            <!-- ปีข้อมูลตามตัวกรอง "ปีงบประมาณ" ด้านบน -->
+            <p class="text-xs text-slate-500">ปีข้อมูล: <b id="pdcYearNote" class="text-indigo-700">-</b> <span class="text-slate-400">(เปลี่ยนได้ที่ตัวกรอง "ปีงบประมาณ" ด้านบน)</span></p>
             <!-- Post-discharge KPI cards (จำแนกรายคน ไม่ทับกัน · นับเฉพาะนัดคลินิกเดิม) -->
             <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 <div class="kpi bg-gradient-to-r from-slate-500 to-slate-600 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
@@ -2234,20 +2231,18 @@
             skipAutoChart: true, skipTable: true, onLoaded: (headers, rows) => postdcSummarize(headers, rows)
         };
         function loadIndicators(force) { return loadPubCsv(INDICATOR_CSV_URL, INDICATOR_OPTS, force); }
-        // เติมตัวเลือกปีลง dropdown (ครั้งเดียว) แล้วตั้งค่าปีเริ่มต้นเป็นปีบนสุด
-        function initPostdcYears() {
-            const sel = document.getElementById('postdcYear');
-            if (sel.options.length) return;
-            const years = Object.keys(POSTDC_YEARS);
-            years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = 'ปี ' + y; sel.appendChild(o); });
-            postdcYearSel = years[0] || null;
-            if (postdcYearSel) sel.value = postdcYearSel;
-        }
         function loadPostDC(force) {
-            initPostdcYears();
+            const years = Object.keys(POSTDC_YEARS);          // ปีที่มีแท็บข้อมูล (ใหม่->เก่า)
+            const yv = document.getElementById('filterYear').value; // ค่าจากตัวกรองบน ('ALL' หรือ พ.ศ.)
+            // ถ้าเลือก "ทุกปี" หรือปีที่ยังไม่มีแท็บ -> ใช้ปีล่าสุดที่มีข้อมูล
+            const useYear = POSTDC_YEARS[yv] ? yv : years[0];
+            const changed = useYear !== postdcYearSel;
+            postdcYearSel = useYear;
+            const note = document.getElementById('pdcYearNote');
+            if (note) note.textContent = (yv === 'ALL' || !POSTDC_YEARS[yv]) ? ('ปี ' + useYear + ' (ล่าสุดที่มีข้อมูล)') : ('ปี ' + useYear);
             const url = POSTDC_YEARS[postdcYearSel];
             if (!url) { document.getElementById('postdcStatus').textContent = 'ยังไม่ได้ตั้งค่าลิงก์ข้อมูลของปีนี้'; return; }
-            return loadPubCsv(url, POSTDC_OPTS, force);
+            return loadPubCsv(url, POSTDC_OPTS, force || changed);
         }
 
         // นัดนี้เกี่ยวกับการผ่าตัดไหม (จับคู่ clinic_name กับแผนกของหัตถการ)
@@ -2704,7 +2699,10 @@
 
         // Event listeners
         ['filterYear', 'filterQuarter', 'filterUnit', 'filterPCT'].forEach(id =>
-            document.getElementById(id).addEventListener('change', () => { updateDashboard(); updateWardTable(); updateMdrView(); updateServiceView(); updateAnalysisView(); updateSpecialView(); }));
+            document.getElementById(id).addEventListener('change', () => {
+                updateDashboard(); updateWardTable(); updateMdrView(); updateServiceView(); updateAnalysisView(); updateSpecialView();
+                if (!document.getElementById('viewPostDC').hidden) loadPostDC(); // ให้ Post-discharge ตามปีบน
+            }));
         document.getElementById('btnExport').addEventListener('click', exportCSV);
         document.getElementById('btnExportWards').addEventListener('click', exportWardsCSV);
         document.getElementById('btnExportMdr').addEventListener('click', exportMdrCSV);
@@ -2721,7 +2719,6 @@
         document.getElementById('btnExportSpecial').addEventListener('click', exportSpecialCSV);
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
         document.getElementById('btnReloadPostDC').addEventListener('click', () => loadPostDC(true));
-        document.getElementById('postdcYear').addEventListener('change', e => { postdcYearSel = e.target.value; loadPostDC(true); });
         document.getElementById('pdcStatusVisit').addEventListener('change', () => renderPdcStatusTable());
         document.getElementById('pdcSeqSurgery').addEventListener('change', e => renderPdcSeq(e.target.value));
 
