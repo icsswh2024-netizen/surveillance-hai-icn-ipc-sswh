@@ -798,6 +798,30 @@
                 <div class="relative h-80 w-full"><canvas id="postdcChart"></canvas></div>
             </div>
 
+            <!-- สรุปสถานะนัด: ภาพรวม + รายโรค -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h3 class="text-lg font-semibold text-slate-800">สรุปสถานะนัด — ภาพรวมและรายชนิดผ่าตัด</h3>
+                    <p class="text-xs text-slate-400 mt-1">นับจำนวนนัด (คลินิกเดิม) ตามสถานะ · "ไม่มีการนัดหมาย" นับรายผู้ป่วย</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">ชนิดผ่าตัด</th>
+                                <th class="py-3 px-4 text-right">ผู้ป่วย (ราย)</th>
+                                <th class="py-3 px-4 text-right text-emerald-700">มาตามนัด</th>
+                                <th class="py-3 px-4 text-right text-rose-700">ขาดนัด</th>
+                                <th class="py-3 px-4 text-right text-slate-500">ยังไม่ถึงวันนัด</th>
+                                <th class="py-3 px-4 text-right text-slate-400">ไม่มีการนัดหมาย</th>
+                                <th class="py-3 px-4 text-right text-blue-700">%มาตามนัด</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pdcStatusBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Visit-sequence breakdown -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
@@ -2333,6 +2357,36 @@
             for (const t of toks) { const m = matchSurgeryCode(t); if (m) return m; }
             return 'อื่นๆ';
         }
+        // ตารางสรุปสถานะนัด: ภาพรวม + รายชนิดผ่าตัด (นับนัดคลินิกเดิม)
+        function renderPdcStatusTable() {
+            const ORDER = ['Phaco (ต้อกระจก)', 'THR (ข้อสะโพก)', 'TKR (ข้อเข่า)', 'TAH (มดลูก)', 'อื่นๆ'];
+            const acc = {}; // surgery -> {pt, came, missed, pending, none}
+            const totalRow = { pt: 0, came: 0, missed: 0, pending: 0, none: 0 };
+            postdcGroups.forEach(p => {
+                const a = acc[p.surgery] || (acc[p.surgery] = { pt: 0, came: 0, missed: 0, pending: 0, none: 0 });
+                const rel = p.appts.filter(ap => pdcRelated(p.surgery, ap.clinic));
+                a.pt++; totalRow.pt++;
+                rel.forEach(ap => { a[ap.s]++; totalRow[ap.s]++; });
+                a.none += p.none; totalRow.none += p.none;
+            });
+            const body = document.getElementById('pdcStatusBody');
+            body.innerHTML = '';
+            const rowHtml = (label, d, isTotal) => {
+                const decided = d.came + d.missed;
+                const pct = decided ? Math.round(d.came / decided * 100) + '%' : '-';
+                return '<tr class="' + (isTotal ? 'bg-slate-50 font-semibold text-slate-800' : 'hover:bg-slate-50 transition-colors') + '">' +
+                    '<td class="py-3 px-4 ' + (isTotal ? '' : 'font-medium text-slate-700') + '">' + label + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + d.pt + '</td>' +
+                    '<td class="py-3 px-4 text-right text-emerald-700">' + d.came + '</td>' +
+                    '<td class="py-3 px-4 text-right text-rose-700">' + d.missed + '</td>' +
+                    '<td class="py-3 px-4 text-right text-slate-500">' + d.pending + '</td>' +
+                    '<td class="py-3 px-4 text-right text-slate-400">' + d.none + '</td>' +
+                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + pct + '</td></tr>';
+            };
+            ORDER.forEach(s => { if (acc[s]) body.insertAdjacentHTML('beforeend', rowHtml(s, acc[s], false)); });
+            body.insertAdjacentHTML('beforeend', rowHtml('รวมทั้งหมด (ภาพรวม)', totalRow, true));
+        }
+
         // สรุป Post-discharge: แมปคอลัมน์จริง (pdx, appoint_status, readmit_30_days, an) + จัดกลุ่มรายผู้ป่วย
         function postdcSummarize(headers, rows) {
             const low = s => (s || '').toString().toLowerCase().trim();
@@ -2367,6 +2421,7 @@
             // เก็บกลุ่มผู้ป่วยไว้ให้ตารางครั้งที่นัดเรียกใช้ (กรองตามชนิดผ่าตัดได้)
             postdcGroups = Object.values(g);
             renderPdcSeq(document.getElementById('pdcSeqSurgery').value || 'ALL'); // ตั้งค่าการ์ด KPI + ตารางในนี้
+            renderPdcStatusTable();
             const groups = Object.values(g);
             document.getElementById('pdcReadmit').textContent = groups.filter(x => x.readmit).length;
 
