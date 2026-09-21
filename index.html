@@ -2247,10 +2247,13 @@
         }
 
         // นัดนี้เกี่ยวกับการผ่าตัดไหม (จับคู่ clinic_name กับแผนกของหัตถการ)
+        // clinic_name ที่นับเข้าเงื่อนไข (คลินิกเดิมตรงชนิดผ่าตัด):
+        //   จักษุ->Phaco · ศัลยกรรมกระดูกและข้อ/ศัลยกรรม->THR,TKR · สูติ-นรีเวช->TAH · คลินิก smc->ทุกชนิด
         function pdcRelated(surgery, clinic) {
             const c = (clinic || '').toString();
+            if (/smc/i.test(c)) return true; // คลินิก smc นับได้ทุกชนิดผ่าตัด
             if (surgery.startsWith('Phaco')) return /จักษุ|ตา/.test(c);
-            if (surgery.startsWith('THR') || surgery.startsWith('TKR')) return /กระดูก|ออร์โธ|ortho/i.test(c) || (/smc/i.test(c) && !/จักษุ/.test(c));
+            if (surgery.startsWith('THR') || surgery.startsWith('TKR')) return /ศัลยกรรม|กระดูก|ออร์โธ|ortho/i.test(c);
             if (surgery.startsWith('TAH')) return /สูติ|นรีเวช|gyn/i.test(c);
             return true;
         }
