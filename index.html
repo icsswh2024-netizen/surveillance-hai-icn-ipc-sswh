@@ -880,7 +880,7 @@
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-800">การมาตามนัด / ขาดนัด แยกตามครั้งที่นัด</h3>
-                        <p class="text-xs text-slate-400 mt-1">เรียงลำดับนัดของแต่ละผู้ป่วยตามวันที่ · ร้อยละคิดจากนัดที่ถึงกำหนดแล้ว (มา+ขาด) ในครั้งนั้น</p>
+                        <p class="text-xs text-slate-400 mt-1">เรียงลำดับนัดของแต่ละผู้ป่วยตามวันที่ · ร้อยละคิดจากรวมนัดทั้งหมด (มา+ขาด+ยังไม่ถึง) → รวมกันได้ 100%</p>
                     </div>
                     <div class="flex flex-col sm:items-end gap-2 self-start">
                         <select id="pdcSeqSurgery" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
@@ -904,6 +904,7 @@
                                 <th class="py-3 px-4 text-right text-rose-700">ขาดนัด</th>
                                 <th class="py-3 px-4 text-right text-rose-700">ร้อยละ</th>
                                 <th class="py-3 px-4 text-right text-slate-400">ยังไม่ถึงนัด</th>
+                                <th class="py-3 px-4 text-right text-slate-400">ร้อยละ</th>
                                 <th class="py-3 px-4 text-right">รวมนัด</th>
                             </tr>
                         </thead>
@@ -2372,35 +2373,37 @@
             const seqBody = document.getElementById('pdcSeqBody');
             seqBody.innerHTML = '';
             const maxK = Math.max(0, ...Object.keys(seq).map(Number));
-            if (maxK === 0) { seqBody.innerHTML = '<tr><td colspan="7" class="py-4 px-4 text-center text-slate-400">ไม่มีข้อมูล</td></tr>'; return; }
+            if (maxK === 0) { seqBody.innerHTML = '<tr><td colspan="8" class="py-4 px-4 text-center text-slate-400">ไม่มีข้อมูล</td></tr>'; return; }
             let tC = 0, tM = 0, tP = 0;
             for (let k = 1; k <= maxK; k++) {
                 const s = seq[k] || { came: 0, missed: 0, pending: 0 };
-                const decided = s.came + s.missed;
+                const tot = s.came + s.missed + s.pending; // ฐาน % = รวมนัดทั้งหมด (รวมยังไม่ถึงนัด)
                 tC += s.came; tM += s.missed; tP += s.pending;
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-slate-50 transition-colors';
                 tr.innerHTML =
                     '<td class="py-3 px-4 font-medium text-slate-700">ครั้งที่ ' + k + '</td>' +
                     '<td class="py-3 px-4 text-right text-emerald-700 font-semibold">' + s.came + '</td>' +
-                    '<td class="py-3 px-4 text-right text-emerald-700">' + (decided ? Math.round(s.came / decided * 100) + '%' : '-') + '</td>' +
+                    '<td class="py-3 px-4 text-right text-emerald-700">' + (tot ? Math.round(s.came / tot * 100) + '%' : '-') + '</td>' +
                     '<td class="py-3 px-4 text-right text-rose-700 font-semibold">' + s.missed + '</td>' +
-                    '<td class="py-3 px-4 text-right text-rose-700">' + (decided ? Math.round(s.missed / decided * 100) + '%' : '-') + '</td>' +
+                    '<td class="py-3 px-4 text-right text-rose-700">' + (tot ? Math.round(s.missed / tot * 100) + '%' : '-') + '</td>' +
                     '<td class="py-3 px-4 text-right text-slate-400">' + s.pending + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + (s.came + s.missed + s.pending) + '</td>';
+                    '<td class="py-3 px-4 text-right text-slate-400">' + (tot ? Math.round(s.pending / tot * 100) + '%' : '-') + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + tot + '</td>';
                 seqBody.appendChild(tr);
             }
-            const dT = tC + tM;
+            const tT = tC + tM + tP; // ฐาน % รวม = รวมนัดทั้งหมด
             const trT = document.createElement('tr');
             trT.className = 'bg-slate-50 font-semibold text-slate-800';
             trT.innerHTML =
                 '<td class="py-3 px-4">รวมทุกครั้ง</td>' +
                 '<td class="py-3 px-4 text-right text-emerald-700">' + tC + '</td>' +
-                '<td class="py-3 px-4 text-right text-emerald-700">' + (dT ? Math.round(tC / dT * 100) + '%' : '-') + '</td>' +
+                '<td class="py-3 px-4 text-right text-emerald-700">' + (tT ? Math.round(tC / tT * 100) + '%' : '-') + '</td>' +
                 '<td class="py-3 px-4 text-right text-rose-700">' + tM + '</td>' +
-                '<td class="py-3 px-4 text-right text-rose-700">' + (dT ? Math.round(tM / dT * 100) + '%' : '-') + '</td>' +
+                '<td class="py-3 px-4 text-right text-rose-700">' + (tT ? Math.round(tM / tT * 100) + '%' : '-') + '</td>' +
                 '<td class="py-3 px-4 text-right text-slate-400">' + tP + '</td>' +
-                '<td class="py-3 px-4 text-right">' + (tC + tM + tP) + '</td>';
+                '<td class="py-3 px-4 text-right text-slate-400">' + (tT ? Math.round(tP / tT * 100) + '%' : '-') + '</td>' +
+                '<td class="py-3 px-4 text-right">' + tT + '</td>';
             seqBody.appendChild(trT);
         }
 
