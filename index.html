@@ -2560,6 +2560,7 @@
             const colReadmit = col('readmit_30_days', ['readmit', 'ซ้ำ', 'admit']);
             const colAn = col('an', ['an', 'vn']);
             const colDate = col('appoint_date', ['appoint_date', 'วันนัด', 'date']);
+            const colDc = col('dc', ['dc', 'discharge', 'จำหน่าย', 'วันจำหน่าย']);
             const colClinic = col('clinic_name', ['clinic', 'คลินิก', 'แผนก']);
             const parseDMY = s => { const m = (s || '').toString().trim().match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : null; };
             const statusOf = st => st.includes('มาตามนัด') ? 'came' : st.includes('ขาดนัด') ? 'missed' : st.includes('ยังไม่ถึง') ? 'pending' : st.includes('ไม่มีการนัด') ? 'none' : '';
@@ -2576,8 +2577,12 @@
                 else if (s === 'missed') g[an].missed++;
                 else if (s === 'pending') g[an].pending++;
                 else if (s === 'none') g[an].none++;
+                // Re-admit ของนัดนี้ = readmit=yes AND วันนัดอยู่ภายใน 30 วันหลังวันจำหน่าย (dc)
+                const apT = parseDMY(r[colDate]), dcT = parseDMY(r[colDc]);
+                const within30 = apT != null && dcT != null && (apT - dcT) >= 0 && (apT - dcT) <= 30 * 86400000;
+                const reYes = /^(yes|y|ใช่|true|1)$/.test(low(r[colReadmit])) && within30;
                 // เก็บเฉพาะนัดจริง (มา/ขาด/ยังไม่ถึง) ไว้เรียงตามครั้ง + คลินิก + flag re-admit ของนัดนั้น
-                if (s === 'came' || s === 'missed' || s === 'pending') g[an].appts.push({ t: parseDMY(r[colDate]), s, clinic: (r[colClinic] || '').toString(), re: /^(yes|y|ใช่|true|1)$/.test(low(r[colReadmit])) });
+                if (s === 'came' || s === 'missed' || s === 'pending') g[an].appts.push({ t: apT, s, clinic: (r[colClinic] || '').toString(), re: reYes });
             });
 
             // เติมตัวเลือกเดือนใน dropdown ของหน้านี้ (ครั้งเดียว)
@@ -2596,8 +2601,8 @@
                 const ts = rel.map(a => a.t).filter(Boolean);
                 if (ts.length) { const d = new Date(Math.min(...ts)); p.cohortM = d.getMonth() + 1; p.cohortQ = monthQuarter(p.cohortM); }
                 else { p.cohortM = null; p.cohortQ = null; }
-                // Re-admit: นับเมื่อ readmit=yes อยู่ที่นัดครั้งที่ 2 เป็นต้นไป (index >= 1) · 1 ครั้งต่อ AN
-                p.readmit = rel.some((a, i) => i >= 1 && a.re);
+                // Re-admit: มีนัดคลินิกเดิมที่ readmit=yes และอยู่ใน 30 วันหลังจำหน่าย · 1 ครั้งต่อ AN
+                p.readmit = rel.some(a => a.re);
             });
             if (qv !== 'ALL') arr = arr.filter(p => p.cohortQ === qv);
             if (mv !== 'ALL') arr = arr.filter(p => String(p.cohortM) === mv);
