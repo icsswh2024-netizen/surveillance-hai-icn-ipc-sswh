@@ -858,7 +858,19 @@
                         <h3 class="text-lg font-semibold text-slate-800">เปรียบเทียบการมาตามนัด รายเดือน</h3>
                         <p class="text-xs text-slate-400 mt-1">แท่ง = จำนวนมา/ขาด (ราย) · เส้น = %มาตามนัด · เลือกเดือนที่ต้องการเทียบด้านขวา</p>
                     </div>
-                    <div id="pdcCmpMonths" class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600 max-w-md"></div>
+                    <div class="relative self-start">
+                        <button id="pdcCmpBtn" type="button" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                            <span id="pdcCmpBtnLabel">เลือกเดือน</span>
+                            <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div id="pdcCmpPanel" class="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white shadow-lg p-2 max-h-72 overflow-y-auto" hidden>
+                            <div class="flex justify-between px-1 pb-2 mb-1 border-b border-slate-100 text-xs">
+                                <button id="pdcCmpAll" type="button" class="text-indigo-600 hover:underline">เลือกทั้งหมด</button>
+                                <button id="pdcCmpNone" type="button" class="text-slate-500 hover:underline">ล้าง</button>
+                            </div>
+                            <div id="pdcCmpMonths" class="flex flex-col gap-1 text-sm text-slate-700"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="relative h-80 w-full"><canvas id="pdcCmpChart"></canvas></div>
             </div>
@@ -2414,12 +2426,23 @@
             const box = document.getElementById('pdcCmpMonths');
             const avail = FISCAL_MONTHS.filter(m => postdcMonthAgg[m]);
             box.innerHTML = (avail.length ? avail : FISCAL_MONTHS).map(m =>
-                '<label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="pdcCmpM rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" value="' + m + '" checked> ' + MONTH_LABELS[m] + '</label>'
+                '<label class="flex items-center gap-2 cursor-pointer px-1 py-0.5 rounded hover:bg-slate-50"><input type="checkbox" class="pdcCmpM rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" value="' + m + '" checked> ' + MONTH_LABELS[m] + '</label>'
             ).join('');
             box.querySelectorAll('.pdcCmpM').forEach(c => c.addEventListener('change', renderPdcCmpChart));
         }
+        // อัปเดตป้ายปุ่ม dropdown ตามจำนวนเดือนที่เลือก
+        function updatePdcCmpLabel() {
+            const all = document.querySelectorAll('.pdcCmpM');
+            const sel = document.querySelectorAll('.pdcCmpM:checked');
+            const lbl = document.getElementById('pdcCmpBtnLabel');
+            if (!lbl) return;
+            lbl.textContent = sel.length === 0 ? 'เลือกเดือน' :
+                sel.length === all.length ? 'ทุกเดือน (' + all.length + ')' :
+                sel.length === 1 ? MONTH_LABELS[+sel[0].value] : 'เลือก ' + sel.length + ' เดือน';
+        }
         // กราฟ combo เปรียบเทียบรายเดือน: แท่งมา/ขาด + เส้น %มาตามนัด
         function renderPdcCmpChart() {
+            updatePdcCmpLabel();
             const months = Array.from(document.querySelectorAll('.pdcCmpM:checked')).map(c => +c.value);
             const labels = months.map(m => MONTH_LABELS[m]);
             const came = months.map(m => (postdcMonthAgg[m] || {}).came || 0);
@@ -2885,6 +2908,17 @@
         document.getElementById('btnReloadPostDC').addEventListener('click', () => loadPostDC(true));
         document.getElementById('pdcStatusVisit').addEventListener('change', () => renderPdcStatusTable());
         document.getElementById('pdcMonth').addEventListener('change', () => loadPostDC());
+        // dropdown เลือกหลายเดือนของกราฟเปรียบเทียบ
+        document.getElementById('pdcCmpBtn').addEventListener('click', e => {
+            e.stopPropagation();
+            const p = document.getElementById('pdcCmpPanel'); p.hidden = !p.hidden;
+        });
+        document.addEventListener('click', e => {
+            const panel = document.getElementById('pdcCmpPanel');
+            if (panel && !panel.hidden && !panel.contains(e.target) && e.target.id !== 'pdcCmpBtn' && !document.getElementById('pdcCmpBtn').contains(e.target)) panel.hidden = true;
+        });
+        document.getElementById('pdcCmpAll').addEventListener('click', () => { document.querySelectorAll('.pdcCmpM').forEach(c => c.checked = true); renderPdcCmpChart(); });
+        document.getElementById('pdcCmpNone').addEventListener('click', () => { document.querySelectorAll('.pdcCmpM').forEach(c => c.checked = false); renderPdcCmpChart(); });
         document.getElementById('pdcSeqSurgery').addEventListener('change', e => renderPdcSeq(e.target.value));
 
         // Initial load
