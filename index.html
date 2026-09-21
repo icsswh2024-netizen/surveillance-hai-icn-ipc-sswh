@@ -1274,25 +1274,35 @@
             id: 'valueBadge',
             afterDatasetsDraw(chart) {
                 const ctx = chart.ctx;
+                const chartType = chart.config.type;
                 chart.data.datasets.forEach((ds, di) => {
-                    if (!ds._badge) return;
+                    const dsType = ds.type || chartType;
+                    // ใส่ badge เฉพาะกราฟเส้น/แท่ง (ยกเว้นโดนัท/polar ที่มีป้ายอยู่แล้ว) และไม่ปิดด้วย _noBadge/_badge:false
+                    if (dsType !== 'line' && dsType !== 'bar') return;
+                    if (ds._noBadge || ds._badge === false) return;
                     const meta = chart.getDatasetMeta(di);
                     if (meta.hidden) return;
                     const area = chart.chartArea;
+                    // สีป้าย: ใช้ _badgeColor ถ้ามี ไม่งั้นทำสีเข้มจากสีทึบของเส้น (_legendColor/borderColor ที่เป็น hex)
+                    let badgeColor = ds._badgeColor;
+                    if (!badgeColor) {
+                        const base = ds._legendColor || (typeof ds.borderColor === 'string' ? ds.borderColor : (typeof ds.backgroundColor === 'string' ? ds.backgroundColor : '#334155'));
+                        badgeColor = base && base[0] === '#' ? darken(base) : base;
+                    }
                     meta.data.forEach((pt, i) => {
                         const v = ds.data[i];
-                        if (v == null) return;
+                        if (v == null || v === 0) return; // ข้ามค่าว่าง/ศูนย์ กันรก
                         if (area && (pt.y < area.top - 0.5 || pt.y > area.bottom + 0.5)) return; // จุดเกินสเกล -> ไม่วาดป้าย
                         // จัดรูปตัวเลข: ทศนิยมโชว์ 2 ตำแหน่ง (สำหรับกราฟอัตรา), จำนวนเต็มโชว์ตามเดิม
                         const txt = (typeof v === 'number' && !Number.isInteger(v)) ? v.toFixed(2) : String(v);
                         ctx.save();
-                        ctx.font = 'bold 11px Kanit, sans-serif';
+                        ctx.font = 'bold 10px Kanit, sans-serif';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        const r = Math.max(12, ctx.measureText(txt).width / 2 + 7); // วงกลมพอดีข้อความ
+                        const r = Math.max(10, ctx.measureText(txt).width / 2 + 6); // วงกลมพอดีข้อความ
                         ctx.beginPath();
                         ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-                        ctx.fillStyle = ds._badgeColor || darken(ds.borderColor);
+                        ctx.fillStyle = badgeColor;
                         ctx.fill();
                         ctx.fillStyle = '#fff';
                         ctx.fillText(txt, pt.x, pt.y);
