@@ -1197,7 +1197,8 @@
 
         // เติมตัวเลือกใน dropdown จากค่าจริงในข้อมูล
         function populateFilters() {
-            const years = [...new Set(rawData.map(d => d.year).filter(Boolean))].sort().reverse();
+            // รวมปีจากทะเบียน-1 กับปีที่มีแท็บ Post-discharge (เผื่อบางปีมีเฉพาะข้อมูลติดตามหลังจำหน่าย)
+            const years = [...new Set([...rawData.map(d => d.year).filter(Boolean), ...Object.keys(POSTDC_YEARS)])].sort().reverse();
             const units = [...new Set(rawData.map(d => d.unit).filter(Boolean))].sort();
             const pcts  = [...new Set(rawData.map(d => d.pct).filter(Boolean))].sort();
 
