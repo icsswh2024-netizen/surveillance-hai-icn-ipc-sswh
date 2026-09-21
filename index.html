@@ -206,7 +206,9 @@
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
                     <h3 class="text-lg font-semibold text-slate-800">จำนวนเคสติดเชื้อรายเดือน (แยกชนิด)</h3>
-                    <select id="trendSite" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 self-start">
+                    <div class="flex items-center gap-2 self-start">
+                    <input id="trendYMax" type="number" min="1" step="1" placeholder="สเกล Y อัตโนมัติ" title="กำหนดค่าสูงสุดแกน Y (เว้นว่าง = อัตโนมัติ)" class="w-32 rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <select id="trendSite" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                         <option value="ALL">ทุกชนิด (SITE)</option>
                         <option value="CAUTI">CAUTI</option>
                         <option value="VAP">VAP</option>
@@ -218,11 +220,15 @@
                         <option value="Omphalitis">Omphalitis</option>
                         <option value="Other">Other</option>
                     </select>
+                    </div>
                 </div>
                 <div class="relative h-72 w-full"><canvas id="trendChart"></canvas></div>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h3 class="text-lg font-semibold text-slate-800 mb-4">อัตราการติดเชื้อรายเดือน <span id="trendRateHint" class="text-xs font-normal text-slate-400">(ตามชนิดที่เลือก)</span></h3>
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                    <h3 class="text-lg font-semibold text-slate-800">อัตราการติดเชื้อรายเดือน <span id="trendRateHint" class="text-xs font-normal text-slate-400">(ตามชนิดที่เลือก)</span></h3>
+                    <input id="trendRateYMax" type="number" min="0.1" step="0.5" placeholder="สเกล Y อัตโนมัติ" title="กำหนดค่าสูงสุดแกน Y (เว้นว่าง = อัตโนมัติ)" class="w-32 self-start rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                </div>
                 <div class="relative h-72 w-full"><canvas id="trendRateChart"></canvas></div>
             </div>
         </div>
@@ -1788,7 +1794,7 @@
                             return c.dataset.label + ': ' + c.parsed.y + ' เคส' + rateTxt;
                         } } }
                     },
-                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } }
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 }, max: (function () { const v = parseFloat((document.getElementById('trendYMax') || {}).value); return isFinite(v) && v > 0 ? v : undefined; })() }, x: { grid: { display: false } } }
                 }
             });
 
@@ -1841,7 +1847,7 @@
                         legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } },
                         tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' ' + (c.dataset._unit || '') } }
                     },
-                    scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา' } }, x: { grid: { display: false } } }
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา' }, max: (function () { const v = parseFloat((document.getElementById('trendRateYMax') || {}).value); return isFinite(v) && v > 0 ? v : undefined; })() }, x: { grid: { display: false } } }
                 }
             });
 
@@ -3121,6 +3127,8 @@
         document.getElementById('btnReloadPostDC').addEventListener('click', () => loadPostDC(true));
         document.getElementById('pdcStatusVisit').addEventListener('change', () => renderPdcStatusTable());
         document.getElementById('trendSite').addEventListener('change', () => updateDashboard());
+        document.getElementById('trendYMax').addEventListener('input', () => updateDashboard());
+        document.getElementById('trendRateYMax').addEventListener('input', () => updateDashboard());
         document.getElementById('pdcMonth').addEventListener('change', () => loadPostDC());
         // dropdown เลือกหลายเดือนของกราฟเปรียบเทียบ
         document.getElementById('pdcCmpBtn').addEventListener('click', e => {
