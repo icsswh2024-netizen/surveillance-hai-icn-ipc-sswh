@@ -770,22 +770,26 @@
                 <label for="postdcYear" class="text-sm font-medium text-slate-700">ปีข้อมูล</label>
                 <select id="postdcYear" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></select>
             </div>
-            <!-- Post-discharge KPI cards -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="kpi bg-gradient-to-r from-emerald-400 to-green-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">ผู้ป่วยเฝ้าระวัง (ราย)</h6>
+            <!-- Post-discharge KPI cards (จำแนกรายคน ไม่ทับกัน · นับเฉพาะนัดคลินิกเดิม) -->
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="kpi bg-gradient-to-r from-slate-500 to-slate-600 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">ผู้ป่วยเฝ้าระวัง (ราย)<br><span class="text-white/60">มีนัดคลินิกเดิม ≥1</span></h6>
                     <h3 id="pdcTotal" class="text-2xl font-bold z-10">0</h3>
                 </div>
-                <div class="kpi bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">มาตามนัด</h6>
-                    <h3 class="text-2xl font-bold z-10"><span id="pdcCame">0</span> <span class="text-sm font-normal">(<span id="pdcCamePct">0</span>%)</span></h3>
+                <div class="kpi bg-gradient-to-r from-emerald-400 to-green-500 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">มาครบทุกนัด</h6>
+                    <div class="z-10"><h3 class="text-2xl font-bold"><span id="pdcAll">0</span></h3><p class="text-xs text-white/80">(<span id="pdcAllPct">0</span>%)</p></div>
                 </div>
-                <div class="kpi bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">ขาดนัด (ไม่มา)</h6>
-                    <h3 id="pdcNotCame" class="text-2xl font-bold z-10">0</h3>
+                <div class="kpi bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">มาบางส่วน<br><span class="text-white/60">(ขาดบางนัด)</span></h6>
+                    <div class="z-10"><h3 class="text-2xl font-bold"><span id="pdcPartial">0</span></h3><p class="text-xs text-white/80">(<span id="pdcPartialPct">0</span>%)</p></div>
                 </div>
-                <div class="kpi bg-gradient-to-r from-rose-400 to-red-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
-                    <h6 class="text-xs font-medium text-white/90 z-10">Re-admit ใน 30 วัน</h6>
+                <div class="kpi bg-gradient-to-r from-rose-500 to-red-600 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">ขาดทุกนัด</h6>
+                    <div class="z-10"><h3 class="text-2xl font-bold"><span id="pdcNone">0</span></h3><p class="text-xs text-white/80">(<span id="pdcNonePct">0</span>%)</p></div>
+                </div>
+                <div class="kpi bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-2xl p-4 text-white shadow-md h-28 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">Re-admit ใน 30 วัน</h6>
                     <h3 id="pdcReadmit" class="text-2xl font-bold z-10">0</h3>
                 </div>
             </div>
@@ -810,10 +814,7 @@
                             <option value="TAH (มดลูก)">TAH (มดลูก)</option>
                             <option value="อื่นๆ">อื่นๆ</option>
                         </select>
-                        <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
-                            <input type="checkbox" id="pdcOnlyRelated" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
-                            เฉพาะนัดที่เกี่ยวกับการผ่าตัด (จับคู่แผนก)
-                        </label>
+                        <span class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1">นับเฉพาะนัดคลินิกเดิม (ตรงชนิดผ่าตัด)</span>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -832,6 +833,27 @@
                         <tbody id="pdcSeqBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
+            </div>
+
+            <!-- มาบางส่วน: ขาดนัดครั้งที่เท่าไหร่ -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h3 class="text-lg font-semibold text-slate-800">กลุ่ม "มาบางส่วน" — ขาดนัดครั้งที่เท่าไหร่</h3>
+                    <p class="text-xs text-slate-400 mt-1">เฉพาะผู้ป่วยที่มา ≥1 นัด และขาด ≥1 นัด (คลินิกเดิม) · ดูว่าคนหลุดนัดมากสุดในครั้งใด</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">ขาดนัด ครั้งที่</th>
+                                <th class="py-3 px-4 text-right text-rose-700">จำนวนผู้ป่วย (ราย)</th>
+                                <th class="py-3 px-4 text-right text-rose-700">ร้อยละของกลุ่มมาบางส่วน</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pdcPartialBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+                <p id="pdcPartialEmpty" class="p-4 text-xs text-slate-400 text-center" hidden>ไม่มีผู้ป่วยกลุ่มมาบางส่วน</p>
             </div>
 
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
@@ -2209,18 +2231,55 @@
         }
         // ตารางครั้งที่นัด (กรองตามชนิดผ่าตัด + เฉพาะนัดที่เกี่ยวกับการผ่าตัด)
         function renderPdcSeq(surgeryFilter) {
-            const onlyRelated = document.getElementById('pdcOnlyRelated').checked;
             const groups = (surgeryFilter && surgeryFilter !== 'ALL')
                 ? postdcGroups.filter(p => p.surgery === surgeryFilter) : postdcGroups;
             const seq = {};
+            // จำแนกรายคน (นับเฉพาะนัดคลินิกเดิม) + เก็บครั้งที่ขาดของกลุ่มมาบางส่วน
+            let surveilled = 0, evaluable = 0, allCame = 0, partial = 0, allMiss = 0;
+            const missedAtK = {}; // ครั้งที่ k -> จำนวนผู้ป่วยกลุ่มมาบางส่วนที่ขาดในครั้งนั้น
             groups.forEach(p => {
-                let appts = p.appts.slice().sort((a, b) => (a.t || 0) - (b.t || 0));
-                if (onlyRelated) appts = appts.filter(ap => pdcRelated(p.surgery, ap.clinic));
+                const appts = p.appts.slice()
+                    .sort((a, b) => (a.t || 0) - (b.t || 0))
+                    .filter(ap => pdcRelated(p.surgery, ap.clinic)); // บังคับคลินิกเดิมเสมอ
+                if (appts.length === 0) return;
+                surveilled++;
+                let nCame = 0, nMiss = 0;
+                const missKs = [];
                 appts.forEach((ap, i) => {
                     const k = i + 1;
                     if (!seq[k]) seq[k] = { came: 0, missed: 0, pending: 0 };
                     seq[k][ap.s]++;
+                    if (ap.s === 'came') nCame++;
+                    else if (ap.s === 'missed') { nMiss++; missKs.push(k); }
                 });
+                if (nCame + nMiss === 0) return; // มีแต่นัดที่ยังไม่ถึงกำหนด
+                evaluable++;
+                if (nMiss === 0) allCame++;
+                else if (nCame === 0) allMiss++;
+                else { partial++; missKs.forEach(k => missedAtK[k] = (missedAtK[k] || 0) + 1); }
+            });
+            // อัปเดตการ์ด KPI (ฐาน % = ผู้ที่ถึงกำหนดนัดแล้ว)
+            const pct = n => evaluable ? Math.round(n / evaluable * 100) : 0;
+            document.getElementById('pdcTotal').textContent = surveilled;
+            document.getElementById('pdcAll').textContent = allCame;
+            document.getElementById('pdcAllPct').textContent = pct(allCame);
+            document.getElementById('pdcPartial').textContent = partial;
+            document.getElementById('pdcPartialPct').textContent = pct(partial);
+            document.getElementById('pdcNone').textContent = allMiss;
+            document.getElementById('pdcNonePct').textContent = pct(allMiss);
+            // ตารางกลุ่มมาบางส่วน: ขาดครั้งที่เท่าไหร่
+            const pBody = document.getElementById('pdcPartialBody');
+            pBody.innerHTML = '';
+            const mKs = Object.keys(missedAtK).map(Number).sort((a, b) => a - b);
+            document.getElementById('pdcPartialEmpty').hidden = mKs.length > 0;
+            mKs.forEach(k => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.innerHTML =
+                    '<td class="py-3 px-4 font-medium text-slate-700">ครั้งที่ ' + k + '</td>' +
+                    '<td class="py-3 px-4 text-right text-rose-700 font-semibold">' + missedAtK[k] + '</td>' +
+                    '<td class="py-3 px-4 text-right text-rose-700">' + (partial ? Math.round(missedAtK[k] / partial * 100) : 0) + '%</td>';
+                pBody.appendChild(tr);
             });
             const seqBody = document.getElementById('pdcSeqBody');
             seqBody.innerHTML = '';
@@ -2307,17 +2366,9 @@
 
             // เก็บกลุ่มผู้ป่วยไว้ให้ตารางครั้งที่นัดเรียกใช้ (กรองตามชนิดผ่าตัดได้)
             postdcGroups = Object.values(g);
-            renderPdcSeq(document.getElementById('pdcSeqSurgery').value || 'ALL');
+            renderPdcSeq(document.getElementById('pdcSeqSurgery').value || 'ALL'); // ตั้งค่าการ์ด KPI + ตารางในนี้
             const groups = Object.values(g);
-            const total = groups.length;
-            const cameP = groups.filter(x => x.came > 0).length;
-            const missedP = groups.filter(x => x.missed > 0).length;
-            const readmitP = groups.filter(x => x.readmit).length;
-            document.getElementById('pdcTotal').textContent = total;
-            document.getElementById('pdcCame').textContent = cameP;
-            document.getElementById('pdcCamePct').textContent = total ? Math.round(cameP / total * 100) : 0;
-            document.getElementById('pdcNotCame').textContent = missedP;
-            document.getElementById('pdcReadmit').textContent = readmitP;
+            document.getElementById('pdcReadmit').textContent = groups.filter(x => x.readmit).length;
 
             // กราฟ: จำนวนผู้ป่วยแยกตามชนิดผ่าตัด
             const bySurg = {};
@@ -2596,7 +2647,6 @@
         document.getElementById('btnReloadPostDC').addEventListener('click', () => loadPostDC(true));
         document.getElementById('postdcYear').addEventListener('change', e => { postdcYearSel = e.target.value; loadPostDC(true); });
         document.getElementById('pdcSeqSurgery').addEventListener('change', e => renderPdcSeq(e.target.value));
-        document.getElementById('pdcOnlyRelated').addEventListener('change', () => renderPdcSeq(document.getElementById('pdcSeqSurgery').value));
 
         // Initial load
         window.onload = async () => {
