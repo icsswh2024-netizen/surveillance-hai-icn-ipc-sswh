@@ -3006,10 +3006,10 @@
                 const apT = parseDMY(r[colDate]), dcT = parseDMY(r[colDc]);
                 const within30 = apT != null && dcT != null && (apT - dcT) >= 0 && (apT - dcT) <= 30 * 86400000;
                 const reYes = /^(yes|y|ใช่|true|1)$/.test(low(r[colReadmit])) && within30;
-                // เก็บเฉพาะนัดจริง (มา/ขาด/ยังไม่ถึง) ไว้เรียงตามครั้ง + คลินิก + flag re-admit ของนัดนั้น
-                // dc120 = วันนัดอยู่ในช่วง dc ถึง dc+120 วัน (ขอบเขตนับตามที่กำหนด)
+                // ขอบเขตข้อมูลทั้งหน้า Post-discharge = ดูเฉพาะนัดในช่วง dc → dc+120 วัน
                 const dc120 = apT != null && dcT != null && (apT - dcT) >= 0 && (apT - dcT) <= 120 * 86400000;
-                if (s === 'came' || s === 'missed' || s === 'pending') g[an].appts.push({ t: apT, s, clinic: (r[colClinic] || '').toString(), re: reYes, dc120 });
+                // เก็บเฉพาะนัดจริง (มา/ขาด/ยังไม่ถึง) ที่อยู่ในช่วง 120 วัน · เรียงตามครั้ง + คลินิก + flag re-admit
+                if (dc120 && (s === 'came' || s === 'missed' || s === 'pending')) g[an].appts.push({ t: apT, s, clinic: (r[colClinic] || '').toString(), re: reYes, dc120 });
             });
 
             // เติมตัวเลือกเดือนใน dropdown ของหน้านี้ (ครั้งเดียว)
