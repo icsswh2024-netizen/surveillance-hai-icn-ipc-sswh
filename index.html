@@ -3010,7 +3010,7 @@
             rows.forEach(r => {
                 const an = (r[colAn] || '').toString().trim();
                 if (!an) return;
-                if (!g[an]) g[an] = { surgery: postdcSurgery(r[colPdx], r[colOtherdx]), came: 0, missed: 0, pending: 0, none: 0, readmit: false, appts: [] };
+                if (!g[an]) g[an] = { surgery: postdcSurgery(r[colPdx], r[colOtherdx]), came: 0, missed: 0, pending: 0, none: 0, readmit: false, appts: [], _seen: new Set() };
                 const st = (r[colStatus] || '').toString();
                 const s = statusOf(st);
                 if (s === 'came') g[an].came++;
@@ -3024,7 +3024,12 @@
                 // ขอบเขตข้อมูลทั้งหน้า Post-discharge = ดูเฉพาะนัดในช่วง dc → dc+120 วัน
                 const dc120 = apT != null && dcT != null && (apT - dcT) >= 0 && (apT - dcT) <= 120 * 86400000;
                 // เก็บเฉพาะนัดจริง (มา/ขาด/ยังไม่ถึง) ที่อยู่ในช่วง 120 วัน · เรียงตามครั้ง + คลินิก + flag re-admit
-                if (dc120 && (s === 'came' || s === 'missed' || s === 'pending')) g[an].appts.push({ t: apT, s, clinic: (r[colClinic] || '').toString(), re: reYes, dc120 });
+                // กันแถวซ้ำ: 1 นัด = 1 (วันนัด + คลินิก + สถานะ) เดียวกันนับครั้งเดียว
+                if (dc120 && (s === 'came' || s === 'missed' || s === 'pending')) {
+                    const clinic = (r[colClinic] || '').toString();
+                    const key = apT + '|' + clinic.trim().toLowerCase() + '|' + s;
+                    if (!g[an]._seen.has(key)) { g[an]._seen.add(key); g[an].appts.push({ t: apT, s, clinic, re: reYes, dc120 }); }
+                }
             });
 
             // เติมตัวเลือกเดือนใน dropdown ของหน้านี้ (ครั้งเดียว)
