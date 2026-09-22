@@ -1366,7 +1366,7 @@
                         const r = Math.max(10, ctx.measureText(txt).width / 2 + 6); // วงกลมพอดีข้อความ
                         ctx.beginPath();
                         ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-                        ctx.fillStyle = badgeColor;
+                        ctx.fillStyle = (ds._badgeColors && ds._badgeColors[i]) || badgeColor; // สีเฉพาะจุด (เช่น จุดหลุด=แดง)
                         ctx.fill();
                         ctx.fillStyle = '#fff';
                         ctx.fillText(txt, pt.x, pt.y);
@@ -3457,7 +3457,7 @@
                         { label: '±1σ', data: z1p, borderColor: 'rgba(71,85,105,.7)', borderDash: [2, 3], borderWidth: 1.25, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
                         { label: '±1σ ', data: z1n, borderColor: 'rgba(71,85,105,.7)', borderDash: [2, 3], borderWidth: 1.25, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
                         { label: 'เส้นกลาง (CL)', data: cl.map(c => +c.toFixed(3)), borderColor: '#0f172a', borderDash: [2, 3], borderWidth: 2, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
-                        { label: valLabel, data: values, borderColor: '#0b3d3a', backgroundColor: '#0b3d3a', borderWidth: 3, tension: 0.2, fill: false, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor: ptColors, pointBorderColor: '#ffffff', pointBorderWidth: 1.5, _legendColor: '#0b3d3a' }
+                        { label: valLabel, data: values, borderColor: '#0b3d3a', backgroundColor: '#0b3d3a', borderWidth: 3, tension: 0.2, fill: false, pointRadius: values.map((v, i) => reasons[i].length ? 6 : 5), pointHoverRadius: 8, pointBackgroundColor: ptColors, pointBorderColor: '#ffffff', pointBorderWidth: 1.5, _legendColor: '#0b3d3a', _reasons: reasons, _badgeColors: values.map((v, i) => reasons[i].length ? '#dc2626' : '#0b3d3a') }
                     ]
                 },
                 options: {
@@ -3465,8 +3465,10 @@
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } },
-                        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' ' + unit } },
-                        ctrlFlag: { flags: flagged.map(x => ({ i: x.i, rules: reasons[x.i].slice().sort((a, b) => a - b) })) }
+                        tooltip: { callbacks: {
+                            label: c => c.dataset.label + ': ' + c.parsed.y + ' ' + unit,
+                            afterBody: items => { const it = items.find(x => x.dataset._reasons); if (!it) return ''; const rs = it.dataset._reasons[it.dataIndex]; return rs && rs.length ? '⚠ สัญญาณเตือน: กฎ ' + rs.slice().sort((a, b) => a - b).join(', ') : ''; }
+                        } }
                     },
                     scales: { y: { beginAtZero: true, title: { display: true, text: valLabel + ' (' + unit + ')' } }, x: { grid: { display: false } } }
                 }
