@@ -1020,13 +1020,22 @@
                         <h3 class="text-lg font-semibold text-slate-800">แผนภูมิควบคุมอัตราการติดเชื้อรายเดือน</h3>
                         <p class="text-xs text-slate-400 mt-1" id="ctrlHint">เลือกชนิดการติดเชื้อเพื่อดูขีดควบคุม</p>
                     </div>
-                    <select id="ctrlSite" class="self-start rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-                        <option value="HAI">HAI รวม (/1,000 วันนอน)</option>
-                        <option value="CAUTI">CAUTI (/1,000 วันคาสาย)</option>
-                        <option value="VAP">VAP (/1,000 วันเครื่องช่วยหายใจ)</option>
-                        <option value="CLABSI">CLABSI (/1,000 วันคาสายเลือด)</option>
-                        <option value="SSI">SSI (/100 ผ่าตัด)</option>
+                    <div class="flex items-center gap-2 self-start">
+                    <select id="ctrlType" title="ชนิดแผนภูมิควบคุม" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                        <option value="u">u-chart (อัตรา/หน่วย)</option>
+                        <option value="c">c-chart (จำนวนเคส)</option>
+                        <option value="p">p-chart (สัดส่วน)</option>
+                        <option value="np">np-chart (จำนวนติดเชื้อ)</option>
+                        <option value="g">g-chart (เคสระหว่างเหตุการณ์)</option>
                     </select>
+                    <select id="ctrlSite" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                        <option value="HAI">HAI รวม</option>
+                        <option value="CAUTI">CAUTI</option>
+                        <option value="VAP">VAP</option>
+                        <option value="CLABSI">CLABSI</option>
+                        <option value="SSI">SSI</option>
+                    </select>
+                    </div>
                 </div>
                 <div class="relative h-96 w-full"><canvas id="ctrlChart"></canvas></div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
@@ -3278,69 +3287,98 @@
             URL.revokeObjectURL(url);
         }
 
-        // สลับเมนู (sidebar)
-        // ===================== Control Chart (u-chart) =====================
-        function updateControlView() {
-            const site = document.getElementById('ctrlSite').value || 'HAI';
-            const meta = RATE_META[site]; if (!meta) return;
+        // ===================== Control Chart (np/p/c/u/g) =====================
+        // สร้างข้อมูลตามชนิดแผนภูมิ -> {labels, values, cl[], sigma[], unit, valLabel, note}
+        function buildControlData(type, site) {
+            const meta = RATE_META[site] || RATE_META.HAI;
             const byMonth = aggregateByMonth(getFilteredCases());
             const den = aggregateDenominatorsByMonth(getFilteredRows());
-            const F = meta.factor, denKey = meta.den;
-            // เก็บเฉพาะเดือนที่มีตัวหาร > 0
-            const rows = FISCAL_MONTHS.filter(m => den[m] && den[m][denKey] > 0).map(m => {
-                const cases = byMonth[m][site] || 0;
-                const n = den[m][denKey] / F;             // area of opportunity (หน่วยละ F)
-                return { m, label: MONTH_LABELS[m], cases, n, rate: cases / n };
+            const countField = { CAUTI: 'cathN', VAP: 'venN', CLABSI: 'lineN', SSI: 'op', HAI: null };
+
+            if (type === 'g') {
+                // g-chart: จำนวน "วัน" ระหว่างการติดเชื้อติดต่อกัน (ใช้วันที่มีอาการ)
+                const cs = getFilteredCases().filter(c => (site === 'HAI' || c.siteType === site) && c.dOnset != null)
+                    .map(c => c.dOnset).sort((a, b) => a - b);
+                if (cs.length < 3) return { note: 'ต้องมีเคสที่มีวันที่อาการ ≥ 3 เคส เพื่อสร้าง g-chart' };
+                const gaps = []; for (let i = 1; i < cs.length; i++) gaps.push(Math.round((cs[i] - cs[i - 1]) / 86400000));
+                const gbar = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+                const sg = Math.sqrt(gbar * (gbar + 1));
+                return {
+                    labels: gaps.map((_, i) => 'เคส ' + (i + 1) + '→' + (i + 2)),
+                    values: gaps, cl: gaps.map(() => gbar), sigma: gaps.map(() => sg),
+                    unit: 'วัน', valLabel: 'วันระหว่างเคส', note: 'ยิ่งช่องห่างมาก = เกิดถี่น้อยลง (ดี) · จุดต่ำผิดปกติ = เกิดถี่ขึ้น'
+                };
+            }
+
+            // แบบรายเดือน
+            const useCountDen = (type === 'p' || type === 'np');
+            if (useCountDen && !countField[site]) return { note: 'ชนิด ' + site + ' ไม่มีตัวหาร "จำนวนคน/หัตถการ" จึงใช้ p/np chart ไม่ได้ (ลองใช้ u-chart หรือ c-chart)' };
+            const denKeyDays = meta.den, F = meta.factor;
+            const months = FISCAL_MONTHS.filter(m => {
+                if (type === 'c') return (byMonth[m][site] || 0) >= 0 && den[m];
+                if (useCountDen) return den[m] && den[m][countField[site]] > 0;
+                return den[m] && den[m][denKeyDays] > 0; // u
             });
+            if (months.length === 0) return { note: 'ยังไม่มีข้อมูลพอจะสร้างแผนภูมิ' };
+            const cases = months.map(m => byMonth[m][site] || 0);
+            const labels = months.map(m => MONTH_LABELS[m]);
+            const totC = cases.reduce((a, b) => a + b, 0);
+
+            if (type === 'c') {
+                const cbar = totC / months.length;
+                const sg = Math.sqrt(cbar);
+                return { labels, values: cases, cl: months.map(() => cbar), sigma: months.map(() => sg), unit: 'เคส', valLabel: 'จำนวนเคส', note: 'สมมติพื้นที่โอกาสคงที่ทุกเดือน' };
+            }
+            if (type === 'u') {
+                const nUnits = months.map(m => den[m][denKeyDays] / F);
+                const ubar = nUnits.reduce((a, b) => a + b, 0) ? totC / nUnits.reduce((a, b) => a + b, 0) : 0;
+                return { labels, values: months.map((m, i) => +(cases[i] / nUnits[i]).toFixed(3)), cl: nUnits.map(() => ubar), sigma: nUnits.map(n => n ? Math.sqrt(ubar / n) : 0), unit: meta.unit, valLabel: 'อัตรา' };
+            }
+            // p / np
+            const nCnt = months.map(m => den[m][countField[site]]);
+            const totN = nCnt.reduce((a, b) => a + b, 0);
+            const pbar = totN ? totC / totN : 0;
+            if (type === 'p') {
+                return { labels, values: months.map((m, i) => +(cases[i] / nCnt[i] * 100).toFixed(2)), cl: nCnt.map(() => pbar * 100), sigma: nCnt.map(n => n ? Math.sqrt(pbar * (1 - pbar) / n) * 100 : 0), unit: '%', valLabel: 'สัดส่วน %', note: 'ตัวหาร = จำนวนคน/หัตถการ (' + countField[site] + ')' };
+            }
+            // np
+            return { labels, values: cases, cl: nCnt.map(n => pbar * n), sigma: nCnt.map(n => Math.sqrt(pbar * n * (1 - pbar))), unit: 'เคส', valLabel: 'จำนวนติดเชื้อ', note: 'ตัวหาร = จำนวนคน/หัตถการ (' + countField[site] + ')' };
+        }
+
+        function updateControlView() {
+            const type = document.getElementById('ctrlType').value || 'u';
+            const site = document.getElementById('ctrlSite').value || 'HAI';
+            const d = buildControlData(type, site);
             const empty = document.getElementById('ctrlEmpty');
-            if (rows.length === 0) { empty.hidden = false; if (ctrlChartInstance) { ctrlChartInstance.destroy(); ctrlChartInstance = null; } document.getElementById('ctrlCL').textContent = document.getElementById('ctrlUCL').textContent = '-'; document.getElementById('ctrlIn').textContent = document.getElementById('ctrlOut').textContent = '0'; return; }
+            const clr = () => { document.getElementById('ctrlCL').textContent = document.getElementById('ctrlUCL').textContent = '-'; document.getElementById('ctrlIn').textContent = document.getElementById('ctrlOut').textContent = '0'; document.getElementById('ctrlFlags').innerHTML = ''; };
+            if (!d.values || d.values.length === 0) { empty.hidden = false; empty.textContent = d.note || 'ยังไม่มีข้อมูลพอจะสร้างแผนภูมิ'; if (ctrlChartInstance) { ctrlChartInstance.destroy(); ctrlChartInstance = null; } clr(); return; }
             empty.hidden = true;
-            const totCases = rows.reduce((a, r) => a + r.cases, 0);
-            const totN = rows.reduce((a, r) => a + r.n, 0);
-            const ubar = totN ? totCases / totN : 0;       // เส้นกลาง (อัตราเฉลี่ยรวม)
-            const labels = rows.map(r => r.label);
-            const rateData = rows.map(r => +r.rate.toFixed(2));
-            const sigma = rows.map(r => r.n ? Math.sqrt(ubar / r.n) : 0);          // σ ต่อเดือน (u-chart)
-            const zone = (k) => rows.map((r, i) => +(ubar + k * sigma[i]).toFixed(3)); // เส้น ±kσ
+            const { labels, values, cl, sigma, unit, valLabel } = d;
             const clamp0 = arr => arr.map(v => +Math.max(0, v).toFixed(2));
-            const ucl = zone(3), lcl = clamp0(zone(-3)), z2p = zone(2), z2n = clamp0(zone(-2)), z1p = zone(1), z1n = clamp0(zone(-1));
-            // z-score ต่อจุด (ทิศ + ระยะเป็นจำนวน σ)
-            const z = rows.map((r, i) => sigma[i] ? (r.rate - ubar) / sigma[i] : 0);
+            const zoneArr = k => cl.map((c, i) => +(c + k * sigma[i]).toFixed(3));
+            const ucl = zoneArr(3), lcl = clamp0(zoneArr(-3)), z2p = zoneArr(2), z2n = clamp0(zoneArr(-2)), z1p = zoneArr(1), z1n = clamp0(zoneArr(-1));
+            const z = values.map((v, i) => sigma[i] ? (v - cl[i]) / sigma[i] : 0);
             const side = z.map(v => v > 1e-9 ? 1 : v < -1e-9 ? -1 : 0);
             // ---- Western Electric rules ----
-            const reasons = rows.map(() => []);
-            z.forEach((v, i) => { if (Math.abs(v) > 3) reasons[i].push(1); }); // กฎ 1
-            for (let i = 0; i < rows.length; i++) { // กฎ 2: 2 ใน 3 เกิน 2σ ด้านเดียว
-                for (const s of [1, -1]) {
-                    const w = []; for (let j = Math.max(0, i - 2); j <= i; j++) if (side[j] === s && Math.abs(z[j]) > 2) w.push(j);
-                    if (w.length >= 2) w.forEach(j => { if (!reasons[j].includes(2)) reasons[j].push(2); });
-                }
-            }
-            for (let i = 0; i < rows.length; i++) { // กฎ 3: 4 ใน 5 เกิน 1σ ด้านเดียว
-                for (const s of [1, -1]) {
-                    const w = []; for (let j = Math.max(0, i - 4); j <= i; j++) if (side[j] === s && Math.abs(z[j]) > 1) w.push(j);
-                    if (w.length >= 4) w.forEach(j => { if (!reasons[j].includes(3)) reasons[j].push(3); });
-                }
-            }
-            for (let i = 7; i < rows.length; i++) { // กฎ 4: 8 จุดติดกันด้านเดียวของ CL
-                let s = side[i]; if (s === 0) continue; let ok = true;
-                for (let j = i - 7; j <= i; j++) if (side[j] !== s) { ok = false; break; }
-                if (ok) for (let j = i - 7; j <= i; j++) if (!reasons[j].includes(4)) reasons[j].push(4);
-            }
+            const reasons = values.map(() => []);
+            z.forEach((v, i) => { if (Math.abs(v) > 3) reasons[i].push(1); });
+            for (let i = 0; i < values.length; i++) for (const s of [1, -1]) { const w = []; for (let j = Math.max(0, i - 2); j <= i; j++) if (side[j] === s && Math.abs(z[j]) > 2) w.push(j); if (w.length >= 2) w.forEach(j => { if (!reasons[j].includes(2)) reasons[j].push(2); }); }
+            for (let i = 0; i < values.length; i++) for (const s of [1, -1]) { const w = []; for (let j = Math.max(0, i - 4); j <= i; j++) if (side[j] === s && Math.abs(z[j]) > 1) w.push(j); if (w.length >= 4) w.forEach(j => { if (!reasons[j].includes(3)) reasons[j].push(3); }); }
+            for (let i = 7; i < values.length; i++) { const s = side[i]; if (s === 0) continue; let ok = true; for (let j = i - 7; j <= i; j++) if (side[j] !== s) { ok = false; break; } if (ok) for (let j = i - 7; j <= i; j++) if (!reasons[j].includes(4)) reasons[j].push(4); }
             let nOut = 0;
-            const ptColors = rows.map((r, i) => { const bad = reasons[i].length > 0; if (bad) nOut++; return bad ? '#ef4444' : '#10b981'; });
-            document.getElementById('ctrlCL').textContent = ubar.toFixed(2);
+            const ptColors = values.map((v, i) => { const bad = reasons[i].length > 0; if (bad) nOut++; return bad ? '#ef4444' : '#10b981'; });
+            const clAvg = cl.reduce((a, b) => a + b, 0) / cl.length;
+            document.getElementById('ctrlCL').textContent = clAvg.toFixed(2);
             document.getElementById('ctrlUCL').textContent = (ucl.reduce((a, b) => a + b, 0) / ucl.length).toFixed(2);
-            document.getElementById('ctrlIn').textContent = rows.length - nOut;
+            document.getElementById('ctrlIn').textContent = values.length - nOut;
             document.getElementById('ctrlOut').textContent = nOut;
-            document.getElementById('ctrlHint').textContent = site + ' · ' + meta.unit + ' · เส้นกลาง ' + ubar.toFixed(2) + ' · ' + rows.length + ' เดือน';
-            // รายการสัญญาณเตือน
+            document.getElementById('ctrlHint').textContent = type + '-chart · ' + site + ' · ' + valLabel + ' (' + unit + ') · เส้นกลาง ' + clAvg.toFixed(2) + (d.note ? ' · ' + d.note : '');
             const flagsEl = document.getElementById('ctrlFlags');
-            const flagged = rows.map((r, i) => ({ r, i })).filter(x => reasons[x.i].length);
+            const flagged = values.map((v, i) => ({ v, i })).filter(x => reasons[x.i].length);
             flagsEl.innerHTML = flagged.length === 0
                 ? '<div class="rounded-lg bg-emerald-50 border border-emerald-100 p-3 text-sm text-emerald-700">✓ ไม่พบสัญญาณผิดปกติ — กระบวนการอยู่ในการควบคุม</div>'
-                : '<div class="rounded-lg bg-rose-50 border border-rose-100 p-3 text-sm text-rose-700"><b>พบสัญญาณเตือน ' + flagged.length + ' เดือน:</b><ul class="mt-1 space-y-0.5 list-disc list-inside">' +
-                    flagged.map(x => '<li>' + x.r.label + ' (อัตรา ' + x.r.rate.toFixed(2) + ') → กฎ ' + reasons[x.i].sort().join(', ') + '</li>').join('') + '</ul></div>';
+                : '<div class="rounded-lg bg-rose-50 border border-rose-100 p-3 text-sm text-rose-700"><b>พบสัญญาณเตือน ' + flagged.length + ' จุด:</b><ul class="mt-1 space-y-0.5 list-disc list-inside">' +
+                    flagged.map(x => '<li>' + labels[x.i] + ' (' + x.v + ' ' + unit + ') → กฎ ' + reasons[x.i].sort().join(', ') + '</li>').join('') + '</ul></div>';
 
             const ctx = document.getElementById('ctrlChart').getContext('2d');
             if (ctrlChartInstance) ctrlChartInstance.destroy();
@@ -3355,8 +3393,8 @@
                         { label: '±2σ ', data: z2n, borderColor: 'rgba(245,158,11,.5)', borderDash: [3, 3], borderWidth: 1, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
                         { label: '±1σ', data: z1p, borderColor: 'rgba(148,163,184,.4)', borderDash: [2, 3], borderWidth: 1, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
                         { label: '±1σ ', data: z1n, borderColor: 'rgba(148,163,184,.4)', borderDash: [2, 3], borderWidth: 1, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
-                        { label: 'เส้นกลาง (CL)', data: rows.map(() => +ubar.toFixed(2)), borderColor: '#64748b', borderDash: [2, 3], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
-                        { label: 'อัตราจริง', data: rateData, borderColor: '#0f766e', backgroundColor: '#0f766e', borderWidth: 2.5, tension: 0.2, fill: false, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor: ptColors, pointBorderColor: ptColors, _legendColor: '#0f766e' }
+                        { label: 'เส้นกลาง (CL)', data: cl.map(c => +c.toFixed(3)), borderColor: '#64748b', borderDash: [2, 3], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
+                        { label: valLabel, data: values, borderColor: '#0f766e', backgroundColor: '#0f766e', borderWidth: 2.5, tension: 0.2, fill: false, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor: ptColors, pointBorderColor: ptColors, _legendColor: '#0f766e' }
                     ]
                 },
                 options: {
@@ -3364,9 +3402,9 @@
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } },
-                        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' ' + meta.unit } }
+                        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' ' + unit } }
                     },
-                    scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา ' + meta.unit } }, x: { grid: { display: false } } }
+                    scales: { y: { beginAtZero: true, title: { display: true, text: valLabel + ' (' + unit + ')' } }, x: { grid: { display: false } } }
                 }
             });
         }
@@ -3429,6 +3467,7 @@
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
         document.getElementById('menuControl').addEventListener('click', () => switchView('control'));
         document.getElementById('ctrlSite').addEventListener('change', () => updateControlView());
+        document.getElementById('ctrlType').addEventListener('change', () => updateControlView());
         document.getElementById('btnReloadPostDC').addEventListener('click', () => loadPostDC(true));
         document.getElementById('pdcStatusVisit').addEventListener('change', () => renderPdcStatusTable());
         document.getElementById('trendSite').addEventListener('change', () => updateDashboard());
