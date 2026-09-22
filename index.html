@@ -928,7 +928,7 @@
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-800">การมาตามนัด / ขาดนัด แยกตามครั้งที่นัด</h3>
-                        <p class="text-xs text-slate-400 mt-1">เรียงลำดับนัดของแต่ละผู้ป่วยตามวันที่ · ร้อยละคิดจากรวมนัดทั้งหมด (มา+ขาด+ยังไม่ถึง) → รวมกันได้ 100%</p>
+                        <p class="text-xs text-slate-400 mt-1">เรียงลำดับนัดของแต่ละผู้ป่วยตามวันที่ · ร้อยละคิดจากรวมนัดทั้งหมด (มา+ขาด+ยังไม่ถึง) → รวมกันได้ 100% · "ห่างจากจำหน่าย" = ค่าเฉลี่ยจำนวนวันจากวันจำหน่าย (dc) ถึงวันนัดครั้งนั้น</p>
                     </div>
                     <div class="flex flex-col sm:items-end gap-2 self-start">
                         <select id="pdcSeqSurgery" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
@@ -957,6 +957,7 @@
                                 <th class="py-3 px-4 text-right text-slate-400">ยังไม่ถึงนัด</th>
                                 <th class="py-3 px-4 text-right text-slate-400">ร้อยละ</th>
                                 <th class="py-3 px-4 text-right">รวมนัด</th>
+                                <th class="py-3 px-4 text-right text-teal-700">ห่างจากจำหน่าย (วัน)</th>
                             </tr>
                         </thead>
                         <tbody id="pdcSeqBody" class="divide-y divide-slate-100"></tbody>
@@ -2783,8 +2784,9 @@
                 const missKs = [];
                 appts.forEach((ap, i) => {
                     const k = i + 1;
-                    if (!seq[k]) seq[k] = { came: 0, missed: 0, pending: 0 };
+                    if (!seq[k]) seq[k] = { came: 0, missed: 0, pending: 0, offSum: 0, offN: 0 };
                     seq[k][ap.s]++;
+                    if (ap.off != null) { seq[k].offSum += ap.off; seq[k].offN++; }
                     if (ap.s === 'came') nCame++;
                     else if (ap.s === 'missed') { nMiss++; missKs.push(k); }
                 });
@@ -2821,16 +2823,18 @@
             seqBody.innerHTML = '';
             const peakEl = document.getElementById('pdcSeqPeak');
             const maxK = Math.max(0, ...Object.keys(seq).map(Number));
-            if (maxK === 0) { seqBody.innerHTML = '<tr><td colspan="8" class="py-4 px-4 text-center text-slate-400">ไม่มีข้อมูล</td></tr>'; if (peakEl) peakEl.textContent = 'ไม่มีข้อมูลนัดในช่วง 120 วัน'; return; }
+            if (maxK === 0) { seqBody.innerHTML = '<tr><td colspan="9" class="py-4 px-4 text-center text-slate-400">ไม่มีข้อมูล</td></tr>'; if (peakEl) peakEl.textContent = 'ไม่มีข้อมูลนัดในช่วง 120 วัน'; return; }
             // ครั้งที่มีการมาตามนัดมากที่สุด (ในช่วง 120 วัน)
             let peakK = 0, peakCame = -1;
             for (let k = 1; k <= maxK; k++) { const c = (seq[k] || {}).came || 0; if (c > peakCame) { peakCame = c; peakK = k; } }
             if (peakEl) peakEl.innerHTML = '🏆 มาตามนัดมากที่สุดคือ <span class="text-emerald-900 font-bold">นัดครั้งที่ ' + peakK + '</span> (' + peakCame + ' ครั้ง)';
-            let tC = 0, tM = 0, tP = 0;
+            let tC = 0, tM = 0, tP = 0, tOffSum = 0, tOffN = 0;
             for (let k = 1; k <= maxK; k++) {
-                const s = seq[k] || { came: 0, missed: 0, pending: 0 };
+                const s = seq[k] || { came: 0, missed: 0, pending: 0, offSum: 0, offN: 0 };
                 const tot = s.came + s.missed + s.pending; // ฐาน % = รวมนัดทั้งหมด (รวมยังไม่ถึงนัด)
                 tC += s.came; tM += s.missed; tP += s.pending;
+                tOffSum += s.offSum || 0; tOffN += s.offN || 0;
+                const avgOff = s.offN ? Math.round(s.offSum / s.offN) : null; // ระยะห่างเฉลี่ยจากวันจำหน่าย (วัน)
                 const tr = document.createElement('tr');
                 tr.className = (k === peakK && peakCame > 0) ? 'bg-emerald-50/70' : 'hover:bg-slate-50 transition-colors';
                 tr.innerHTML =
@@ -2841,7 +2845,8 @@
                     '<td class="py-3 px-4 text-right text-rose-700">' + (tot ? (s.missed / tot * 100).toFixed(2) + '%' : '-') + '</td>' +
                     '<td class="py-3 px-4 text-right text-slate-400">' + s.pending + '</td>' +
                     '<td class="py-3 px-4 text-right text-slate-400">' + (tot ? (s.pending / tot * 100).toFixed(2) + '%' : '-') + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + tot + '</td>';
+                    '<td class="py-3 px-4 text-right">' + tot + '</td>' +
+                    '<td class="py-3 px-4 text-right text-teal-700 font-semibold">' + (avgOff != null ? '~' + avgOff + ' วัน' : '-') + '</td>';
                 seqBody.appendChild(tr);
             }
             const tT = tC + tM + tP; // ฐาน % รวม = รวมนัดทั้งหมด
@@ -2855,7 +2860,8 @@
                 '<td class="py-3 px-4 text-right text-rose-700">' + (tT ? (tM / tT * 100).toFixed(2) + '%' : '-') + '</td>' +
                 '<td class="py-3 px-4 text-right text-slate-400">' + tP + '</td>' +
                 '<td class="py-3 px-4 text-right text-slate-400">' + (tT ? (tP / tT * 100).toFixed(2) + '%' : '-') + '</td>' +
-                '<td class="py-3 px-4 text-right">' + tT + '</td>';
+                '<td class="py-3 px-4 text-right">' + tT + '</td>' +
+                '<td class="py-3 px-4 text-right text-teal-700">' + (tOffN ? '~' + Math.round(tOffSum / tOffN) + ' วัน' : '-') + '</td>';
             seqBody.appendChild(trT);
         }
 
@@ -3029,7 +3035,8 @@
                 if (dc120 && (s === 'came' || s === 'missed' || s === 'pending')) {
                     const clinic = (r[colClinic] || '').toString();
                     const key = apT + '|' + clinic.trim().toLowerCase() + '|' + s;
-                    if (!g[an]._seen.has(key)) { g[an]._seen.add(key); g[an].appts.push({ t: apT, s, clinic, re: reYes, dc120 }); }
+                    const off = Math.round((apT - dcT) / 86400000); // ระยะห่างจากวันจำหน่าย (วัน)
+                    if (!g[an]._seen.has(key)) { g[an]._seen.add(key); g[an].appts.push({ t: apT, s, clinic, re: reYes, dc120, off }); }
                 }
             });
 
