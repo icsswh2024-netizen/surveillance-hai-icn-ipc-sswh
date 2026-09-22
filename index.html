@@ -898,7 +898,7 @@
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-800">สรุปสถานะนัด — ภาพรวมและรายชนิดผ่าตัด</h3>
-                        <p class="text-xs text-slate-400 mt-1">นับจำนวนนัด (คลินิกเดิม ในช่วง dc → dc+120 วัน) ตามสถานะ · "ผ่าตัด (ครั้ง)" จากทะเบียน-1 · "ไม่มีการนัดหมาย" นับรายผู้ป่วย</p>
+                        <p class="text-xs text-slate-400 mt-1">นับจำนวนนัด (คลินิกเดิม ในช่วง dc → dc+120 วัน) ตามสถานะ · "มาตามนัดใน 120 วัน" = จำนวนครั้งที่มาตามนัดในช่วงนั้น · "ผ่าตัด (ครั้ง)" จากทะเบียน-1 · "ไม่มีการนัดหมาย" นับรายผู้ป่วย</p>
                     </div>
                     <select id="pdcStatusVisit" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 self-start">
                         <option value="ALL">ทุกครั้งที่นัด</option>
@@ -911,7 +911,7 @@
                                 <th class="py-3 px-4">ชนิดผ่าตัด</th>
                                 <th class="py-3 px-4 text-right text-sky-700">ผ่าตัด (ครั้ง)</th>
                                 <th class="py-3 px-4 text-right">ผู้ป่วย (ราย)</th>
-                                <th class="py-3 px-4 text-right text-teal-700">นัดใน 120 วัน (ครั้ง)</th>
+                                <th class="py-3 px-4 text-right text-teal-700">มาตามนัดใน 120 วัน</th>
                                 <th class="py-3 px-4 text-right text-emerald-700">มาตามนัด</th>
                                 <th class="py-3 px-4 text-right text-rose-700">ขาดนัด</th>
                                 <th class="py-3 px-4 text-right text-slate-500">ยังไม่ถึงวันนัด</th>
@@ -2947,12 +2947,11 @@
                 const rel = relOf(p);
                 if (pick === 'ALL') {
                     a.pt++; totalRow.pt++;
-                    a.v += rel.length; totalRow.v += rel.length; // จำนวนนัดในช่วง dc → dc+120 วัน
-                    rel.forEach(ap => { a[ap.s]++; totalRow[ap.s]++; });
+                    rel.forEach(ap => { a[ap.s]++; totalRow[ap.s]++; if (ap.s === 'came') { a.v++; totalRow.v++; } }); // v = มาตามนัดในช่วง dc → dc+120 วัน
                     a.none += p.none; totalRow.none += p.none;
                 } else {
                     const ap = rel[+pick - 1]; // นัดครั้งที่ pick ของผู้ป่วยรายนี้ (ถ้ามี)
-                    if (ap) { a.pt++; totalRow.pt++; a.v++; totalRow.v++; a[ap.s]++; totalRow[ap.s]++; }
+                    if (ap) { a.pt++; totalRow.pt++; a[ap.s]++; totalRow[ap.s]++; if (ap.s === 'came') { a.v++; totalRow.v++; } }
                 }
             });
             // ผ่าตัด (ครั้ง) จากทะเบียน-1 (ไม่ขึ้นกับตัวกรองครั้งที่นัด)
