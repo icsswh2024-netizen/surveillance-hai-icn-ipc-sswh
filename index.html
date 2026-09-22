@@ -3438,10 +3438,10 @@
             document.getElementById('ctrlHint').textContent = type + '-chart · ' + site + ' · ' + valLabel + ' (' + unit + ') · เส้นกลาง ' + clAvg.toFixed(2) + (d.note ? ' · ' + d.note : '');
             const flagsEl = document.getElementById('ctrlFlags');
             const flagged = values.map((v, i) => ({ v, i })).filter(x => reasons[x.i].length);
+            const RULE_DESC = { 1: '1 จุดเกิน ±3σ (UCL/LCL)', 2: '9 จุดฝั่งเดียวของเส้นกลาง', 3: '6 จุดเพิ่ม/ลดต่อเนื่อง (Trend)', 4: '14 จุดสลับขึ้น-ลง', 5: '2 ใน 3 จุดเกิน 2σ (Zone A)', 6: '4 ใน 5 จุดเกิน 1σ (Zone B)', 7: '15 จุดอยู่ใน ±1σ', 8: '8 จุดนอก ±1σ ทั้งสองฝั่ง' };
             flagsEl.innerHTML = flagged.length === 0
                 ? '<div class="rounded-lg bg-emerald-50 border border-emerald-100 p-3 text-sm text-emerald-700">✓ ไม่พบสัญญาณผิดปกติ — กระบวนการอยู่ในการควบคุม</div>'
-                : '<div class="rounded-lg bg-rose-50 border border-rose-100 p-3 text-sm text-rose-700"><b>พบสัญญาณเตือน ' + flagged.length + ' จุด:</b><ul class="mt-1 space-y-0.5 list-disc list-inside">' +
-                    flagged.map(x => '<li>' + labels[x.i] + ' (' + x.v + ' ' + unit + ') → กฎ ' + reasons[x.i].sort().join(', ') + '</li>').join('') + '</ul></div>';
+                : '<div class="rounded-lg bg-rose-50 border border-rose-100 p-3 text-sm text-rose-700">พบสัญญาณเตือน <b>' + flagged.length + ' จุด</b> · <span class="text-rose-500">คลิกที่จุดสีแดงบนกราฟเพื่อดูรายละเอียดกฎ</span></div><div id="ctrlFlagDetail" class="mt-2"></div>';
 
             const ctx = document.getElementById('ctrlChart').getContext('2d');
             if (ctrlChartInstance) ctrlChartInstance.destroy();
@@ -3463,6 +3463,15 @@
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
+                    onClick: (e, els, chart) => {
+                        const pts = chart.getElementsAtEventForMode(e, 'nearest', { intersect: false }, false);
+                        if (!pts.length) return;
+                        const i = pts[0].index;
+                        const detail = document.getElementById('ctrlFlagDetail'); if (!detail) return;
+                        if (!reasons[i] || !reasons[i].length) { detail.innerHTML = '<div class="rounded-lg bg-slate-50 border border-slate-100 p-3 text-sm text-slate-600">' + labels[i] + ' (' + values[i] + ' ' + unit + ') — จุดนี้อยู่ในเกณฑ์</div>'; return; }
+                        detail.innerHTML = '<div class="rounded-lg bg-rose-50 border border-rose-200 p-3 text-sm text-rose-700"><b>' + labels[i] + ' — ' + values[i] + ' ' + unit + '</b><ul class="mt-1 space-y-0.5 list-disc list-inside">' +
+                            reasons[i].slice().sort((a, b) => a - b).map(r => '<li>กฎ ' + r + ': ' + (RULE_DESC[r] || '') + '</li>').join('') + '</ul></div>';
+                    },
                     plugins: {
                         legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } },
                         tooltip: { callbacks: {
