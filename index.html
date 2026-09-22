@@ -1036,6 +1036,16 @@
                     <div class="rounded-xl border border-rose-100 bg-rose-50 p-3"><p class="text-xs text-rose-700">จุดหลุดเกณฑ์</p><p class="text-lg font-bold text-rose-700"><span id="ctrlOut">0</span></p></div>
                 </div>
                 <p id="ctrlEmpty" class="text-xs text-slate-400 mt-3" hidden>ยังไม่มีข้อมูลพอจะสร้างแผนภูมิควบคุม</p>
+                <div id="ctrlFlags" class="mt-4"></div>
+                <details class="mt-3 text-xs text-slate-500">
+                    <summary class="cursor-pointer font-medium text-slate-600">กฎ Western Electric ที่ใช้ (คลิกดู)</summary>
+                    <ul class="mt-2 space-y-1 list-disc list-inside">
+                        <li><b>กฎ 1</b> — 1 จุดหลุดเกิน ±3σ (UCL/LCL)</li>
+                        <li><b>กฎ 2</b> — 2 ใน 3 จุดติดกัน เกิน 2σ ด้านเดียวกัน</li>
+                        <li><b>กฎ 3</b> — 4 ใน 5 จุดติดกัน เกิน 1σ ด้านเดียวกัน</li>
+                        <li><b>กฎ 4</b> — 8 จุดติดกัน อยู่ด้านเดียวของเส้นกลาง</li>
+                    </ul>
+                </details>
             </div>
         </div><!-- /viewControl -->
     </div><!-- /max-w container -->
@@ -3290,15 +3300,47 @@
             const ubar = totN ? totCases / totN : 0;       // เส้นกลาง (อัตราเฉลี่ยรวม)
             const labels = rows.map(r => r.label);
             const rateData = rows.map(r => +r.rate.toFixed(2));
-            const ucl = rows.map(r => +(ubar + 3 * Math.sqrt(ubar / r.n)).toFixed(2));
-            const lcl = rows.map(r => +Math.max(0, ubar - 3 * Math.sqrt(ubar / r.n)).toFixed(2));
+            const sigma = rows.map(r => r.n ? Math.sqrt(ubar / r.n) : 0);          // σ ต่อเดือน (u-chart)
+            const zone = (k) => rows.map((r, i) => +(ubar + k * sigma[i]).toFixed(3)); // เส้น ±kσ
+            const clamp0 = arr => arr.map(v => +Math.max(0, v).toFixed(2));
+            const ucl = zone(3), lcl = clamp0(zone(-3)), z2p = zone(2), z2n = clamp0(zone(-2)), z1p = zone(1), z1n = clamp0(zone(-1));
+            // z-score ต่อจุด (ทิศ + ระยะเป็นจำนวน σ)
+            const z = rows.map((r, i) => sigma[i] ? (r.rate - ubar) / sigma[i] : 0);
+            const side = z.map(v => v > 1e-9 ? 1 : v < -1e-9 ? -1 : 0);
+            // ---- Western Electric rules ----
+            const reasons = rows.map(() => []);
+            z.forEach((v, i) => { if (Math.abs(v) > 3) reasons[i].push(1); }); // กฎ 1
+            for (let i = 0; i < rows.length; i++) { // กฎ 2: 2 ใน 3 เกิน 2σ ด้านเดียว
+                for (const s of [1, -1]) {
+                    const w = []; for (let j = Math.max(0, i - 2); j <= i; j++) if (side[j] === s && Math.abs(z[j]) > 2) w.push(j);
+                    if (w.length >= 2) w.forEach(j => { if (!reasons[j].includes(2)) reasons[j].push(2); });
+                }
+            }
+            for (let i = 0; i < rows.length; i++) { // กฎ 3: 4 ใน 5 เกิน 1σ ด้านเดียว
+                for (const s of [1, -1]) {
+                    const w = []; for (let j = Math.max(0, i - 4); j <= i; j++) if (side[j] === s && Math.abs(z[j]) > 1) w.push(j);
+                    if (w.length >= 4) w.forEach(j => { if (!reasons[j].includes(3)) reasons[j].push(3); });
+                }
+            }
+            for (let i = 7; i < rows.length; i++) { // กฎ 4: 8 จุดติดกันด้านเดียวของ CL
+                let s = side[i]; if (s === 0) continue; let ok = true;
+                for (let j = i - 7; j <= i; j++) if (side[j] !== s) { ok = false; break; }
+                if (ok) for (let j = i - 7; j <= i; j++) if (!reasons[j].includes(4)) reasons[j].push(4);
+            }
             let nOut = 0;
-            const ptColors = rows.map((r, i) => { const out = r.rate > ucl[i] + 1e-9 || r.rate < lcl[i] - 1e-9; if (out) nOut++; return out ? '#ef4444' : '#10b981'; });
+            const ptColors = rows.map((r, i) => { const bad = reasons[i].length > 0; if (bad) nOut++; return bad ? '#ef4444' : '#10b981'; });
             document.getElementById('ctrlCL').textContent = ubar.toFixed(2);
             document.getElementById('ctrlUCL').textContent = (ucl.reduce((a, b) => a + b, 0) / ucl.length).toFixed(2);
             document.getElementById('ctrlIn').textContent = rows.length - nOut;
             document.getElementById('ctrlOut').textContent = nOut;
             document.getElementById('ctrlHint').textContent = site + ' · ' + meta.unit + ' · เส้นกลาง ' + ubar.toFixed(2) + ' · ' + rows.length + ' เดือน';
+            // รายการสัญญาณเตือน
+            const flagsEl = document.getElementById('ctrlFlags');
+            const flagged = rows.map((r, i) => ({ r, i })).filter(x => reasons[x.i].length);
+            flagsEl.innerHTML = flagged.length === 0
+                ? '<div class="rounded-lg bg-emerald-50 border border-emerald-100 p-3 text-sm text-emerald-700">✓ ไม่พบสัญญาณผิดปกติ — กระบวนการอยู่ในการควบคุม</div>'
+                : '<div class="rounded-lg bg-rose-50 border border-rose-100 p-3 text-sm text-rose-700"><b>พบสัญญาณเตือน ' + flagged.length + ' เดือน:</b><ul class="mt-1 space-y-0.5 list-disc list-inside">' +
+                    flagged.map(x => '<li>' + x.r.label + ' (อัตรา ' + x.r.rate.toFixed(2) + ') → กฎ ' + reasons[x.i].sort().join(', ') + '</li>').join('') + '</ul></div>';
 
             const ctx = document.getElementById('ctrlChart').getContext('2d');
             if (ctrlChartInstance) ctrlChartInstance.destroy();
@@ -3307,8 +3349,12 @@
                 data: {
                     labels,
                     datasets: [
-                        { label: 'UCL (+3σ)', data: ucl, borderColor: '#ef4444', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0, _noBadge: true, stepped: false },
+                        { label: 'UCL (+3σ)', data: ucl, borderColor: '#ef4444', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
                         { label: 'LCL (−3σ)', data: lcl, borderColor: '#3b82f6', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
+                        { label: '±2σ', data: z2p, borderColor: 'rgba(245,158,11,.5)', borderDash: [3, 3], borderWidth: 1, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
+                        { label: '±2σ ', data: z2n, borderColor: 'rgba(245,158,11,.5)', borderDash: [3, 3], borderWidth: 1, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
+                        { label: '±1σ', data: z1p, borderColor: 'rgba(148,163,184,.4)', borderDash: [2, 3], borderWidth: 1, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
+                        { label: '±1σ ', data: z1n, borderColor: 'rgba(148,163,184,.4)', borderDash: [2, 3], borderWidth: 1, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
                         { label: 'เส้นกลาง (CL)', data: rows.map(() => +ubar.toFixed(2)), borderColor: '#64748b', borderDash: [2, 3], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
                         { label: 'อัตราจริง', data: rateData, borderColor: '#0f766e', backgroundColor: '#0f766e', borderWidth: 2.5, tension: 0.2, fill: false, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor: ptColors, pointBorderColor: ptColors, _legendColor: '#0f766e' }
                     ]
