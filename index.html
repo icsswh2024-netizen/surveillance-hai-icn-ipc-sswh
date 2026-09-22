@@ -99,6 +99,10 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
                 เฝ้าระวัง Post discharge
             </button>
+            <button id="menuControl" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3v18h18M7 14l3-3 3 3 4-5"></path></svg>
+                Control Chart
+            </button>
         </nav>
         <div class="p-4 border-t border-slate-100 text-xs text-slate-400">
             <p>สถานะ: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
@@ -1004,6 +1008,36 @@
             </div>
             <p class="text-xs text-slate-400 text-center">แหล่งข้อมูล: Google Sheet (เผยแพร่เป็น CSV) — เฝ้าระวังการติดเชื้อหลังผู้ป่วยจำหน่าย</p>
         </div><!-- /viewPostDC -->
+
+        <!-- ===================== VIEW: Control Chart ===================== -->
+        <div id="viewControl" class="space-y-6" hidden>
+            <div class="rounded-2xl bg-blue-50 border border-blue-100 p-4 text-sm text-blue-800">
+                <b>Control Chart (u-chart)</b> — แผนภูมิควบคุมทางสถิติ · เส้นกลาง (CL) = อัตราเฉลี่ยรวม · UCL/LCL = ±3σ (ปรับตามตัวหารแต่ละเดือน) · จุด<span class="text-red-600 font-semibold">แดง</span> = หลุดขีดควบคุม (special cause ควรสอบสวน)
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">แผนภูมิควบคุมอัตราการติดเชื้อรายเดือน</h3>
+                        <p class="text-xs text-slate-400 mt-1" id="ctrlHint">เลือกชนิดการติดเชื้อเพื่อดูขีดควบคุม</p>
+                    </div>
+                    <select id="ctrlSite" class="self-start rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                        <option value="HAI">HAI รวม (/1,000 วันนอน)</option>
+                        <option value="CAUTI">CAUTI (/1,000 วันคาสาย)</option>
+                        <option value="VAP">VAP (/1,000 วันเครื่องช่วยหายใจ)</option>
+                        <option value="CLABSI">CLABSI (/1,000 วันคาสายเลือด)</option>
+                        <option value="SSI">SSI (/100 ผ่าตัด)</option>
+                    </select>
+                </div>
+                <div class="relative h-96 w-full"><canvas id="ctrlChart"></canvas></div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><p class="text-xs text-slate-500">เส้นกลาง (CL)</p><p class="text-lg font-bold text-slate-700"><span id="ctrlCL">-</span></p></div>
+                    <div class="rounded-xl border border-red-100 bg-red-50 p-3"><p class="text-xs text-red-600">UCL เฉลี่ย</p><p class="text-lg font-bold text-red-600"><span id="ctrlUCL">-</span></p></div>
+                    <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3"><p class="text-xs text-emerald-700">จุดในเกณฑ์</p><p class="text-lg font-bold text-emerald-700"><span id="ctrlIn">0</span></p></div>
+                    <div class="rounded-xl border border-rose-100 bg-rose-50 p-3"><p class="text-xs text-rose-700">จุดหลุดเกณฑ์</p><p class="text-lg font-bold text-rose-700"><span id="ctrlOut">0</span></p></div>
+                </div>
+                <p id="ctrlEmpty" class="text-xs text-slate-400 mt-3" hidden>ยังไม่มีข้อมูลพอจะสร้างแผนภูมิควบคุม</p>
+            </div>
+        </div><!-- /viewControl -->
     </div><!-- /max-w container -->
     </main>
   </div><!-- /flex wrapper -->
@@ -1414,6 +1448,7 @@
         let rawData = [];
         let trendChartInstance = null;
         let trendRateChartInstance = null;
+        let ctrlChartInstance = null;
         let siteChartInstance = null;
         let rateChartInstance = null;
         let haiAreaChartInstance = null;
@@ -3234,10 +3269,66 @@
         }
 
         // สลับเมนู (sidebar)
+        // ===================== Control Chart (u-chart) =====================
+        function updateControlView() {
+            const site = document.getElementById('ctrlSite').value || 'HAI';
+            const meta = RATE_META[site]; if (!meta) return;
+            const byMonth = aggregateByMonth(getFilteredCases());
+            const den = aggregateDenominatorsByMonth(getFilteredRows());
+            const F = meta.factor, denKey = meta.den;
+            // เก็บเฉพาะเดือนที่มีตัวหาร > 0
+            const rows = FISCAL_MONTHS.filter(m => den[m] && den[m][denKey] > 0).map(m => {
+                const cases = byMonth[m][site] || 0;
+                const n = den[m][denKey] / F;             // area of opportunity (หน่วยละ F)
+                return { m, label: MONTH_LABELS[m], cases, n, rate: cases / n };
+            });
+            const empty = document.getElementById('ctrlEmpty');
+            if (rows.length === 0) { empty.hidden = false; if (ctrlChartInstance) { ctrlChartInstance.destroy(); ctrlChartInstance = null; } document.getElementById('ctrlCL').textContent = document.getElementById('ctrlUCL').textContent = '-'; document.getElementById('ctrlIn').textContent = document.getElementById('ctrlOut').textContent = '0'; return; }
+            empty.hidden = true;
+            const totCases = rows.reduce((a, r) => a + r.cases, 0);
+            const totN = rows.reduce((a, r) => a + r.n, 0);
+            const ubar = totN ? totCases / totN : 0;       // เส้นกลาง (อัตราเฉลี่ยรวม)
+            const labels = rows.map(r => r.label);
+            const rateData = rows.map(r => +r.rate.toFixed(2));
+            const ucl = rows.map(r => +(ubar + 3 * Math.sqrt(ubar / r.n)).toFixed(2));
+            const lcl = rows.map(r => +Math.max(0, ubar - 3 * Math.sqrt(ubar / r.n)).toFixed(2));
+            let nOut = 0;
+            const ptColors = rows.map((r, i) => { const out = r.rate > ucl[i] + 1e-9 || r.rate < lcl[i] - 1e-9; if (out) nOut++; return out ? '#ef4444' : '#10b981'; });
+            document.getElementById('ctrlCL').textContent = ubar.toFixed(2);
+            document.getElementById('ctrlUCL').textContent = (ucl.reduce((a, b) => a + b, 0) / ucl.length).toFixed(2);
+            document.getElementById('ctrlIn').textContent = rows.length - nOut;
+            document.getElementById('ctrlOut').textContent = nOut;
+            document.getElementById('ctrlHint').textContent = site + ' · ' + meta.unit + ' · เส้นกลาง ' + ubar.toFixed(2) + ' · ' + rows.length + ' เดือน';
+
+            const ctx = document.getElementById('ctrlChart').getContext('2d');
+            if (ctrlChartInstance) ctrlChartInstance.destroy();
+            ctrlChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'UCL (+3σ)', data: ucl, borderColor: '#ef4444', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0, _noBadge: true, stepped: false },
+                        { label: 'LCL (−3σ)', data: lcl, borderColor: '#3b82f6', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
+                        { label: 'เส้นกลาง (CL)', data: rows.map(() => +ubar.toFixed(2)), borderColor: '#64748b', borderDash: [2, 3], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0, _noBadge: true },
+                        { label: 'อัตราจริง', data: rateData, borderColor: '#0f766e', backgroundColor: '#0f766e', borderWidth: 2.5, tension: 0.2, fill: false, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor: ptColors, pointBorderColor: ptColors, _legendColor: '#0f766e' }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } },
+                        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' ' + meta.unit } }
+                    },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา ' + meta.unit } }, x: { grid: { display: false } } }
+                }
+            });
+        }
+
         function switchView(view) {
-            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', special: 'viewSpecial', postdc: 'viewPostDC' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', special: 'menuSpecial', postdc: 'menuPostDC' };
-            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge' };
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
@@ -3265,6 +3356,7 @@
             if (view === 'analysis') updateAnalysisView();
             if (view === 'special') updateSpecialView();
             if (view === 'postdc') loadPostDC();
+            if (view === 'control') updateControlView();
         }
 
         // Event listeners
@@ -3272,6 +3364,7 @@
             document.getElementById(id).addEventListener('change', () => {
                 updateDashboard(); updateWardTable(); updateMdrView(); updateServiceView(); updateAnalysisView(); updateSpecialView();
                 if (!document.getElementById('viewPostDC').hidden) loadPostDC(); // ให้ Post-discharge ตามปีบน
+                if (!document.getElementById('viewControl').hidden) updateControlView();
             }));
         document.getElementById('btnExport').addEventListener('click', exportCSV);
         document.getElementById('btnExportWards').addEventListener('click', exportWardsCSV);
@@ -3288,6 +3381,8 @@
         document.getElementById('menuSpecial').addEventListener('click', () => switchView('special'));
         document.getElementById('btnExportSpecial').addEventListener('click', exportSpecialCSV);
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
+        document.getElementById('menuControl').addEventListener('click', () => switchView('control'));
+        document.getElementById('ctrlSite').addEventListener('change', () => updateControlView());
         document.getElementById('btnReloadPostDC').addEventListener('click', () => loadPostDC(true));
         document.getElementById('pdcStatusVisit').addEventListener('change', () => renderPdcStatusTable());
         document.getElementById('trendSite').addEventListener('change', () => updateDashboard());
