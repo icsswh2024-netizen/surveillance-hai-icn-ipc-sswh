@@ -898,7 +898,7 @@
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-800">สรุปสถานะนัด — ภาพรวมและรายชนิดผ่าตัด</h3>
-                        <p class="text-xs text-slate-400 mt-1">นับจำนวนนัด (คลินิกเดิม) ตามสถานะ · "ไม่มีการนัดหมาย" นับรายผู้ป่วย</p>
+                        <p class="text-xs text-slate-400 mt-1">นับจำนวนนัด (คลินิกเดิม ในช่วง dc → dc+120 วัน) ตามสถานะ · "ผ่าตัด (ครั้ง)" จากทะเบียน-1 · "ไม่มีการนัดหมาย" นับรายผู้ป่วย</p>
                     </div>
                     <select id="pdcStatusVisit" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 self-start">
                         <option value="ALL">ทุกครั้งที่นัด</option>
@@ -909,7 +909,9 @@
                         <thead class="bg-slate-50 text-slate-700 font-semibold">
                             <tr>
                                 <th class="py-3 px-4">ชนิดผ่าตัด</th>
+                                <th class="py-3 px-4 text-right text-sky-700">ผ่าตัด (ครั้ง)</th>
                                 <th class="py-3 px-4 text-right">ผู้ป่วย (ราย)</th>
+                                <th class="py-3 px-4 text-right text-teal-700">นัดใน 120 วัน (ครั้ง)</th>
                                 <th class="py-3 px-4 text-right text-emerald-700">มาตามนัด</th>
                                 <th class="py-3 px-4 text-right text-rose-700">ขาดนัด</th>
                                 <th class="py-3 px-4 text-right text-slate-500">ยังไม่ถึงวันนัด</th>
@@ -918,27 +920,6 @@
                             </tr>
                         </thead>
                         <tbody id="pdcStatusBody" class="divide-y divide-slate-100"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- เทียบจำนวนผ่าตัด (ทะเบียน-1) กับผู้ป่วยที่ติดตาม (Post-DC) -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-6 border-b border-slate-100">
-                    <h3 class="text-lg font-semibold text-slate-800">เทียบจำนวนผ่าตัด กับ การติดตามหลังจำหน่าย</h3>
-                    <p class="text-xs text-slate-400 mt-1">ผ่าตัด (ครั้ง) จากทะเบียน-1 · ผู้ป่วยติดตาม (ราย AN) จากชีต Post-discharge ปีเดียวกัน · %ครอบคลุม = ติดตาม ÷ ผ่าตัด</p>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
-                        <thead class="bg-slate-50 text-slate-700 font-semibold">
-                            <tr>
-                                <th class="py-3 px-4">ชนิดผ่าตัด</th>
-                                <th class="py-3 px-4 text-right text-sky-700">ผ่าตัด (ครั้ง)</th>
-                                <th class="py-3 px-4 text-right text-indigo-700">ผู้ป่วยติดตาม (ราย)</th>
-                                <th class="py-3 px-4 text-right text-emerald-700">%ครอบคลุม</th>
-                            </tr>
-                        </thead>
-                        <tbody id="pdcVsBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
             </div>
@@ -2940,41 +2921,16 @@
         }
 
         // ตารางเทียบจำนวนผ่าตัด (ทะเบียน-1: eye/hip/knee/gyn) กับผู้ป่วยติดตาม (Post-DC)
-        function renderPdcVsSurgery() {
-            const rows = getFilteredRows(); // ทะเบียน-1 ตามตัวกรองปี/ไตรมาส/หอ
-            const opSum = k => rows.reduce((a, r) => a + (r[k] || 0), 0);
-            // ชนิดผ่าตัด: [ป้าย, คอลัมน์ผ่าตัดในทะเบียน-1, ชื่อ surgery ใน Post-DC]
-            const MAP = [
-                ['Phaco (ต้อกระจก)', 'ssiEye', 'Phaco (ต้อกระจก)'],
-                ['THR (ข้อสะโพก)', 'ssiHip', 'THR (ข้อสะโพก)'],
-                ['TKR (ข้อเข่า)', 'ssiKnee', 'TKR (ข้อเข่า)'],
-                ['TAH (มดลูก)', 'ssiGyn', 'TAH (มดลูก)']
-            ];
-            const body = document.getElementById('pdcVsBody');
-            body.innerHTML = '';
-            let tOp = 0, tPt = 0;
-            const rowHtml = (label, op, pt, isTotal) => {
-                const cov = op ? Math.round(pt / op * 100) + '%' : '-';
-                return '<tr class="' + (isTotal ? 'bg-slate-50 font-semibold text-slate-800' : 'hover:bg-slate-50 transition-colors') + '">' +
-                    '<td class="py-3 px-4 ' + (isTotal ? '' : 'font-medium text-slate-700') + '">' + label + '</td>' +
-                    '<td class="py-3 px-4 text-right text-sky-700">' + Math.round(op).toLocaleString() + '</td>' +
-                    '<td class="py-3 px-4 text-right text-indigo-700">' + pt + '</td>' +
-                    '<td class="py-3 px-4 text-right text-emerald-700 font-semibold">' + cov + '</td></tr>';
-            };
-            MAP.forEach(([label, opCol, surg]) => {
-                const op = opSum(opCol);
-                const pt = postdcGroups.filter(p => p.surgery === surg).length;
-                tOp += op; tPt += pt;
-                body.insertAdjacentHTML('beforeend', rowHtml(label, op, pt, false));
-            });
-            body.insertAdjacentHTML('beforeend', rowHtml('รวม 4 หัตถการ', tOp, tPt, true));
-        }
-
-        // ตารางสรุปสถานะนัด: ภาพรวม + รายชนิดผ่าตัด (นับนัดคลินิกเดิม)
+        // ตารางสรุปสถานะนัด: ภาพรวม + รายชนิดผ่าตัด (นับนัดคลินิกเดิม ในช่วง dc → dc+120 วัน)
         function renderPdcStatusTable() {
             const ORDER = ['Phaco (ต้อกระจก)', 'THR (ข้อสะโพก)', 'TKR (ข้อเข่า)', 'TAH (มดลูก)', 'อื่นๆ'];
-            // เตรียมนัดคลินิกเดิม (เรียงตามวันที่) ต่อผู้ป่วย + หาจำนวนครั้งสูงสุด
-            const relOf = p => p.appts.filter(ap => pdcRelated(p.surgery, ap.clinic)).sort((a, b) => (a.t || 0) - (b.t || 0));
+            // จำนวนผ่าตัด (ครั้ง) จากทะเบียน-1 ตามชนิดผ่าตัด
+            const opRows = getFilteredRows();
+            const opSum = k => opRows.reduce((a, r) => a + (r[k] || 0), 0);
+            const OP_COL = { 'Phaco (ต้อกระจก)': 'ssiEye', 'THR (ข้อสะโพก)': 'ssiHip', 'TKR (ข้อเข่า)': 'ssiKnee', 'TAH (มดลูก)': 'ssiGyn' };
+            const opOf = s => OP_COL[s] ? opSum(OP_COL[s]) : 0;
+            // เตรียมนัดคลินิกเดิม (เรียงตามวันที่) ต่อผู้ป่วย · เฉพาะนัดในช่วง dc → dc+120 วัน + หาจำนวนครั้งสูงสุด
+            const relOf = p => p.appts.filter(ap => ap.dc120 && pdcRelated(p.surgery, ap.clinic)).sort((a, b) => (a.t || 0) - (b.t || 0));
             const maxK = Math.max(0, ...postdcGroups.map(p => relOf(p).length));
             // เติมตัวเลือกครั้งที่นัดใน dropdown (คงค่าที่เลือกไว้)
             const sel = document.getElementById('pdcStatusVisit');
@@ -2984,20 +2940,23 @@
             sel.value = (prev !== 'ALL' && +prev <= maxK) ? prev : 'ALL';
             const pick = sel.value; // 'ALL' หรือเลขครั้งที่
 
-            const acc = {}; // surgery -> {pt, came, missed, pending, none}
-            const totalRow = { pt: 0, came: 0, missed: 0, pending: 0, none: 0 };
+            const acc = {}; // surgery -> {op, v, pt, came, missed, pending, none}
+            const totalRow = { op: 0, v: 0, pt: 0, came: 0, missed: 0, pending: 0, none: 0 };
             postdcGroups.forEach(p => {
-                const a = acc[p.surgery] || (acc[p.surgery] = { pt: 0, came: 0, missed: 0, pending: 0, none: 0 });
+                const a = acc[p.surgery] || (acc[p.surgery] = { op: 0, v: 0, pt: 0, came: 0, missed: 0, pending: 0, none: 0 });
                 const rel = relOf(p);
                 if (pick === 'ALL') {
                     a.pt++; totalRow.pt++;
+                    a.v += rel.length; totalRow.v += rel.length; // จำนวนนัดในช่วง dc → dc+120 วัน
                     rel.forEach(ap => { a[ap.s]++; totalRow[ap.s]++; });
                     a.none += p.none; totalRow.none += p.none;
                 } else {
                     const ap = rel[+pick - 1]; // นัดครั้งที่ pick ของผู้ป่วยรายนี้ (ถ้ามี)
-                    if (ap) { a.pt++; totalRow.pt++; a[ap.s]++; totalRow[ap.s]++; }
+                    if (ap) { a.pt++; totalRow.pt++; a.v++; totalRow.v++; a[ap.s]++; totalRow[ap.s]++; }
                 }
             });
+            // ผ่าตัด (ครั้ง) จากทะเบียน-1 (ไม่ขึ้นกับตัวกรองครั้งที่นัด)
+            ORDER.forEach(s => { if (acc[s]) { acc[s].op = opOf(s); totalRow.op += acc[s].op; } });
             const body = document.getElementById('pdcStatusBody');
             body.innerHTML = '';
             const rowHtml = (label, d, isTotal) => {
@@ -3005,7 +2964,9 @@
                 const pct = decided ? Math.round(d.came / decided * 100) + '%' : '-';
                 return '<tr class="' + (isTotal ? 'bg-slate-50 font-semibold text-slate-800' : 'hover:bg-slate-50 transition-colors') + '">' +
                     '<td class="py-3 px-4 ' + (isTotal ? '' : 'font-medium text-slate-700') + '">' + label + '</td>' +
+                    '<td class="py-3 px-4 text-right text-sky-700">' + (d.op ? Math.round(d.op).toLocaleString() : '-') + '</td>' +
                     '<td class="py-3 px-4 text-right">' + d.pt + '</td>' +
+                    '<td class="py-3 px-4 text-right text-teal-700 font-semibold">' + d.v + '</td>' +
                     '<td class="py-3 px-4 text-right text-emerald-700">' + d.came + '</td>' +
                     '<td class="py-3 px-4 text-right text-rose-700">' + d.missed + '</td>' +
                     '<td class="py-3 px-4 text-right text-slate-500">' + d.pending + '</td>' +
@@ -3049,7 +3010,9 @@
                 const within30 = apT != null && dcT != null && (apT - dcT) >= 0 && (apT - dcT) <= 30 * 86400000;
                 const reYes = /^(yes|y|ใช่|true|1)$/.test(low(r[colReadmit])) && within30;
                 // เก็บเฉพาะนัดจริง (มา/ขาด/ยังไม่ถึง) ไว้เรียงตามครั้ง + คลินิก + flag re-admit ของนัดนั้น
-                if (s === 'came' || s === 'missed' || s === 'pending') g[an].appts.push({ t: apT, s, clinic: (r[colClinic] || '').toString(), re: reYes });
+                // dc120 = วันนัดอยู่ในช่วง dc ถึง dc+120 วัน (ขอบเขตนับตามที่กำหนด)
+                const dc120 = apT != null && dcT != null && (apT - dcT) >= 0 && (apT - dcT) <= 120 * 86400000;
+                if (s === 'came' || s === 'missed' || s === 'pending') g[an].appts.push({ t: apT, s, clinic: (r[colClinic] || '').toString(), re: reYes, dc120 });
             });
 
             // เติมตัวเลือกเดือนใน dropdown ของหน้านี้ (ครั้งเดียว)
@@ -3087,7 +3050,6 @@
             });
             renderPdcSeq(document.getElementById('pdcSeqSurgery').value || 'ALL'); // ตั้งค่าการ์ด KPI + ตารางในนี้
             renderPdcStatusTable();
-            renderPdcVsSurgery();
             initPdcCmpMonths();
             renderPdcCmpChart();
             const groups = postdcGroups; // ใช้ชุดที่กรองไตรมาสแล้ว
