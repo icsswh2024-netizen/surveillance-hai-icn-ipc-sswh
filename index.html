@@ -898,7 +898,7 @@
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-800">สรุปสถานะนัด — ภาพรวมและรายชนิดผ่าตัด</h3>
-                        <p class="text-xs text-slate-400 mt-1">นับจำนวนนัด (คลินิกเดิม ในช่วง dc → dc+120 วัน) ตามสถานะ · "มาตามนัดใน 120 วัน" = จำนวนครั้งที่มาตามนัดในช่วงนั้น · "ผ่าตัด (ครั้ง)" จากทะเบียน-1 · "ไม่มีการนัดหมาย" นับรายผู้ป่วย</p>
+                        <p class="text-xs text-slate-400 mt-1">นับจำนวนนัด (คลินิกเดิม ในช่วง dc → dc+120 วัน) ตามสถานะ · "ผ่าตัด (ครั้ง)" จากทะเบียน-1 · "ไม่มีการนัดหมาย" นับรายผู้ป่วย</p>
                     </div>
                     <select id="pdcStatusVisit" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 self-start">
                         <option value="ALL">ทุกครั้งที่นัด</option>
@@ -911,7 +911,6 @@
                                 <th class="py-3 px-4">ชนิดผ่าตัด</th>
                                 <th class="py-3 px-4 text-right text-sky-700">ผ่าตัด (ครั้ง)</th>
                                 <th class="py-3 px-4 text-right">ผู้ป่วย (ราย)</th>
-                                <th class="py-3 px-4 text-right text-teal-700">มาตามนัดใน 120 วัน</th>
                                 <th class="py-3 px-4 text-right text-emerald-700">มาตามนัด</th>
                                 <th class="py-3 px-4 text-right text-rose-700">ขาดนัด</th>
                                 <th class="py-3 px-4 text-right text-slate-500">ยังไม่ถึงวันนัด</th>
@@ -2965,7 +2964,6 @@
                     '<td class="py-3 px-4 ' + (isTotal ? '' : 'font-medium text-slate-700') + '">' + label + '</td>' +
                     '<td class="py-3 px-4 text-right text-sky-700">' + (d.op ? Math.round(d.op).toLocaleString() : '-') + '</td>' +
                     '<td class="py-3 px-4 text-right">' + d.pt + '</td>' +
-                    '<td class="py-3 px-4 text-right text-teal-700 font-semibold">' + d.v + '</td>' +
                     '<td class="py-3 px-4 text-right text-emerald-700">' + d.came + '</td>' +
                     '<td class="py-3 px-4 text-right text-rose-700">' + d.missed + '</td>' +
                     '<td class="py-3 px-4 text-right text-slate-500">' + d.pending + '</td>' +
