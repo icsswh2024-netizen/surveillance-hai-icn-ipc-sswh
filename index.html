@@ -2938,7 +2938,14 @@
             const opOf = s => OP_COL[s] ? opSum(OP_COL[s]) : 0;
             // เตรียมนัดคลินิกเดิม (เรียงตามวันที่) ต่อผู้ป่วย · เฉพาะนัดในช่วง dc → dc+120 วัน + หาจำนวนครั้งสูงสุด
             const relOf = p => p.appts.filter(ap => ap.dc120 && pdcRelated(p.surgery, ap.clinic)).sort((a, b) => (a.t || 0) - (b.t || 0));
-            const maxK = Math.max(0, ...postdcGroups.map(p => relOf(p).length));
+            // จำนวนนัด (คลินิกเดิม, ใน 120 วัน) ต่อผู้ป่วย · ใช้กำหนดจำนวนตัวเลือกใน dropdown
+            const relLens = postdcGroups.map(p => relOf(p).length);
+            const rawMaxK = Math.max(0, ...relLens);
+            // ตัดหางข้อมูลผิดปกติ: แสดง "นัดครั้งที่ k" เฉพาะครั้งที่มีผู้ป่วยไปถึง ≥ เกณฑ์
+            // (เกณฑ์ = 1% ของผู้ป่วย แต่อย่างน้อย 2 ราย) เพื่อไม่ให้ outlier ทำ dropdown ยาวเกินจริง
+            const thr = Math.max(2, Math.ceil(relLens.length * 0.01));
+            let maxK = 0;
+            for (let k = 1; k <= rawMaxK; k++) { if (relLens.filter(n => n >= k).length >= thr) maxK = k; else break; }
             // เติมตัวเลือกครั้งที่นัดใน dropdown (คงค่าที่เลือกไว้)
             const sel = document.getElementById('pdcStatusVisit');
             const prev = sel.value || 'ALL';
