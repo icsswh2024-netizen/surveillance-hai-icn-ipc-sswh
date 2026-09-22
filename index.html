@@ -1049,7 +1049,7 @@
                     <div class="ctrl-card kpi rounded-xl p-3 text-white shadow-md" style="background-image:linear-gradient(135deg,#0d9488,#22c55e)"><p class="text-xs text-white/85 z-10 relative">เส้นกลาง (CL)</p><p class="text-lg font-bold z-10 relative"><span id="ctrlCL">-</span></p></div>
                     <div class="ctrl-card kpi rounded-xl p-3 text-white shadow-md" style="background-image:linear-gradient(135deg,#1e3a8a,#3b82f6)"><p class="text-xs text-white/85 z-10 relative">UCL เฉลี่ย</p><p class="text-lg font-bold z-10 relative"><span id="ctrlUCL">-</span></p></div>
                     <div class="ctrl-card kpi rounded-xl p-3 text-white shadow-md" style="background-image:linear-gradient(135deg,#0ea5e9,#06b6d4)"><p class="text-xs text-white/85 z-10 relative">จุดในเกณฑ์</p><p class="text-lg font-bold z-10 relative"><span id="ctrlIn">0</span></p></div>
-                    <div class="ctrl-card kpi rounded-xl p-3 text-white shadow-md" style="background-image:linear-gradient(135deg,#22c55e,#2563eb)"><p class="text-xs text-white/85 z-10 relative">จุดหลุดเกณฑ์</p><p class="text-lg font-bold z-10 relative"><span id="ctrlOut">0</span></p></div>
+                    <div class="ctrl-card kpi rounded-xl p-3 text-white shadow-md" style="background-image:linear-gradient(135deg,#ef4444,#f59e0b)"><p class="text-xs text-white/90 z-10 relative">จุดหลุดเกณฑ์</p><p class="text-lg font-bold z-10 relative"><span id="ctrlOut">0</span></p></div>
                 </div>
                 <p id="ctrlEmpty" class="text-xs text-slate-400 mt-3" hidden>ยังไม่มีข้อมูลพอจะสร้างแผนภูมิควบคุม</p>
                 <div id="ctrlFlags" class="mt-4"></div>
@@ -1396,6 +1396,32 @@
             }
         };
         if (window.Chart) Chart.register(centerText);
+
+        // Plugin: ป้ายกฎที่จุดหลุดเกณฑ์ของ Control Chart (แสดงบนกราฟ)
+        const ctrlFlag = {
+            id: 'ctrlFlag',
+            afterDatasetsDraw(chart) {
+                const cfg = chart.config.options.plugins && chart.config.options.plugins.ctrlFlag;
+                if (!cfg || !cfg.flags || !cfg.flags.length) return;
+                const meta = chart.getDatasetMeta(chart.data.datasets.length - 1); // เส้นค่าจริง = ชุดสุดท้าย
+                const ctx = chart.ctx;
+                cfg.flags.forEach(f => {
+                    const pt = meta.data[f.i]; if (!pt) return;
+                    const txt = 'กฎ ' + f.rules.join(',');
+                    ctx.save();
+                    ctx.font = 'bold 10px Kanit, sans-serif';
+                    const w = ctx.measureText(txt).width + 12, h = 17, x = pt.x - w / 2, y = pt.y - 30;
+                    ctx.beginPath();
+                    if (ctx.roundRect) ctx.roundRect(x, y, w, h, 5); else { ctx.moveTo(x + 5, y); ctx.arcTo(x + w, y, x + w, y + h, 5); ctx.arcTo(x + w, y + h, x, y + h, 5); ctx.arcTo(x, y + h, x, y, 5); ctx.arcTo(x, y, x + w, y, 5); ctx.closePath(); }
+                    ctx.fillStyle = '#dc2626'; ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(pt.x - 4, y + h); ctx.lineTo(pt.x + 4, y + h); ctx.lineTo(pt.x, y + h + 5); ctx.closePath(); ctx.fill(); // ลูกศรชี้จุด
+                    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(txt, pt.x, y + h / 2);
+                    ctx.restore();
+                });
+            }
+        };
+        if (window.Chart) Chart.register(ctrlFlag);
 
         // Plugin: โยงเส้นจากชิ้นโดนัทออกมาที่ป้าย (SITE + จำนวน + ร้อยละ + อัตรา)
         const donutOutLabels = {
@@ -3439,7 +3465,8 @@
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } },
-                        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' ' + unit } }
+                        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' ' + unit } },
+                        ctrlFlag: { flags: flagged.map(x => ({ i: x.i, rules: reasons[x.i].slice().sort((a, b) => a - b) })) }
                     },
                     scales: { y: { beginAtZero: true, title: { display: true, text: valLabel + ' (' + unit + ')' } }, x: { grid: { display: false } } }
                 }
