@@ -942,6 +942,9 @@
                         <span class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1">นับเฉพาะนัดคลินิกเดิม (ตรงชนิดผ่าตัด)</span>
                     </div>
                 </div>
+                <div class="px-6 pt-4">
+                    <div id="pdcSeqPeak" class="text-sm font-medium text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2 inline-flex items-center gap-2"></div>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
                         <thead class="bg-slate-50 text-slate-700 font-semibold">
@@ -2816,15 +2819,20 @@
             });
             const seqBody = document.getElementById('pdcSeqBody');
             seqBody.innerHTML = '';
+            const peakEl = document.getElementById('pdcSeqPeak');
             const maxK = Math.max(0, ...Object.keys(seq).map(Number));
-            if (maxK === 0) { seqBody.innerHTML = '<tr><td colspan="8" class="py-4 px-4 text-center text-slate-400">ไม่มีข้อมูล</td></tr>'; return; }
+            if (maxK === 0) { seqBody.innerHTML = '<tr><td colspan="8" class="py-4 px-4 text-center text-slate-400">ไม่มีข้อมูล</td></tr>'; if (peakEl) peakEl.textContent = 'ไม่มีข้อมูลนัดในช่วง 120 วัน'; return; }
+            // ครั้งที่มีการมาตามนัดมากที่สุด (ในช่วง 120 วัน)
+            let peakK = 0, peakCame = -1;
+            for (let k = 1; k <= maxK; k++) { const c = (seq[k] || {}).came || 0; if (c > peakCame) { peakCame = c; peakK = k; } }
+            if (peakEl) peakEl.innerHTML = '🏆 มาตามนัดมากที่สุดคือ <span class="text-emerald-900 font-bold">นัดครั้งที่ ' + peakK + '</span> (' + peakCame + ' ครั้ง)';
             let tC = 0, tM = 0, tP = 0;
             for (let k = 1; k <= maxK; k++) {
                 const s = seq[k] || { came: 0, missed: 0, pending: 0 };
                 const tot = s.came + s.missed + s.pending; // ฐาน % = รวมนัดทั้งหมด (รวมยังไม่ถึงนัด)
                 tC += s.came; tM += s.missed; tP += s.pending;
                 const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.className = (k === peakK && peakCame > 0) ? 'bg-emerald-50/70' : 'hover:bg-slate-50 transition-colors';
                 tr.innerHTML =
                     '<td class="py-3 px-4 font-medium text-slate-700">ครั้งที่ ' + k + '</td>' +
                     '<td class="py-3 px-4 text-right text-emerald-700 font-semibold">' + s.came + '</td>' +
