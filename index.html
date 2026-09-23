@@ -2200,7 +2200,7 @@
                     '<td class="py-3 px-4 text-right">' + w.SSI + '</td>' +
                     '<td class="py-3 px-4 text-right text-cyan-600">' + fmtRate(w.rSSI) + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + w.MDR + '</td>' +
-                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + (w.HAI ? Math.round(w.MDR / w.HAI * 100) + '%' : '-') + '</td>';
+                    '<td class="py-3 px-4 text-right ' + (w.HAI ? pdcPctClass(w.MDR / w.HAI * 100, false) : 'text-fuchsia-700') + '">' + (w.HAI ? Math.round(w.MDR / w.HAI * 100) + '%' : '-') + '</td>';
                 tbody.appendChild(tr);
             });
             // แถวรวมทั้งโรงพยาบาล
@@ -2366,7 +2366,7 @@
                     '<td class="py-3 px-4 text-right">' + (w.patientDay || 0).toLocaleString() + '</td>' +
                     '<td class="py-3 px-4 text-right">' + w.HAI + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + w.MDR + '</td>' +
-                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + (w.HAI ? Math.round(w.MDR / w.HAI * 100) + '%' : '-') + '</td>' +
+                    '<td class="py-3 px-4 text-right ' + (w.HAI ? pdcPctClass(w.MDR / w.HAI * 100, false) : 'text-fuchsia-700') + '">' + (w.HAI ? Math.round(w.MDR / w.HAI * 100) + '%' : '-') + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700">' + fmtRate(rate(w.MDR, w.patientDay, 1000)) + '</td>' +
                     '<td class="py-3 px-4 text-right">' + w.CAUTI + '</td>' +
                     '<td class="py-3 px-4 text-right">' + w.VAP + '</td>' +
@@ -3281,7 +3281,7 @@
                     '<td class="py-3 px-4 text-right">' + Math.round(den).toLocaleString() + '</td>' +
                     '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(rate(g.n, den, 1000)) + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + g.mdr + '</td>' +
-                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + (g.n ? Math.round(g.mdr / g.n * 100) + '%' : '-') + '</td>';
+                    '<td class="py-3 px-4 text-right ' + (g.n ? pdcPctClass(g.mdr / g.n * 100, false) : 'text-fuchsia-700') + '">' + (g.n ? Math.round(g.mdr / g.n * 100) + '%' : '-') + '</td>';
                 tbody.appendChild(tr);
             });
             if (groups.length) {
