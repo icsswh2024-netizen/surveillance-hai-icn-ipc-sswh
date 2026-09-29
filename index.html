@@ -3745,6 +3745,18 @@
         // ความรุนแรง (Consequence) ตั้งต้นต่อ SITE — ปรับได้ตามบริบท รพ.
         const CONSEQUENCE_BY_SITE = { CLABSI: 4, BSI: 4, VAP: 4, HAP: 4, CAUTI: 3, SSI: 3, Omphalitis: 3, UTI: 2, Other: 3 };
         const RISK_SITES = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis'];
+        // คีย์ site ของเคส: ใช้ชนิดที่จับได้ ถ้าไม่รู้จัก (Other) ใช้ค่า SITE ดิบ → รองรับ site ใหม่อัตโนมัติ
+        function riskSiteKeyOf(c) { return c.siteType !== 'Other' ? c.siteType : (((c.rawSITE || '').toString().trim()) || 'Other'); }
+        // รายชื่อ site ที่ใช้งานจริง = ชุดหลัก + site ใหม่ที่พบในทะเบียน-1
+        function activeRiskSites() {
+            const seen = {}, list = [];
+            RISK_SITES.forEach(s => { seen[s] = 1; list.push(s); });
+            (typeof rawData !== 'undefined' ? rawData : []).forEach(c => {
+                if (!c.isHAI) return; const k = riskSiteKeyOf(c);
+                if (k && !seen[k]) { seen[k] = 1; list.push(k); }
+            });
+            return list;
+        }
         // แปลงจำนวนครั้งการเกิด → ระดับโอกาส (Likelihood) ตามตารางความถี่ (รายไตรมาส/รายปี)
         function likelihoodFromCount(count, yearly) {
             if (count == null || count <= 0) return null;
@@ -3760,11 +3772,11 @@
             const cases = rawData.filter(d => d.isHAI &&
                 (y === 'ALL' || d.year === y) && (u === 'ALL' || d.unit === u) && (p === 'ALL' || d.pct === p));
             const out = [];
-            RISK_SITES.forEach(s => {
+            activeRiskSites().forEach(s => {
                 const i = CONSEQUENCE_BY_SITE[s] || 3;
                 let yearCount = 0;
                 RISK_QUARTERS.forEach(Q => {
-                    const count = cases.filter(c => c.quarter === Q && c.siteType === s).length;
+                    const count = cases.filter(c => c.quarter === Q && riskSiteKeyOf(c) === s).length;
                     yearCount += count;
                     const l = likelihoodFromCount(count, false); // นับรายไตรมาส → ใช้เกณฑ์ความถี่รายไตรมาส
                     const score = (l != null) ? l * i : null;
@@ -3924,7 +3936,7 @@
                 const o = bySite[r.site] || (bySite[r.site] = { site: r.site, q: {}, i: r.i });
                 if (r.annual) { o.year = r.count; o.ly = r.l; } else o.q[r.quarter] = r.count;
             });
-            return RISK_SITES.map(s => bySite[s]).filter(Boolean);
+            return activeRiskSites().map(s => bySite[s]).filter(Boolean);
         }
         function renderRiskForm() {
             const body = document.getElementById('riskFormBody'); if (!body) return;
@@ -4200,7 +4212,7 @@
         }
         // อัตราการติดเชื้อปัจจุบันต่อ site (รวมช่วงที่กรอง)
         function siteCurrentRate(site) {
-            const cases = getFilteredCases().filter(c => c.siteType === site).length;
+            const cases = getFilteredCases().filter(c => riskSiteKeyOf(c) === site).length;
             const meta = RATE_META[site];
             if (!meta) return { count: cases, rate: null, unit: '' };
             const den = aggregateDenominatorsByMonth(getFilteredRows());
@@ -4222,7 +4234,7 @@
             const draft = riskFormDraft();
             const today = new Date().toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' });
             const ty = riskTargetYear();
-            wrap.innerHTML = RISK_SITES.map(s => {
+            wrap.innerHTML = activeRiskSites().map(s => {
                 const r = siteCurrentRate(s);
                 const inc = (draft[s] || {}).include ? 'checked' : '';
                 const rateTxt = r.rate != null ? '<b class="text-blue-700">' + r.rate + '</b> <span class="text-[11px] text-slate-400">' + r.unit + '</span>' : '<b class="text-slate-500">' + r.count + '</b> ครั้ง';
