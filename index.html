@@ -3933,6 +3933,27 @@
             // วันที่
             const dt = (o, f) => '<td class="py-2 px-2 align-top"><input type="date" data-site="' + o.site + '" data-f="' + f + '" value="' + esc(o._d[f]) + '" class="riskFin rounded border border-slate-200 px-2 py-1 text-sm"></td>';
             const today = new Date().toISOString().slice(0, 10);
+            const colCount = document.querySelectorAll('#viewRisk .overflow-x-auto table thead th').length || 22;
+            // แถวรายละเอียดรายไตรมาส (แสดงเสมอ)
+            const detailHtml = (o, cons) => {
+                const rowsD = ['Q1', 'Q2', 'Q3', 'Q4'].map(Q => ({ q: Q, c: o.q[Q] || 0, l: likelihoodFromCount(o.q[Q] || 0, false) }));
+                rowsD.push({ q: 'ทั้งปีงบประมาณ', c: o.year || 0, l: o.ly });
+                const mini = rowsD.map(r => {
+                    const rl = r.l != null ? r.l * cons : '-', bz = r.l != null ? riskZone(cons, r.l) : null;
+                    return '<tr class="' + (r.q === 'ทั้งปีงบประมาณ' ? 'font-semibold' : '') + '">' +
+                        '<td class="py-1 px-3 text-left text-slate-600 whitespace-nowrap">' + r.q + '</td>' +
+                        '<td class="py-1 px-3 text-center">' + r.c + '</td>' +
+                        '<td class="py-1 px-3 text-center">' + (r.l ?? '-') + '</td>' +
+                        '<td class="py-1 px-3 text-center">' + cons + '</td>' +
+                        '<td class="py-1 px-3 text-center font-bold ' + (bz ? bz.pill.split(' ')[1] : 'text-slate-400') + '">' + rl + '</td>' +
+                        '<td class="py-1 px-3">' + (bz ? '<span class="text-xs font-semibold rounded-full px-2 py-0.5 ' + bz.pill + '">' + bz.label + '</span>' : '-') + '</td></tr>';
+                }).join('');
+                return '<tr class="riskDetailRow bg-slate-50/60" data-site="' + o.site + '"><td colspan="' + colCount + '" class="px-6 py-2">' +
+                    '<div class="text-xs font-semibold text-slate-500 mb-1">รายไตรมาส — ' + o.site + ' (จำนวนครั้ง → Likelihood × Consequence = Risk Level)</div>' +
+                    '<table class="text-sm text-slate-600"><thead class="text-slate-400"><tr>' +
+                    '<th class="py-1 px-3 text-left">ไตรมาส</th><th class="py-1 px-3">จำนวนครั้ง</th><th class="py-1 px-3">Likelihood</th><th class="py-1 px-3">Consequence</th><th class="py-1 px-3">Risk Level</th><th class="py-1 px-3 text-left">ระดับ</th>' +
+                    '</tr></thead><tbody>' + mini + '</tbody></table></td></tr>';
+            };
             riskFormSites().forEach(o => {
                 const d = draft[o.site] || {}; o._d = d;
                 if (!d.dataAdded) d.dataAdded = today;
@@ -3946,7 +3967,7 @@
                     '<tr class="hover:bg-slate-50">' +
                     '<td class="py-2 px-3 text-center align-top"><input type="checkbox" class="riskInc" data-site="' + o.site + '" ' + checked + '></td>' +
                     sel(o, 'riskId') +
-                    '<td class="py-2 px-3 font-semibold text-slate-800 align-top whitespace-nowrap"><button type="button" class="riskDetailBtn text-slate-400 hover:text-emerald-600 mr-1" data-site="' + o.site + '" title="ดูรายละเอียดรายไตรมาส">▸</button>' + o.site + '</td>' +
+                    '<td class="py-2 px-3 font-semibold text-slate-800 align-top whitespace-nowrap"><button type="button" class="riskDetailBtn text-slate-400 hover:text-emerald-600 mr-1" data-site="' + o.site + '" title="ย่อ/ขยายรายละเอียดรายไตรมาส">▾</button>' + o.site + '</td>' +
                     sel(o, 'source') + dt(o, 'dataAdded') + area(o, 'title') + area(o, 'desc') +
                     '<td class="py-2 px-3 text-center bg-slate-50 align-top">' + (o.q.Q1 || 0) + '</td>' +
                     '<td class="py-2 px-3 text-center bg-slate-50 align-top">' + (o.q.Q2 || 0) + '</td>' +
@@ -3958,49 +3979,20 @@
                     '<td class="py-2 px-3 text-center bg-slate-50 font-bold align-top ' + (b ? b.pill.split(' ')[1] : '') + '" data-rl="' + o.site + '">' + rl + '</td>' +
                     combo(o, 'prevention') + combo(o, 'monitor') + combo(o, 'mitigation') + combo(o, 'qi') + combo(o, 'owner') +
                     sel(o, 'reviewFreq') + dt(o, 'lastReview') + sel(o, 'residual') + sel(o, 'status') +
-                    '</tr>');
+                    '</tr>' + detailHtml(o, cons));
             });
             // สร้าง datalist สำหรับช่อง combo (เลือก preset ยาว ๆ จากชีต)
             const dl = document.getElementById('riskDatalists');
             if (dl) dl.innerHTML = ['prevention', 'monitor', 'mitigation', 'qi', 'owner'].map(f =>
                 '<datalist id="dl_' + f + '">' + (RISK_OPTS[f] || []).filter(x => (x || '').toString().trim() !== '')
                     .map(o => '<option value="' + esc(o) + '"></option>').join('') + '</datalist>').join('');
-            // ปุ่มขยายดูรายละเอียดรายไตรมาส (Q1-Q4 + ทั้งปี)
-            const sitesMap = {}; riskFormSites().forEach(o => sitesMap[o.site] = o);
-            const colCount = document.querySelector('#riskFormBody') ? document.querySelectorAll('#viewRisk table thead th').length : 21;
+            // ปุ่มย่อ/ขยายรายละเอียด (แถวรายละเอียดแสดงเสมอโดยค่าเริ่มต้น)
             body.querySelectorAll('.riskDetailBtn').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const site = btn.dataset.site, tr = btn.closest('tr');
-                    if (tr.nextElementSibling && tr.nextElementSibling.classList.contains('riskDetailRow')) {
-                        tr.nextElementSibling.remove(); btn.textContent = '▸'; return;
+                    const dr = btn.closest('tr').nextElementSibling;
+                    if (dr && dr.classList.contains('riskDetailRow')) {
+                        dr.hidden = !dr.hidden; btn.textContent = dr.hidden ? '▸' : '▾';
                     }
-                    btn.textContent = '▾';
-                    const o = sitesMap[site]; if (!o) return;
-                    const consEl = body.querySelector('.riskCons[data-site="' + site + '"]');
-                    const cons = consEl ? (+consEl.value || o.i) : o.i;
-                    const rowsD = ['Q1', 'Q2', 'Q3', 'Q4'].map(Q => {
-                        const c = o.q[Q] || 0, l = likelihoodFromCount(c, false);
-                        return { q: Q, c, l };
-                    });
-                    rowsD.push({ q: 'ทั้งปีงบประมาณ', c: o.year || 0, l: o.ly });
-                    const mini = rowsD.map(r => {
-                        const rl = r.l != null ? r.l * cons : '-', bz = r.l != null ? riskZone(cons, r.l) : null;
-                        return '<tr>' +
-                            '<td class="py-1 px-3 font-medium text-slate-600">' + r.q + '</td>' +
-                            '<td class="py-1 px-3 text-center">' + r.c + '</td>' +
-                            '<td class="py-1 px-3 text-center">' + (r.l ?? '-') + '</td>' +
-                            '<td class="py-1 px-3 text-center">' + cons + '</td>' +
-                            '<td class="py-1 px-3 text-center font-bold ' + (bz ? bz.pill.split(' ')[1] : 'text-slate-400') + '">' + rl + '</td>' +
-                            '<td class="py-1 px-3">' + (bz ? '<span class="text-xs font-semibold rounded-full px-2 py-0.5 ' + bz.pill + '">' + bz.label + '</span>' : '-') + '</td></tr>';
-                    }).join('');
-                    const dr = document.createElement('tr');
-                    dr.className = 'riskDetailRow bg-slate-50/60';
-                    dr.innerHTML = '<td colspan="' + colCount + '" class="px-6 py-3">' +
-                        '<div class="text-xs font-semibold text-slate-500 mb-1">รายละเอียดรายไตรมาส — ' + site + ' (Likelihood จากจำนวนครั้ง × Consequence = Risk Level)</div>' +
-                        '<table class="text-sm text-slate-600"><thead class="text-slate-500"><tr>' +
-                        '<th class="py-1 px-3 text-left">ไตรมาส</th><th class="py-1 px-3">จำนวนครั้ง</th><th class="py-1 px-3">Likelihood</th><th class="py-1 px-3">Consequence</th><th class="py-1 px-3">Risk Level</th><th class="py-1 px-3 text-left">ระดับ</th>' +
-                        '</tr></thead><tbody>' + mini + '</tbody></table></div>';
-                    tr.after(dr);
                 });
             });
             // เก็บ draft เมื่อพิมพ์ + คำนวณ Risk Level สดเมื่อแก้ Consequence
@@ -4011,7 +4003,7 @@
                 if (el.classList.contains('riskInc')) rec.include = el.checked;
                 else rec[el.dataset.f] = el.value;
                 riskFormSaveDraft(d);
-                if (el.dataset.f === 'consequence') updateRiskFormRL(el);
+                if (el.dataset.f === 'consequence') { updateRiskFormRL(el); renderRiskForm(); } // อัปเดตแถวรายละเอียดด้วย
             };
             body.querySelectorAll('.riskFin, .riskCons, .riskInc').forEach(el => {
                 el.addEventListener('input', () => onEdit(el));
