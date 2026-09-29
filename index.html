@@ -3702,15 +3702,20 @@
                 (y === 'ALL' || d.year === y) && (u === 'ALL' || d.unit === u) && (p === 'ALL' || d.pct === p));
             const out = [];
             RISK_SITES.forEach(s => {
+                const i = CONSEQUENCE_BY_SITE[s] || 3;
+                let yearCount = 0;
                 RISK_QUARTERS.forEach(Q => {
                     const count = cases.filter(c => c.quarter === Q && c.siteType === s).length;
+                    yearCount += count;
                     const l = likelihoodFromCount(count, false); // นับรายไตรมาส → ใช้เกณฑ์ความถี่รายไตรมาส
-                    const i = CONSEQUENCE_BY_SITE[s] || 3;
                     const score = (l != null) ? l * i : null;
                     out.push({ site: s, quarter: Q, count, name: '', cat: '', l, i, score, level: '', ctrl: '', owner: '', status: '' });
                 });
+                // แถวสรุปทั้งปีงบประมาณ (รวม Q1-Q4 → Likelihood รายปี)
+                const ly = likelihoodFromCount(yearCount, true);
+                out.push({ site: s, quarter: 'ทั้งปีงบประมาณ', count: yearCount, name: '', cat: '', l: ly, i, score: (ly != null) ? ly * i : null, level: '', ctrl: '', owner: '', status: '', annual: true });
             });
-            return out; // 8 site × 4 ไตรมาส = 32 แถว (รวม count 0)
+            return out; // 8 site × (4 ไตรมาส + ทั้งปี) = 40 แถว
         }
 
         // จับคอลัมน์จากหัวตาราง (รองรับหลายชื่อ ทั้งไทย/อังกฤษ)
@@ -3805,18 +3810,19 @@
             // การ์ดสรุป (นับตามระดับโซน)
             let high = 0, med = 0, low = 0;
             items.forEach(r => {
+                if (r.annual) return; // ไม่นับแถวสรุปทั้งปี ป้องกันการนับซ้ำ
                 const b = riskBandOf(r); if (!b) return;
                 if (b.label === 'สูง' || b.label === 'สูงมาก') high++;
                 else if (b.label === 'ปานกลาง') med++;
                 else low++;
             });
-            document.getElementById('riskTotal').textContent = grouped ? items.filter(r => r.count > 0).length : items.length;
+            document.getElementById('riskTotal').textContent = grouped ? items.filter(r => !r.annual && r.count > 0).length : items.length;
             document.getElementById('riskHigh').textContent = high;
             document.getElementById('riskMed').textContent = med;
             document.getElementById('riskLow').textContent = low;
             // Risk matrix 5×5 (แถว = ความรุนแรง/ผลกระทบ I 5→1, คอลัมน์ = โอกาส L 1→5) — นับเฉพาะที่มี I,L 1..5
             const cnt = {}; items.forEach(r => {
-                if (r.l == null || r.i == null) return;
+                if (r.annual || r.l == null || r.i == null) return; // ข้ามแถวสรุปทั้งปี
                 const l = clamp15(r.l), i = clamp15(r.i); cnt[i + 'x' + l] = (cnt[i + 'x' + l] || 0) + 1;
             });
             let mx = '<table class="border-collapse text-center text-sm"><tbody>';
@@ -3873,11 +3879,12 @@
                           '<td rowspan="' + siteRows[r.site] + '" class="py-3 px-4 font-semibold text-slate-800 align-top border-r border-slate-100 whitespace-nowrap">' + esc(r.site) + '</td>'
                         : '';
                     seenSite[r.site] = 1;
+                    const rowCls = r.annual ? 'bg-slate-50 font-semibold border-t border-slate-200' : 'hover:bg-slate-50 transition-colors';
                     body.insertAdjacentHTML('beforeend',
-                        '<tr class="hover:bg-slate-50 transition-colors align-top">' +
+                        '<tr class="' + rowCls + ' align-top">' +
                         commonCells +
-                        '<td class="py-3 px-4 text-center whitespace-nowrap text-slate-600">' + r.quarter + '</td>' +
-                        '<td class="py-3 px-4 text-center font-semibold ' + countCls + '">' + r.count + '</td>' +
+                        '<td class="py-3 px-4 text-center whitespace-nowrap ' + (r.annual ? 'text-slate-800' : 'text-slate-600') + '">' + r.quarter + '</td>' +
+                        '<td class="py-3 px-4 text-center font-semibold ' + (r.annual ? 'text-slate-800' : countCls) + '">' + r.count + '</td>' +
                         '<td class="py-3 px-4 text-center">' + dash(r.l) + '</td>' +
                         '<td class="py-3 px-4 text-center">' + dash(r.i) + '</td>' +
                         '<td class="py-3 px-4 text-center font-bold ' + scoreCls + '">' + dash(r.score) + '</td>' +
