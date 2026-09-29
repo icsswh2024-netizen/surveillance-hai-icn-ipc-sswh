@@ -3921,10 +3921,19 @@
             const esc = s => (s || '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
             body.innerHTML = '';
             const RS = ' rowspan="5"'; // คอลัมน์ระดับ site รวมช่อง 5 แถว (Q1-Q4 + ทั้งปี)
-            const area = (o, f) => '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100"><textarea data-site="' + o.site + '" data-f="' + f + '" rows="3" class="riskFin w-44 rounded border border-slate-200 px-2 py-1 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-emerald-400" style="white-space:pre-wrap">' + esc(o._d[f]) + '</textarea></td>';
+            const area = (o, f) => '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100"><textarea data-site="' + o.site + '" data-f="' + f + '" rows="2" class="riskFin riskGrow w-64 rounded border border-slate-200 px-2 py-1 text-sm overflow-hidden focus:outline-none focus:ring-1 focus:ring-emerald-400" style="white-space:pre-wrap">' + esc(o._d[f]) + '</textarea></td>';
             const sel = (o, f) => '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100"><select data-site="' + o.site + '" data-f="' + f + '" class="riskFin rounded border border-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400">' +
                 RISK_OPTS[f].map(opt => '<option value="' + esc(opt) + '"' + ((o._d[f] || '') === opt ? ' selected' : '') + '>' + (esc(opt) || '—') + '</option>').join('') + '</select></td>';
-            const combo = (o, f) => '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100"><input list="dl_' + f + '" data-site="' + o.site + '" data-f="' + f + '" value="' + esc(o._d[f]) + '" class="riskFin w-52 rounded border border-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="เลือกหรือพิมพ์..."></td>';
+            // combo: dropdown เลือก preset + textarea (ขยายสูงตามเนื้อหา เห็นข้อความครบ พิมพ์เองได้)
+            const combo = (o, f) => {
+                const opts = (RISK_OPTS[f] || []).filter(x => (x || '').toString().trim() !== '');
+                const presetSel = opts.length
+                    ? '<select class="riskPreset mb-1 block w-64 rounded border border-slate-200 px-1 py-0.5 text-xs text-slate-500" data-site="' + o.site + '" data-f="' + f + '"><option value="">— เลือก preset —</option>' +
+                      opts.map(op => '<option value="' + esc(op) + '">' + esc(op.length > 45 ? op.slice(0, 45) + '…' : op) + '</option>').join('') + '</select>'
+                    : '';
+                return '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100">' + presetSel +
+                    '<textarea data-site="' + o.site + '" data-f="' + f + '" rows="2" placeholder="พิมพ์เอง หรือเลือก preset ด้านบน" class="riskFin riskGrow w-64 rounded border border-slate-200 px-2 py-1 text-sm overflow-hidden focus:outline-none focus:ring-1 focus:ring-emerald-400" style="white-space:pre-wrap">' + esc(o._d[f]) + '</textarea></td>';
+            };
             const dt = (o, f) => '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100"><input type="date" data-site="' + o.site + '" data-f="' + f + '" value="' + esc(o._d[f]) + '" class="riskFin rounded border border-slate-200 px-2 py-1 text-sm"></td>';
             const today = new Date().toISOString().slice(0, 10);
             // แสดงเฉพาะรายการที่ติ๊กเลือกไว้ในทะเบียนด้านบน
@@ -3957,25 +3966,28 @@
                     body.insertAdjacentHTML('beforeend', html);
                 });
             });
-            // สร้าง datalist สำหรับช่อง combo (เลือก preset ยาว ๆ จากชีต)
-            const dl = document.getElementById('riskDatalists');
-            if (dl) dl.innerHTML = ['prevention', 'monitor', 'mitigation', 'qi', 'owner'].map(f =>
-                '<datalist id="dl_' + f + '">' + (RISK_OPTS[f] || []).filter(x => (x || '').toString().trim() !== '')
-                    .map(o => '<option value="' + esc(o) + '"></option>').join('') + '</datalist>').join('');
-            // เก็บ draft เมื่อพิมพ์ + คำนวณ Risk Level รายไตรมาสใหม่เมื่อแก้ Consequence
+            // ขยายความสูง textarea ให้พอดีเนื้อหา (เห็นข้อความครบ)
+            const grow = el => { el.style.height = 'auto'; el.style.height = Math.max(el.scrollHeight, 34) + 'px'; };
+            body.querySelectorAll('.riskGrow').forEach(grow);
+            // เก็บ draft เมื่อพิมพ์
             const onEdit = el => {
                 const d = riskFormDraft();
-                const s = el.dataset.site;
-                const rec = d[s] || (d[s] = {});
-                if (el.classList.contains('riskInc')) rec.include = el.checked;
-                else rec[el.dataset.f] = el.value;
+                const rec = d[el.dataset.site] || (d[el.dataset.site] = {});
+                rec[el.dataset.f] = el.value;
                 riskFormSaveDraft(d);
-                if (el.dataset.f === 'consequence') renderRiskForm(); // คำนวณ Risk Level รายไตรมาสใหม่
+                if (el.classList.contains('riskGrow')) grow(el);
             };
-            body.querySelectorAll('.riskFin, .riskCons, .riskInc').forEach(el => {
+            body.querySelectorAll('.riskFin').forEach(el => {
                 el.addEventListener('input', () => onEdit(el));
                 el.addEventListener('change', () => onEdit(el));
             });
+            // เลือก preset → เติมลง textarea ของคอลัมน์เดียวกัน
+            body.querySelectorAll('.riskPreset').forEach(psel => psel.addEventListener('change', () => {
+                if (!psel.value) return;
+                const ta = psel.parentElement.querySelector('textarea[data-f="' + psel.dataset.f + '"]');
+                if (ta) { ta.value = psel.value; onEdit(ta); }
+                psel.value = '';
+            }));
         }
         // สร้าง payload ตามคอลัมน์ฟอร์มทางการ (ขยายเป็นรายไตรมาส + ทั้งปี)
         function riskFormPayload() {
