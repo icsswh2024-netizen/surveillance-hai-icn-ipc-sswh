@@ -3695,25 +3695,25 @@
             if (yearly) { if (count <= 12) return 1; if (count <= 47) return 2; if (count <= 83) return 3; if (count <= 364) return 4; return 5; }
             if (count <= 3) return 1; if (count <= 11) return 2; if (count <= 20) return 3; if (count <= 90) return 4; return 5;
         }
+        const RISK_QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
         function computeRiskAnalysis() {
-            const cases = getFilteredCases();
-            const qv = document.getElementById('filterQuarter').value;
-            // เลือกทุกไตรมาส → แยกเป็น Q1-Q4 · เลือกไตรมาสเดียว → เฉพาะไตรมาสนั้น
-            const quarters = qv === 'ALL' ? ['Q1', 'Q2', 'Q3', 'Q4'] : [qv];
+            // ใช้ตัวกรอง ปี/หอ/กลุ่มงาน แต่ไม่ผูกไตรมาส (แสดง Q1-Q4 เสมอ)
+            const y = document.getElementById('filterYear').value;
+            const u = document.getElementById('filterUnit').value;
+            const p = document.getElementById('filterPCT').value;
+            const cases = rawData.filter(d => d.isHAI &&
+                (y === 'ALL' || d.year === y) && (u === 'ALL' || d.unit === u) && (p === 'ALL' || d.pct === p));
             const out = [];
-            quarters.forEach(Q => {
-                const cnt = {}; RISK_SITES.forEach(s => cnt[s] = 0);
-                cases.forEach(c => { if (c.quarter === Q && cnt[c.siteType] !== undefined) cnt[c.siteType]++; });
-                RISK_SITES.forEach(s => {
-                    const count = cnt[s];
+            RISK_SITES.forEach(s => {
+                RISK_QUARTERS.forEach(Q => {
+                    const count = cases.filter(c => c.quarter === Q && c.siteType === s).length;
                     const l = likelihoodFromCount(count, false); // นับรายไตรมาส → ใช้เกณฑ์ความถี่รายไตรมาส
                     const i = CONSEQUENCE_BY_SITE[s] || 3;
                     const score = (l != null) ? l * i : null;
                     out.push({ site: s, quarter: Q, count, name: '', cat: '', l, i, score, level: '', ctrl: '', owner: '', status: '' });
                 });
             });
-            // แสดงเฉพาะ site-ไตรมาสที่มีการเกิด (count > 0) เพื่อไม่ให้ตารางรก
-            return out.filter(r => r.count > 0);
+            return out; // 8 site × 4 ไตรมาส = 32 แถว (รวม count 0)
         }
 
         // จับคอลัมน์จากหัวตาราง (รองรับหลายชื่อ ทั้งไทย/อังกฤษ)
@@ -3801,8 +3801,10 @@
             }
         }
         function renderRisk() {
-            const items = (RISK_DATA || RISK_SEED.map(r => ({ ...r, score: r.l * r.i, level: '' })))
-                .slice().sort((a, b) => (b.score || 0) - (a.score || 0));
+            const grouped = ((document.getElementById('riskSource') || {}).value) === 'auto';
+            const base = (RISK_DATA || RISK_SEED.map(r => ({ ...r, score: r.l * r.i, level: '' })));
+            // โหมดคำนวณ: คงลำดับ site→ไตรมาส · โหมดชีต: เรียงตามคะแนน
+            const items = grouped ? base.slice() : base.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
             // การ์ดสรุป (นับตามระดับโซน)
             let high = 0, med = 0, low = 0;
             items.forEach(r => {
@@ -3811,7 +3813,7 @@
                 else if (b.label === 'ปานกลาง') med++;
                 else low++;
             });
-            document.getElementById('riskTotal').textContent = items.length;
+            document.getElementById('riskTotal').textContent = grouped ? items.filter(r => r.count > 0).length : items.length;
             document.getElementById('riskHigh').textContent = high;
             document.getElementById('riskMed').textContent = med;
             document.getElementById('riskLow').textContent = low;
@@ -3854,6 +3856,9 @@
             const body = document.getElementById('riskBody');
             body.innerHTML = '';
             const dash = v => (v == null || v === '') ? '-' : v;
+            // นับจำนวนแถวต่อ site (ใช้ทำ rowspan ในโหมดจัดกลุ่ม)
+            const siteRows = {}; if (grouped) items.forEach(r => { siteRows[r.site] = (siteRows[r.site] || 0) + 1; });
+            let seenSite = {}, siteIdx = 0;
             items.forEach((r, idx) => {
                 const hasScore = r.score != null;
                 const graded = riskBandOf(r) != null;
@@ -3862,6 +3867,29 @@
                 const levelHtml = graded
                     ? '<span class="text-xs font-semibold rounded-full px-2.5 py-1 ' + b.pill + '">' + esc(levelTxt) + '</span>'
                     : '<span class="text-slate-500">' + esc(levelTxt) + '</span>';
+                const scoreCls = hasScore ? b.pill.split(' ')[1] : 'text-slate-400';
+                const countCls = r.count > 0 ? 'text-slate-700' : 'text-slate-300';
+                if (grouped) {
+                    const firstOfSite = !seenSite[r.site];
+                    const commonCells = firstOfSite
+                        ? '<td rowspan="' + siteRows[r.site] + '" class="py-3 px-4 text-slate-400 align-top border-r border-slate-100">' + (++siteIdx) + '</td>' +
+                          '<td rowspan="' + siteRows[r.site] + '" class="py-3 px-4 font-semibold text-slate-800 align-top border-r border-slate-100 whitespace-nowrap">' + esc(r.site) + '</td>'
+                        : '';
+                    seenSite[r.site] = 1;
+                    body.insertAdjacentHTML('beforeend',
+                        '<tr class="hover:bg-slate-50 transition-colors align-top">' +
+                        commonCells +
+                        '<td class="py-3 px-4 text-center whitespace-nowrap text-slate-600">' + r.quarter + '</td>' +
+                        '<td class="py-3 px-4 text-center font-semibold ' + countCls + '">' + r.count + '</td>' +
+                        '<td class="py-3 px-4 text-center">' + dash(r.l) + '</td>' +
+                        '<td class="py-3 px-4 text-center">' + dash(r.i) + '</td>' +
+                        '<td class="py-3 px-4 text-center font-bold ' + scoreCls + '">' + dash(r.score) + '</td>' +
+                        '<td class="py-3 px-4 text-center">' + levelHtml + '</td>' +
+                        '<td class="py-3 px-4 whitespace-normal min-w-[14rem] text-slate-500">' + esc(r.ctrl) + '</td>' +
+                        '<td class="py-3 px-4 whitespace-nowrap text-slate-500">' + esc(r.owner) + '</td>' +
+                        '<td class="py-3 px-4 text-center whitespace-nowrap text-slate-500">' + esc(r.status) + '</td></tr>');
+                    return;
+                }
                 const nameCell = (r.site && r.name && r.site !== r.name)
                     ? '<span class="font-semibold text-slate-800">' + esc(r.site) + '</span> · <span class="text-slate-600">' + esc(r.name) + '</span>'
                     : '<span class="font-medium text-slate-700">' + esc(r.site || r.name) + '</span>';
@@ -3873,7 +3901,7 @@
                     '<td class="py-3 px-4 text-center font-semibold text-slate-700">' + (r.count == null ? '-' : r.count) + '</td>' +
                     '<td class="py-3 px-4 text-center">' + dash(r.l) + '</td>' +
                     '<td class="py-3 px-4 text-center">' + dash(r.i) + '</td>' +
-                    '<td class="py-3 px-4 text-center font-bold ' + (hasScore ? b.pill.split(' ')[1] : 'text-slate-400') + '">' + dash(r.score) + '</td>' +
+                    '<td class="py-3 px-4 text-center font-bold ' + scoreCls + '">' + dash(r.score) + '</td>' +
                     '<td class="py-3 px-4 text-center">' + levelHtml + '</td>' +
                     '<td class="py-3 px-4 whitespace-normal min-w-[16rem] text-slate-600">' + esc(r.ctrl) + '</td>' +
                     '<td class="py-3 px-4 whitespace-nowrap text-slate-600">' + esc(r.owner) + '</td>' +
