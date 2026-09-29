@@ -1196,27 +1196,27 @@
                             <tr>
                                 <th class="py-3 px-3 text-center">เลือก</th>
                                 <th class="py-3 px-3">Site</th>
-                                <th class="py-3 px-3">Source</th>
-                                <th class="py-3 px-3">Data Added Date</th>
-                                <th class="py-3 px-3">Risk Title</th>
-                                <th class="py-3 px-3">Risk Description</th>
-                                <th class="py-3 px-3 text-center bg-slate-100">Q1</th>
+                                <th class="py-3 px-3 cursor-help" title="แหล่งที่มาของ risk เช่น อุบัติการณ์หน้างาน, มาตรฐานสำคัญจำเป็น 9 ข้อ, 3P safety">Source</th>
+                                <th class="py-3 px-3 cursor-help" title="วันที่บรรจุ risk ลงใน risk register">Data Added Date</th>
+                                <th class="py-3 px-3 cursor-help" title="ชื่อของความเสี่ยง">Risk Title</th>
+                                <th class="py-3 px-3 cursor-help" title="อธิบายรายละเอียดของ risk title เพิ่มเติม">Risk Description</th>
+                                <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="ไตรมาสที่เก็บข้อมูล (นับจากทะเบียน-1)">Q1</th>
                                 <th class="py-3 px-3 text-center bg-slate-100">Q2</th>
                                 <th class="py-3 px-3 text-center bg-slate-100">Q3</th>
                                 <th class="py-3 px-3 text-center bg-slate-100">Q4</th>
                                 <th class="py-3 px-3 text-center bg-slate-100">ทั้งปี</th>
-                                <th class="py-3 px-3 text-center bg-slate-100">Likelihood</th>
-                                <th class="py-3 px-3 text-center">Consequence</th>
-                                <th class="py-3 px-3 text-center bg-slate-100">Risk Level</th>
-                                <th class="py-3 px-3">Prevention</th>
-                                <th class="py-3 px-3">Monitor &amp; Control</th>
-                                <th class="py-3 px-3">Mitigation</th>
-                                <th class="py-3 px-3">QI plan</th>
-                                <th class="py-3 px-3">Risk Owner</th>
-                                <th class="py-3 px-3">Review freq</th>
-                                <th class="py-3 px-3">Data last review</th>
-                                <th class="py-3 px-3">Residual Level</th>
-                                <th class="py-3 px-3">Status</th>
+                                <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="ความถี่ที่เกิดขึ้น (ดูตารางคำอธิบาย risk matrix) — คำนวณจากจำนวนครั้ง">Likelihood</th>
+                                <th class="py-3 px-3 text-center cursor-help" title="ความรุนแรงที่เกิดขึ้น เลือกความรุนแรงสูงสุดที่เกิดขึ้น (1-5)">Consequence</th>
+                                <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="Likelihood x Consequence">Risk Level</th>
+                                <th class="py-3 px-3 cursor-help" title="มาตรการป้องกันความเสี่ยง ที่มีอยู่เดิม">Prevention</th>
+                                <th class="py-3 px-3 cursor-help" title="ติดตามอุบัติการณ์จากช่องทางใด เช่น จำนวน Incident report จาก HRMS หรือจากข้อมูลที่เก็บมือ">Monitor &amp; Control</th>
+                                <th class="py-3 px-3 cursor-help" title="ถ้าเกิดอุบัติการณ์ขึ้น จะมีแนวทางปฏิบัติเพื่อบรรเทาอันตราย/ความเสียหายอย่างไร">Mitigation</th>
+                                <th class="py-3 px-3 cursor-help" title="แผนการทดสอบมาตรการป้องกันให้ได้ผลดีขึ้น เมื่อสรุปว่าได้ผลจะเพิ่มเป็นมาตรการป้องกันในรอบต่อไป">QI plan</th>
+                                <th class="py-3 px-3 cursor-help" title="ผู้ที่รับผิดชอบ ติดตามอุบัติการณ์">Risk Owner</th>
+                                <th class="py-3 px-3 cursor-help" title="ความถี่ในการติดตามข้อมูล เช่น ทุกไตรมาส ทุกเดือน">Review freq</th>
+                                <th class="py-3 px-3 cursor-help" title="วันที่ติดตามข้อมูลครั้งล่าสุด">Data last review</th>
+                                <th class="py-3 px-3 cursor-help" title="Risk level ที่เหลือหลังปฏิบัติตามมาตรการ (มักเท่ากับ risk level ของไตรมาสถัดไป)">Residual Level</th>
+                                <th class="py-3 px-3 cursor-help" title="Active (Improve): ปัญหายังอยู่ risk ลดลง | Active (Stable): เท่าเดิม | Active (Worsening): สูงขึ้น | Inactive: ไม่เกิดใน 1 ปี (ยังเฝ้าระวัง) | Closed: ไม่เกิดเลย + มีระบบดีแล้ว">Status</th>
                             </tr>
                         </thead>
                         <tbody id="riskFormBody" class="divide-y divide-slate-100"></tbody>
@@ -3865,10 +3865,10 @@
         const RISK_FORM_FIELDS = ['source', 'dataAdded', 'title', 'desc', 'prevention', 'monitor', 'mitigation', 'qi', 'owner', 'reviewFreq', 'lastReview', 'residual', 'status'];
         // ตัวเลือก dropdown
         const RISK_OPTS = {
-            source: ['', 'ทะเบียน-1 (HAI surveillance)', 'Post-discharge', 'ห้องปฏิบัติการ', 'อื่นๆ'],
-            reviewFreq: ['', 'รายเดือน', 'รายไตรมาส', 'ราย 6 เดือน', 'รายปี'],
+            source: ['', 'อุบัติการณ์หน้างาน', 'มาตรฐานสำคัญจำเป็น 9 ข้อ', '3P safety', 'อื่นๆ'],
+            reviewFreq: ['', 'ทุกเดือน', 'ทุกไตรมาส', 'ทุก 6 เดือน', 'ทุกปี'],
             residual: ['', 'น้อย', 'ปานกลาง', 'สูง', 'สูงมาก'],
-            status: ['', 'เปิด (Open)', 'กำลังดำเนินการ', 'เฝ้าระวัง', 'ปิด (Closed)']
+            status: ['', 'Active (Improve)', 'Active (Stable)', 'Active (Worsening)', 'Inactive', 'Closed']
         };
         function riskFormDraft() { try { return JSON.parse(localStorage.getItem('riskFormDraft') || '{}'); } catch (e) { return {}; } }
         function riskFormSaveDraft(d) { try { localStorage.setItem('riskFormDraft', JSON.stringify(d)); } catch (e) { } }
