@@ -1067,15 +1067,15 @@
                 </div>
                 <div class="bg-gradient-to-br from-rose-500 to-red-600 rounded-2xl p-5 text-white shadow-md flex flex-col justify-between h-28">
                     <h6 class="font-medium text-rose-50">สูง / สูงมาก</h6>
-                    <div><h3 id="riskHigh" class="text-3xl font-bold">0</h3><p class="text-xs text-rose-100 mt-1">คะแนน ≥ 10</p></div>
+                    <div><h3 id="riskHigh" class="text-3xl font-bold">0</h3><p class="text-xs text-rose-100 mt-1">โซนส้ม/แดง</p></div>
                 </div>
                 <div class="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl p-5 text-white shadow-md flex flex-col justify-between h-28">
                     <h6 class="font-medium text-amber-50">ปานกลาง</h6>
-                    <div><h3 id="riskMed" class="text-3xl font-bold">0</h3><p class="text-xs text-amber-100 mt-1">คะแนน 4–9</p></div>
+                    <div><h3 id="riskMed" class="text-3xl font-bold">0</h3><p class="text-xs text-amber-100 mt-1">โซนเหลือง</p></div>
                 </div>
                 <div class="bg-gradient-to-br from-emerald-400 to-green-500 rounded-2xl p-5 text-white shadow-md flex flex-col justify-between h-28">
                     <h6 class="font-medium text-emerald-50">น้อย</h6>
-                    <div><h3 id="riskLow" class="text-3xl font-bold">0</h3><p class="text-xs text-emerald-100 mt-1">คะแนน 1–3</p></div>
+                    <div><h3 id="riskLow" class="text-3xl font-bold">0</h3><p class="text-xs text-emerald-100 mt-1">โซนเขียว</p></div>
                 </div>
             </div>
 
@@ -1088,6 +1088,58 @@
                 <div class="p-6 overflow-x-auto">
                     <div id="riskMatrix" class="inline-block min-w-full"></div>
                 </div>
+            </div>
+
+            <!-- นิยามระดับความรุนแรง (Impact) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <details open>
+                    <summary class="p-6 border-b border-slate-100 cursor-pointer select-none">
+                        <span class="text-lg font-semibold text-slate-800">นิยามระดับความรุนแรง / ผลกระทบ (Impact)</span>
+                    </summary>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-slate-50 text-slate-700 font-semibold whitespace-nowrap">
+                                <tr>
+                                    <th class="py-3 px-4 text-center">ระดับ</th>
+                                    <th class="py-3 px-4">ชื่อ</th>
+                                    <th class="py-3 px-4">นิยาม</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr><td class="py-3 px-4 text-center font-bold text-red-700 align-top">5</td><td class="py-3 px-4 font-medium align-top whitespace-nowrap">Death</td><td class="py-3 px-4">อุบัติการณ์นำไปสู่การเสียชีวิตหรือทุพพลภาพอย่างถาวร (I) หรือความรุนแรงทั่วไประดับ 5</td></tr>
+                                <tr><td class="py-3 px-4 text-center font-bold text-red-700 align-top">4</td><td class="py-3 px-4 font-medium align-top whitespace-nowrap">Severe Harm</td><td class="py-3 px-4">มีอันตราย/บาดเจ็บรุนแรง ต้องช่วยเหลือชีวิต ต้องดูแลต่อเนื่องช่วยเหลือตัวเองไม่ได้ (H) อาจทำให้สูญเสียอวัยวะหรือลดการทำหน้าที่ของร่างกายอย่างถาวร (G) หรือความรุนแรงทั่วไประดับ 4</td></tr>
+                                <tr><td class="py-3 px-4 text-center font-bold text-orange-600 align-top">3</td><td class="py-3 px-4 font-medium align-top whitespace-nowrap">Moderate Harm</td><td class="py-3 px-4">อันตราย/บาดเจ็บปานกลาง อาจสูญเสียหน้าที่ของร่างกายเล็กน้อยหรือชั่วคราว ต้องรักษาพยาบาลใช้เวลานานขึ้นจึงกลับคืนสภาพ (F) หรือต้องมีการรักษาเพิ่มเติมมากกว่าปกติ ปรับเปลี่ยนวิธี (E) หรือความรุนแรงทั่วไประดับ 3</td></tr>
+                                <tr><td class="py-3 px-4 text-center font-bold text-amber-600 align-top">2</td><td class="py-3 px-4 font-medium align-top whitespace-nowrap">Low Harm</td><td class="py-3 px-4">อันตราย/บาดเจ็บเล็กน้อย ต้องให้การดูแลเฝ้าระวังเป็นพิเศษว่าจะไม่เป็นอันตราย สามารถแก้ไขหรือให้การรักษาได้โดยง่าย (D) หรือไม่เกิดอันตรายหรือเสียหาย (C) หรือความรุนแรงทั่วไประดับ 2</td></tr>
+                                <tr><td class="py-3 px-4 text-center font-bold text-emerald-600 align-top">1</td><td class="py-3 px-4 font-medium align-top whitespace-nowrap">No Harm</td><td class="py-3 px-4">ไม่เกิดอันตราย/บาดเจ็บ (A-B) หรือความรุนแรงทั่วไประดับ 1</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+            </div>
+
+            <!-- นิยามระดับโอกาสเกิด (Likelihood) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <details>
+                    <summary class="p-6 border-b border-slate-100 cursor-pointer select-none">
+                        <span class="text-lg font-semibold text-slate-800">นิยามระดับโอกาสเกิด (Likelihood) — ความถี่สะสมรายเดือน</span>
+                        <p class="text-xs text-slate-400 mt-1">แปลงจำนวนครั้งที่เกิดสะสม (ตามเดือนที่เฝ้าระวังในปีงบประมาณ) เป็นระดับโอกาส 1–5</p>
+                    </summary>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-700 font-semibold">
+                                <tr>
+                                    <th class="py-3 px-4">ความถี่การเกิดสะสม</th>
+                                    <th class="py-3 px-4 text-center">Remote<br><span class="font-normal text-slate-400">ระดับ 1</span></th>
+                                    <th class="py-3 px-4 text-center">Uncommon<br><span class="font-normal text-slate-400">ระดับ 2 · เกิดทุกปี</span></th>
+                                    <th class="py-3 px-4 text-center">Occasional<br><span class="font-normal text-slate-400">ระดับ 3 · เกิดทุกเดือน</span></th>
+                                    <th class="py-3 px-4 text-center">Probable<br><span class="font-normal text-slate-400">ระดับ 4 · เกิดทุกสัปดาห์</span></th>
+                                    <th class="py-3 px-4 text-center">Frequent<br><span class="font-normal text-slate-400">ระดับ 5 · เกิดทุกวัน</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="riskLikeliBody" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </details>
             </div>
 
             <!-- Risk register table -->
@@ -3588,6 +3640,31 @@
         const IMPACT_LABELS = { 5: 'Death', 4: 'Severe Harm', 3: 'Moderate Harm', 2: 'Low Harm', 1: 'No Harm' };
         const LIKELI_LABELS = { 1: 'Remote', 2: 'Uncommon', 3: 'Occasional', 4: 'Probable', 5: 'Frequent' };
         const LIKELI_SUB = { 1: '', 2: 'เกิดทุกปี', 3: 'เกิดทุกเดือน', 4: 'เกิดทุกสัปดาห์', 5: 'เกิดทุกวัน' };
+        // ตารางนิยามความถี่สะสม → ระดับโอกาส (Remote..Frequent) ตามเอกสาร รพ.
+        const RISK_LIKELI = [
+            ['ต่อเดือน (เดือนที่ 1)', '1 ครั้ง/เดือน', '2-3 ครั้ง/เดือน', '4-6 ครั้ง/เดือน', '7-29 ครั้ง/เดือน', 'เดือนละ 30 ครั้งขึ้นไป'],
+            ['สะสมเดือนที่ 2', '1-2 ครั้ง', '3-12 ครั้ง', '8-13 ครั้ง', '14-59 ครั้ง', '60 ครั้งขึ้นไป'],
+            ['สะสมเดือนที่ 3 (รายไตรมาส)', '1-3 ครั้ง/ไตรมาส', '4-11 ครั้ง/ไตรมาส', '12-20 ครั้ง/ไตรมาส', '21-90 ครั้ง/ไตรมาส', 'ไตรมาสละ 91 ครั้งขึ้นไป'],
+            ['สะสมเดือนที่ 4', '1-4 ครั้ง', '5-15 ครั้ง', '16-27 ครั้ง', '28-120 ครั้ง', '121 ครั้งขึ้นไป'],
+            ['สะสมเดือนที่ 5', '1-5 ครั้ง', '6-19 ครั้ง', '20-34 ครั้ง', '35-151 ครั้ง', '152 ครั้งขึ้นไป'],
+            ['สะสมเดือนที่ 6', '1-6 ครั้ง', '7-23 ครั้ง', '24-41 ครั้ง', '42-181 ครั้ง', '182 ครั้งขึ้นไป'],
+            ['สะสมเดือนที่ 7', '1-7 ครั้ง', '8-27 ครั้ง', '28-48 ครั้ง', '49-212 ครั้ง', '213 ครั้งขึ้นไป'],
+            ['สะสมเดือนที่ 8', '1-8 ครั้ง', '9-31 ครั้ง', '32-55 ครั้ง', '56-243 ครั้ง', '244 ครั้งขึ้นไป'],
+            ['สะสมเดือนที่ 9', '1-9 ครั้ง', '10-35 ครั้ง', '36-62 ครั้ง', '63-273 ครั้ง', '274 ครั้งขึ้นไป'],
+            ['สะสมเดือนที่ 10', '1-10 ครั้ง', '11-39 ครั้ง', '40-69 ครั้ง', '70-304 ครั้ง', '305 ครั้งขึ้นไป'],
+            ['สะสมเดือนที่ 11', '1-11 ครั้ง', '12-43 ครั้ง', '44-76 ครั้ง', '77-334 ครั้ง', '335 ครั้งขึ้นไป'],
+            ['รายปี (เดือนที่ 12)', '1-12 ครั้ง/ปี', '13-47 ครั้ง/ปี', '48-83 ครั้ง/ปี', '84-364 ครั้ง/ปี', 'ปีละ 365 ครั้งขึ้นไป']
+        ];
+        function renderRiskLikeli() {
+            const body = document.getElementById('riskLikeliBody');
+            if (!body || body.dataset.done) return;
+            body.innerHTML = RISK_LIKELI.map(row =>
+                '<tr class="hover:bg-slate-50 transition-colors">' +
+                '<td class="py-2.5 px-4 font-medium text-slate-600">' + row[0] + '</td>' +
+                row.slice(1).map(c => '<td class="py-2.5 px-4 text-center">' + c + '</td>').join('') +
+                '</tr>').join('');
+            body.dataset.done = '1';
+        }
         // fallback เมื่อรู้เฉพาะคะแนน (ไม่มี I,L)
         function riskBand(score) {
             if (score >= 15) return RZ.r;
@@ -3709,6 +3786,7 @@
                 '<span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-orange-500 inline-block"></span> สูง</span>' +
                 '<span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-red-600 inline-block"></span> สูงมาก</span></div>';
             document.getElementById('riskMatrix').innerHTML = mx;
+            renderRiskLikeli();
             // ตารางทะเบียนความเสี่ยง
             const esc = s => (s || '').toString().replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
             const body = document.getElementById('riskBody');
