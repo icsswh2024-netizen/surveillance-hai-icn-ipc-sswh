@@ -3951,10 +3951,17 @@
             const combo = (o, f) => {
                 const opts = (RISK_OPTS[f] || []).filter(x => (x || '').toString().trim() !== '');
                 const presetSel = opts.length
-                    ? '<select class="riskPreset mb-1 block w-64 rounded border border-slate-200 px-1 py-0.5 text-xs text-slate-500" data-site="' + o.site + '" data-f="' + f + '"><option value="">— เลือก preset —</option>' +
+                    ? '<select class="riskPreset mb-1 block w-64 rounded border border-slate-200 px-1 py-0.5 text-xs text-slate-500" data-site="' + o.site + '" data-f="' + f + '"><option value="">— เลือก preset (เพิ่มได้หลายรายการ) —</option>' +
                       opts.map(op => '<option value="' + esc(op) + '">' + esc(op.length > 45 ? op.slice(0, 45) + '…' : op) + '</option>').join('') + '</select>'
                     : '';
-                return '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100">' + presetSel +
+                // แสดงอัตราปัจจุบัน + เป้าหมายที่ช่อง Monitor & Control
+                let info = '';
+                if (f === 'monitor') {
+                    const r = siteCurrentRate(o.site), ch = chosenTarget(o.site);
+                    const rt = r.rate != null ? r.rate + ' ' + r.unit : r.count + ' ครั้ง';
+                    info = '<div class="text-[11px] text-blue-700 bg-blue-50 rounded px-2 py-1 mb-1 w-64">อัตราปัจจุบัน: <b>' + rt + '</b>' + (ch.value ? ' · เป้าหมาย ' + (ch.year ? ch.year + ' ' : '') + '<b class="text-emerald-700">' + esc(ch.value) + '</b>' : '') + '</div>';
+                }
+                return '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100">' + info + presetSel +
                     '<textarea data-site="' + o.site + '" data-f="' + f + '" rows="2" placeholder="พิมพ์เอง หรือเลือก preset ด้านบน" class="riskFin riskGrow w-64 rounded border border-slate-200 px-2 py-1 text-sm overflow-hidden focus:outline-none focus:ring-1 focus:ring-emerald-400" style="white-space:pre-wrap">' + esc(o._d[f]) + '</textarea></td>';
             };
             const dt = (o, f) => '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100"><input type="date" data-site="' + o.site + '" data-f="' + f + '" value="' + esc(o._d[f]) + '" class="riskFin rounded border border-slate-200 px-2 py-1 text-sm"></td>';
@@ -4005,10 +4012,15 @@
                 el.addEventListener('change', () => onEdit(el));
             });
             // เลือก preset → เติมลง textarea ของคอลัมน์เดียวกัน
+            // เลือก preset → ต่อท้ายลง textarea (เพิ่มได้หลายรายการ)
             body.querySelectorAll('.riskPreset').forEach(psel => psel.addEventListener('change', () => {
                 if (!psel.value) return;
                 const ta = psel.parentElement.querySelector('textarea[data-f="' + psel.dataset.f + '"]');
-                if (ta) { ta.value = psel.value; onEdit(ta); }
+                if (ta) {
+                    const cur = ta.value.trim();
+                    ta.value = (cur ? cur + '\n' : '') + '- ' + psel.value;
+                    onEdit(ta);
+                }
                 psel.value = '';
             }));
         }
@@ -4221,6 +4233,14 @@
             return { count: cases, rate, unit: meta.unit };
         }
         function riskTargets() { try { return JSON.parse(localStorage.getItem('riskTargets') || '{}'); } catch (e) { return {}; } }
+        function riskTargetPicks() { try { return JSON.parse(localStorage.getItem('riskTargetPick') || '{}'); } catch (e) { return {}; } }
+        // เป้าหมายที่เลือกของ site (ปี + ค่า) — ใช้ปีที่ผู้ใช้เลือก มิฉะนั้นปีจากตัวกรอง
+        function chosenTarget(site) {
+            const t = RISK_TARGETS[site] || {}, picks = riskTargetPicks();
+            const years = Object.keys(t).filter(y => (t[y] || '').toString().trim() !== '');
+            const yr = (picks[site] && t[picks[site]] != null) ? picks[site] : (years.includes(riskTargetYear()) ? riskTargetYear() : (years[years.length - 1] || ''));
+            return { year: yr, value: (t[yr] || '').toString().trim() };
+        }
         // การ์ดต่อ Site: เลือกเข้าทะเบียน + เป้าหมาย + อัตราปัจจุบัน
         // เลือกปีสำหรับเป้าหมาย: ใช้ปีจากตัวกรองบน ถ้า ALL ใช้ปีล่าสุดที่มีในแท็บเกณฑ์
         function riskTargetYear() {
@@ -4233,24 +4253,35 @@
             const wrap = document.getElementById('riskSiteCards'); if (!wrap) return;
             const draft = riskFormDraft();
             const today = new Date().toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            const ty = riskTargetYear();
+            const esc = s => (s || '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            const picks = riskTargetPicks();
             wrap.innerHTML = activeRiskSites().map(s => {
                 const r = siteCurrentRate(s);
                 const inc = (draft[s] || {}).include ? 'checked' : '';
                 const rateTxt = r.rate != null ? '<b class="text-blue-700">' + r.rate + '</b> <span class="text-[11px] text-slate-400">' + r.unit + '</span>' : '<b class="text-slate-500">' + r.count + '</b> ครั้ง';
-                const tgt = ((RISK_TARGETS[s] || {})[ty] || '').toString().trim();
+                const t = RISK_TARGETS[s] || {};
+                const years = Object.keys(t).filter(y => (t[y] || '').toString().trim() !== '');
+                const ch = chosenTarget(s);
+                const tgtHtml = years.length
+                    ? '<select class="riskTargetPick rounded border border-slate-200 px-1 py-0.5 text-xs text-emerald-700" data-site="' + s + '">' +
+                      years.map(y => '<option value="' + y + '"' + (y === ch.year ? ' selected' : '') + '>' + y + ': ' + esc(t[y]) + '</option>').join('') + '</select>'
+                    : '<span class="text-slate-400 text-xs">-</span>';
                 return '<div class="rounded-xl border border-slate-200 p-3 bg-white">' +
                     '<div class="flex items-center justify-between gap-2">' +
                     '<span class="font-semibold text-slate-800 whitespace-nowrap">' + s + '</span>' +
                     '<label class="text-xs flex items-center gap-1 cursor-pointer text-slate-600"><input type="checkbox" class="riskCardInc" data-site="' + s + '" ' + inc + '> เข้าทะเบียน</label></div>' +
                     '<div class="text-sm text-slate-600 mt-1.5">อัตราปัจจุบัน ' + rateTxt + '</div>' +
                     '<div class="text-[11px] text-slate-400">ณ วันที่ ' + today + ' · เกิด ' + r.count + ' ครั้ง</div>' +
-                    '<div class="text-xs text-slate-500 mt-2">เป้าหมาย' + (ty ? ' ' + ty : '') + ': <b class="text-emerald-700">' + (tgt || '-') + '</b></div>' +
+                    '<div class="text-xs text-slate-500 mt-2 flex items-center gap-1">เป้าหมาย: ' + tgtHtml + '</div>' +
                     '</div>';
             }).join('');
             wrap.querySelectorAll('.riskCardInc').forEach(el => el.addEventListener('change', () => {
                 const d = riskFormDraft(); (d[el.dataset.site] || (d[el.dataset.site] = {})).include = el.checked; riskFormSaveDraft(d);
                 renderRisk(); renderRiskForm();
+            }));
+            wrap.querySelectorAll('.riskTargetPick').forEach(el => el.addEventListener('change', () => {
+                const p = riskTargetPicks(); p[el.dataset.site] = el.value; try { localStorage.setItem('riskTargetPick', JSON.stringify(p)); } catch (e) { }
+                renderRiskForm();
             }));
         }
         // นำ Consequence ที่แก้ในทะเบียน (draft) มาทับค่าใน RISK_DATA
