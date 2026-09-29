@@ -3878,6 +3878,9 @@
             prevention: [], monitor: [], mitigation: [], qi: []
         };
         try { const c = JSON.parse(localStorage.getItem('riskOpts') || 'null'); if (c) Object.assign(RISK_OPTS, c); } catch (e) { }
+        // เป้าหมายจากแท็บ "เกณฑ์" (site -> {ปีงบ: ค่า})
+        let RISK_TARGETS = {};
+        try { RISK_TARGETS = JSON.parse(localStorage.getItem('riskTargetsSheet') || '{}'); } catch (e) { }
         let riskOptsLoaded = false;
         // อ่านข้อมูลจาก Apps Script ด้วย JSONP (ข้าม CORS) — โหลดผ่าน <script>
         function jsonpGet(extra) {
@@ -3903,8 +3906,12 @@
                 ['riskId', 'source', 'owner', 'reviewFreq', 'residual', 'status', 'prevention', 'monitor', 'mitigation', 'qi'].forEach(k => {
                     if (Array.isArray(data[k]) && data[k].length) RISK_OPTS[k] = [''].concat(data[k].filter(x => (x || '').toString().trim() !== ''));
                 });
+                if (data.targets && typeof data.targets === 'object') {
+                    RISK_TARGETS = data.targets;
+                    try { localStorage.setItem('riskTargetsSheet', JSON.stringify(RISK_TARGETS)); } catch (e) { }
+                }
                 try { localStorage.setItem('riskOpts', JSON.stringify(RISK_OPTS)); } catch (e) { }
-                renderRiskForm();
+                renderRiskForm(); renderRiskSiteCards();
             } catch (e) { /* ใช้ค่าตั้งต้นถ้าอ่านชีตไม่ได้ */ }
         }
         function riskFormDraft() { try { return JSON.parse(localStorage.getItem('riskFormDraft') || '{}'); } catch (e) { return {}; } }
@@ -4203,29 +4210,35 @@
         }
         function riskTargets() { try { return JSON.parse(localStorage.getItem('riskTargets') || '{}'); } catch (e) { return {}; } }
         // การ์ดต่อ Site: เลือกเข้าทะเบียน + เป้าหมาย + อัตราปัจจุบัน
+        // เลือกปีสำหรับเป้าหมาย: ใช้ปีจากตัวกรองบน ถ้า ALL ใช้ปีล่าสุดที่มีในแท็บเกณฑ์
+        function riskTargetYear() {
+            const yv = document.getElementById('filterYear').value;
+            if (yv && yv !== 'ALL') return yv;
+            const years = new Set(); Object.values(RISK_TARGETS).forEach(o => Object.keys(o || {}).forEach(y => years.add(y)));
+            const arr = [...years].sort(); return arr.length ? arr[arr.length - 1] : '';
+        }
         function renderRiskSiteCards() {
             const wrap = document.getElementById('riskSiteCards'); if (!wrap) return;
-            const draft = riskFormDraft(), tg = riskTargets();
+            const draft = riskFormDraft();
             const today = new Date().toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const ty = riskTargetYear();
             wrap.innerHTML = RISK_SITES.map(s => {
                 const r = siteCurrentRate(s);
                 const inc = (draft[s] || {}).include ? 'checked' : '';
                 const rateTxt = r.rate != null ? '<b class="text-blue-700">' + r.rate + '</b> <span class="text-[11px] text-slate-400">' + r.unit + '</span>' : '<b class="text-slate-500">' + r.count + '</b> ครั้ง';
+                const tgt = ((RISK_TARGETS[s] || {})[ty] || '').toString().trim();
                 return '<div class="rounded-xl border border-slate-200 p-3 bg-white">' +
                     '<div class="flex items-center justify-between gap-2">' +
                     '<span class="font-semibold text-slate-800 whitespace-nowrap">' + s + '</span>' +
                     '<label class="text-xs flex items-center gap-1 cursor-pointer text-slate-600"><input type="checkbox" class="riskCardInc" data-site="' + s + '" ' + inc + '> เข้าทะเบียน</label></div>' +
                     '<div class="text-sm text-slate-600 mt-1.5">อัตราปัจจุบัน ' + rateTxt + '</div>' +
                     '<div class="text-[11px] text-slate-400">ณ วันที่ ' + today + ' · เกิด ' + r.count + ' ครั้ง</div>' +
-                    '<div class="text-xs text-slate-500 mt-2 flex items-center gap-1">เป้าหมาย <input class="riskTarget flex-1 min-w-0 rounded border border-slate-200 px-2 py-0.5 text-xs" data-site="' + s + '" value="' + (tg[s] || '').toString().replace(/"/g, '&quot;') + '" placeholder="เช่น < 3.39"></div>' +
+                    '<div class="text-xs text-slate-500 mt-2">เป้าหมาย' + (ty ? ' ' + ty : '') + ': <b class="text-emerald-700">' + (tgt || '-') + '</b></div>' +
                     '</div>';
             }).join('');
             wrap.querySelectorAll('.riskCardInc').forEach(el => el.addEventListener('change', () => {
                 const d = riskFormDraft(); (d[el.dataset.site] || (d[el.dataset.site] = {})).include = el.checked; riskFormSaveDraft(d);
                 renderRisk(); renderRiskForm();
-            }));
-            wrap.querySelectorAll('.riskTarget').forEach(el => el.addEventListener('input', () => {
-                const t = riskTargets(); t[el.dataset.site] = el.value; try { localStorage.setItem('riskTargets', JSON.stringify(t)); } catch (e) { }
             }));
         }
         // นำ Consequence ที่แก้ในทะเบียน (draft) มาทับค่าใน RISK_DATA
