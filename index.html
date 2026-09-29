@@ -1201,14 +1201,7 @@
                                 <th class="py-3 px-3 cursor-help" title="วันที่บรรจุ risk ลงใน risk register">Data Added Date</th>
                                 <th class="py-3 px-3 cursor-help" title="ชื่อของความเสี่ยง">Risk Title</th>
                                 <th class="py-3 px-3 cursor-help" title="อธิบายรายละเอียดของ risk title เพิ่มเติม">Risk Description</th>
-                                <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="ไตรมาสที่เก็บข้อมูล (นับจากทะเบียน-1)">Q1</th>
-                                <th class="py-3 px-3 text-center bg-slate-100">Q2</th>
-                                <th class="py-3 px-3 text-center bg-slate-100">Q3</th>
-                                <th class="py-3 px-3 text-center bg-slate-100">Q4</th>
-                                <th class="py-3 px-3 text-center bg-slate-100">ทั้งปี</th>
-                                <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="ความถี่ที่เกิดขึ้น (ดูตารางคำอธิบาย risk matrix) — คำนวณจากจำนวนครั้ง">Likelihood</th>
-                                <th class="py-3 px-3 text-center cursor-help" title="ความรุนแรงที่เกิดขึ้น เลือกความรุนแรงสูงสุดที่เกิดขึ้น (1-5)">Consequence</th>
-                                <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="Likelihood x Consequence">Risk Level</th>
+                                <th class="py-3 px-3 text-center cursor-help" title="ความรุนแรงที่เกิดขึ้น เลือกความรุนแรงสูงสุดที่เกิดขึ้น (1-5) · จำนวนครั้ง/Likelihood/Risk Level รายไตรมาสดูในตารางย่อยด้านล่างแต่ละแถว">Consequence</th>
                                 <th class="py-3 px-3 cursor-help" title="มาตรการป้องกันความเสี่ยง ที่มีอยู่เดิม">Prevention</th>
                                 <th class="py-3 px-3 cursor-help" title="ติดตามอุบัติการณ์จากช่องทางใด เช่น จำนวน Incident report จาก HRMS หรือจากข้อมูลที่เก็บมือ">Monitor &amp; Control</th>
                                 <th class="py-3 px-3 cursor-help" title="ถ้าเกิดอุบัติการณ์ขึ้น จะมีแนวทางปฏิบัติเพื่อบรรเทาอันตราย/ความเสียหายอย่างไร">Mitigation</th>
@@ -3971,14 +3964,7 @@
                     sel(o, 'riskId') +
                     '<td class="py-2 px-3 font-semibold text-slate-800 align-top whitespace-nowrap"><button type="button" class="riskDetailBtn text-slate-400 hover:text-emerald-600 mr-1" data-site="' + o.site + '" title="ย่อ/ขยายรายละเอียดรายไตรมาส">▾</button>' + o.site + '</td>' +
                     sel(o, 'source') + dt(o, 'dataAdded') + area(o, 'title') + area(o, 'desc') +
-                    '<td class="py-2 px-3 text-center bg-slate-50 align-top">' + (o.q.Q1 || 0) + '</td>' +
-                    '<td class="py-2 px-3 text-center bg-slate-50 align-top">' + (o.q.Q2 || 0) + '</td>' +
-                    '<td class="py-2 px-3 text-center bg-slate-50 align-top">' + (o.q.Q3 || 0) + '</td>' +
-                    '<td class="py-2 px-3 text-center bg-slate-50 align-top">' + (o.q.Q4 || 0) + '</td>' +
-                    '<td class="py-2 px-3 text-center bg-slate-50 font-semibold align-top">' + (o.year || 0) + '</td>' +
-                    '<td class="py-2 px-3 text-center bg-slate-50 font-semibold align-top">' + (o.ly ?? '-') + '</td>' +
                     consSel +
-                    '<td class="py-2 px-3 text-center bg-slate-50 font-bold align-top ' + (b ? b.pill.split(' ')[1] : '') + '" data-rl="' + o.site + '">' + rl + '</td>' +
                     combo(o, 'prevention') + combo(o, 'monitor') + combo(o, 'mitigation') + combo(o, 'qi') + combo(o, 'owner') +
                     sel(o, 'reviewFreq') + dt(o, 'lastReview') + sel(o, 'residual') + sel(o, 'status') +
                     '</tr>' + detailHtml(o, cons));
