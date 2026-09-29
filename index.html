@@ -1147,10 +1147,16 @@
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-800">ทะเบียนความเสี่ยง (Risk Register) — งาน ICN/IPC</h3>
-                        <p class="text-xs text-slate-400 mt-1">คะแนน = โอกาส × ผลกระทบ · แต่งสีตามระดับความเสี่ยง (เขียว/เหลือง/ส้ม/แดง)</p>
+                        <p class="text-xs text-slate-400 mt-1">Risk Level = โอกาส (Likelihood) × ความรุนแรง (Consequence) · แต่งสีตามโซนความเสี่ยง</p>
                         <p class="text-xs text-slate-400 mt-1" id="riskStatus">กำลังโหลด...</p>
                     </div>
-                    <button id="btnExportRisk" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                    <div class="flex items-center gap-2 self-start">
+                        <select id="riskSource" class="rounded-lg border-slate-300 border px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="auto">คำนวณจากทะเบียน-1</option>
+                            <option value="sheet">จากชีต Risk register</option>
+                        </select>
+                        <button id="btnExportRisk" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-slate-600">
@@ -1159,6 +1165,7 @@
                                 <th class="py-3 px-4">#</th>
                                 <th class="py-3 px-4">Site / ประเด็นความเสี่ยง</th>
                                 <th class="py-3 px-4 text-center">Quarter</th>
+                                <th class="py-3 px-4 text-center">จำนวนครั้ง<br><span class="font-normal text-slate-400">HAI</span></th>
                                 <th class="py-3 px-4 text-center">Likelihood<br><span class="font-normal text-slate-400">โอกาส</span></th>
                                 <th class="py-3 px-4 text-center">Consequence<br><span class="font-normal text-slate-400">ความรุนแรง</span></th>
                                 <th class="py-3 px-4 text-center">Risk Level<br><span class="font-normal text-slate-400">L×C</span></th>
@@ -1172,7 +1179,7 @@
                     </table>
                 </div>
             </div>
-            <p class="text-xs text-slate-400 text-center">ระดับความเสี่ยงอิงโซนสีตาม Risk Matrix ทางการ (โอกาส × ความรุนแรง) · เรียงตามคะแนนจากมากไปน้อย</p>
+            <p class="text-xs text-slate-400 text-center">โหมด "คำนวณจากทะเบียน-1": Likelihood แปลงจากจำนวนครั้งการเกิดตามตารางความถี่ (รายไตรมาส/รายปีตามตัวกรองบน) · Consequence ใช้ค่าตั้งต้นต่อ site (ปรับได้) · Risk Level = Likelihood × Consequence</p>
         </div><!-- /viewRisk -->
     </div><!-- /max-w container -->
     </main>
@@ -3678,6 +3685,32 @@
             if (r.score != null) return riskBand(r.score);
             return null;
         }
+        // ===== Risk Analysis คำนวณอัตโนมัติจากทะเบียน-1 =====
+        // ความรุนแรง (Consequence) ตั้งต้นต่อ SITE — ปรับได้ตามบริบท รพ.
+        const CONSEQUENCE_BY_SITE = { CLABSI: 4, BSI: 4, VAP: 4, HAP: 4, CAUTI: 3, SSI: 3, Omphalitis: 3, UTI: 2, Other: 3 };
+        const RISK_SITES = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis'];
+        // แปลงจำนวนครั้งการเกิด → ระดับโอกาส (Likelihood) ตามตารางความถี่ (รายไตรมาส/รายปี)
+        function likelihoodFromCount(count, yearly) {
+            if (count == null || count <= 0) return null;
+            if (yearly) { if (count <= 12) return 1; if (count <= 47) return 2; if (count <= 83) return 3; if (count <= 364) return 4; return 5; }
+            if (count <= 3) return 1; if (count <= 11) return 2; if (count <= 20) return 3; if (count <= 90) return 4; return 5;
+        }
+        function computeRiskAnalysis() {
+            const cases = getFilteredCases();
+            const qv = document.getElementById('filterQuarter').value;
+            const yearly = (qv === 'ALL');
+            const qLabel = yearly ? 'ทั้งปี' : qv;
+            const cnt = {}; RISK_SITES.forEach(s => cnt[s] = 0);
+            cases.forEach(c => { if (cnt[c.siteType] !== undefined) cnt[c.siteType]++; });
+            return RISK_SITES.map(s => {
+                const count = cnt[s];
+                const l = likelihoodFromCount(count, yearly);
+                const i = CONSEQUENCE_BY_SITE[s] || 3;
+                const score = (l != null) ? l * i : null;
+                return { site: s, quarter: qLabel, count, name: '', cat: '', l, i, score, level: '', ctrl: '', owner: '', status: '' };
+            });
+        }
+
         // จับคอลัมน์จากหัวตาราง (รองรับหลายชื่อ ทั้งไทย/อังกฤษ)
         function riskFindCol(headers, kws) {
             const low = s => (s || '').toString().toLowerCase().trim();
@@ -3742,6 +3775,24 @@
                 RISK_DATA = RISK_SEED.map(r => ({ ...r, score: r.l * r.i, level: '' }));
                 renderRisk();
                 if (status) { status.textContent = '⚠️ โหลดชีตไม่สำเร็จ กำลังแสดงข้อมูลตัวอย่าง (' + err.message + ')'; status.className = 'text-xs text-rose-600 mt-1'; }
+            }
+        }
+        // เลือกแหล่งข้อมูล: คำนวณอัตโนมัติจากทะเบียน-1 หรือโหลดจากชีต Risk register
+        function refreshRisk() {
+            const sel = document.getElementById('riskSource');
+            const src = sel ? sel.value : 'auto';
+            const status = document.getElementById('riskStatus');
+            if (src === 'auto') {
+                RISK_DATA = computeRiskAnalysis();
+                renderRisk();
+                if (status) {
+                    const qv = document.getElementById('filterQuarter').value;
+                    const n = RISK_DATA.filter(r => r.count > 0).length;
+                    status.textContent = 'คำนวณจากทะเบียน-1 · ' + (qv === 'ALL' ? 'ทั้งปี' : qv) + ' · พบการเกิด HAI ' + n + ' site';
+                    status.className = 'text-xs text-slate-400 mt-1';
+                }
+            } else {
+                loadRisk(true);
             }
         }
         function renderRisk() {
@@ -3814,6 +3865,7 @@
                     '<td class="py-3 px-4 text-slate-400">' + (idx + 1) + '</td>' +
                     '<td class="py-3 px-4 whitespace-normal min-w-[14rem]">' + nameCell + '</td>' +
                     '<td class="py-3 px-4 text-center whitespace-nowrap text-slate-600">' + esc(dash(r.quarter)) + '</td>' +
+                    '<td class="py-3 px-4 text-center font-semibold text-slate-700">' + (r.count == null ? '-' : r.count) + '</td>' +
                     '<td class="py-3 px-4 text-center">' + dash(r.l) + '</td>' +
                     '<td class="py-3 px-4 text-center">' + dash(r.i) + '</td>' +
                     '<td class="py-3 px-4 text-center font-bold ' + (hasScore ? b.pill.split(' ')[1] : 'text-slate-400') + '">' + dash(r.score) + '</td>' +
@@ -3827,10 +3879,10 @@
             const items = (RISK_DATA || RISK_SEED.map(r => ({ ...r, score: r.l * r.i, level: '' })))
                 .slice().sort((a, b) => (b.score || 0) - (a.score || 0));
             const q = s => '"' + (s == null ? '' : s).toString().replace(/"/g, '""') + '"';
-            let csv = 'ลำดับ,Site,ประเด็นความเสี่ยง,Quarter,Likelihood,Consequence,Risk Level,ระดับ,มาตรการควบคุม,ผู้รับผิดชอบ,สถานะ\n';
+            let csv = 'ลำดับ,Site,ประเด็นความเสี่ยง,Quarter,จำนวนครั้ง HAI,Likelihood,Consequence,Risk Level,ระดับ,มาตรการควบคุม,ผู้รับผิดชอบ,สถานะ\n';
             items.forEach((r, idx) => {
                 const lvl = (r.l != null && r.i != null) ? riskZone(r.i, r.l).label : (r.score != null ? riskBand(r.score).label : ((r.level || '').toString().trim()));
-                csv += [idx + 1, q(r.site), q(r.name), q(r.quarter), (r.l ?? ''), (r.i ?? ''), (r.score ?? ''), q(lvl), q(r.ctrl), q(r.owner), q(r.status)].join(',') + '\n';
+                csv += [idx + 1, q(r.site), q(r.name), q(r.quarter), (r.count ?? ''), (r.l ?? ''), (r.i ?? ''), (r.score ?? ''), q(lvl), q(r.ctrl), q(r.owner), q(r.status)].join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -3872,7 +3924,7 @@
             if (view === 'special') updateSpecialView();
             if (view === 'postdc') loadPostDC();
             if (view === 'control') updateControlView();
-            if (view === 'risk') loadRisk();
+            if (view === 'risk') refreshRisk();
         }
 
         // Event listeners
@@ -3881,6 +3933,7 @@
                 updateDashboard(); updateWardTable(); updateMdrView(); updateServiceView(); updateAnalysisView(); updateSpecialView();
                 if (!document.getElementById('viewPostDC').hidden) loadPostDC(); // ให้ Post-discharge ตามปีบน
                 if (!document.getElementById('viewControl').hidden) updateControlView();
+                if (!document.getElementById('viewRisk').hidden) refreshRisk(); // Risk Analysis ตามปี/ไตรมาสบน
             }));
         document.getElementById('btnExport').addEventListener('click', exportCSV);
         document.getElementById('btnExportWards').addEventListener('click', exportWardsCSV);
@@ -3900,6 +3953,7 @@
         document.getElementById('menuControl').addEventListener('click', () => switchView('control'));
         document.getElementById('menuRisk').addEventListener('click', () => switchView('risk'));
         document.getElementById('btnExportRisk').addEventListener('click', exportRiskCSV);
+        document.getElementById('riskSource').addEventListener('change', refreshRisk);
         document.getElementById('ctrlSite').addEventListener('change', () => updateControlView());
         document.getElementById('ctrlType').addEventListener('change', () => updateControlView());
         document.getElementById('ctrlPeriod').addEventListener('change', () => updateControlView());
