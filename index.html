@@ -4213,8 +4213,8 @@
         // อัตราการติดเชื้อปัจจุบันต่อ site (รวมช่วงที่กรอง)
         function siteCurrentRate(site) {
             const cases = getFilteredCases().filter(c => riskSiteKeyOf(c) === site).length;
-            const meta = RATE_META[site];
-            if (!meta) return { count: cases, rate: null, unit: '' };
+            // site ใหม่ที่ยังไม่มีสูตร → ใช้ /1,000 วันนอน อัตโนมัติ
+            const meta = RATE_META[site] || { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' };
             const den = aggregateDenominatorsByMonth(getFilteredRows());
             let D = 0; FISCAL_MONTHS.forEach(m => { if (den[m]) D += den[m][meta.den] || 0; });
             const rate = D ? +((cases / D) * meta.factor).toFixed(2) : null;
