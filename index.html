@@ -1185,7 +1185,6 @@
                     <p class="text-xs text-slate-400 mt-1">เลือกรายการ (Site) ที่ต้องการรายงาน · คอลัมน์ auto มาจากทะเบียน-1 · คอลัมน์สีขาวพิมพ์เติมเอง · กด "บันทึก" เพื่อเก็บลงชีต (แก้ไข/เรียกดูใหม่ได้)</p>
                     <input id="riskSaveUrl" type="hidden" value="https://script.google.com/macros/s/AKfycbxprdf_HZW6VM0QD8ZIAwmZw28_Snu5pP1APlKqNBaQ3r3e3xb8pTBmvg30cAgWukk4Ng/exec">
                     <div class="flex gap-2 mt-4">
-                        <button id="btnRiskOpts" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-3 rounded-lg font-medium">โหลดตัวเลือกใหม่</button>
                         <button id="btnRiskLoad" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-3 rounded-lg font-medium">เรียกดูที่บันทึกไว้</button>
                         <button id="btnRiskSave" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg font-medium">บันทึกลงชีต</button>
                     </div>
@@ -4244,11 +4243,6 @@
         document.getElementById('riskSource').addEventListener('change', refreshRisk);
         document.getElementById('btnRiskSave').addEventListener('click', saveRiskRegister);
         document.getElementById('btnRiskLoad').addEventListener('click', loadRiskRegister);
-        document.getElementById('btnRiskOpts').addEventListener('click', () => {
-            const st = document.getElementById('riskSaveStatus');
-            if (st) { st.textContent = 'กำลังโหลดตัวเลือกจากชีต...'; st.className = 'text-xs mt-2 text-slate-500'; }
-            loadRiskOptions().then(() => { if (st) { st.textContent = '✅ อัปเดตตัวเลือกจากชีตแล้ว'; st.className = 'text-xs mt-2 text-emerald-600'; } });
-        });
         try { const u = localStorage.getItem('riskSaveUrl'); if (u) document.getElementById('riskSaveUrl').value = u; } catch (e) { }
         document.getElementById('ctrlSite').addEventListener('change', () => updateControlView());
         document.getElementById('ctrlType').addEventListener('change', () => updateControlView());
