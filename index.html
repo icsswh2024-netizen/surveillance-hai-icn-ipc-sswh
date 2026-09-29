@@ -1162,12 +1162,13 @@
                     <table class="w-full text-left text-sm text-slate-600">
                         <thead class="bg-slate-50 text-slate-700 font-semibold whitespace-nowrap">
                             <tr>
+                                <th class="py-3 px-3 text-center" title="ติ๊กเพื่อนำไปแสดง/รายงานในแบบฟอร์มด้านล่าง">รายงาน</th>
                                 <th class="py-3 px-4">#</th>
                                 <th class="py-3 px-4">Site / ประเด็นความเสี่ยง</th>
                                 <th class="py-3 px-4 text-center">Quarter</th>
                                 <th class="py-3 px-4 text-center">จำนวนครั้ง<br><span class="font-normal text-slate-400">HAI</span></th>
                                 <th class="py-3 px-4 text-center">Likelihood<br><span class="font-normal text-slate-400">โอกาส</span></th>
-                                <th class="py-3 px-4 text-center">Consequence<br><span class="font-normal text-slate-400">ความรุนแรง</span></th>
+                                <th class="py-3 px-4 text-center">Consequence<br><span class="font-normal text-slate-400">ความรุนแรง (แก้ได้)</span></th>
                                 <th class="py-3 px-4 text-center">Risk Level<br><span class="font-normal text-slate-400">L×C</span></th>
                                 <th class="py-3 px-4 text-center">ระดับ</th>
                             </tr>
@@ -1194,7 +1195,6 @@
                     <table class="text-left text-sm text-slate-600 whitespace-nowrap">
                         <thead class="bg-slate-50 text-slate-700 font-semibold">
                             <tr>
-                                <th class="py-3 px-3 text-center">เลือก</th>
                                 <th class="py-3 px-3 cursor-help" title="รหัสประจำความเสี่ยง เช่น R01, R02 (เลือกจากแท็บ ตัวเลือกเพิ่ม)">Risk ID</th>
                                 <th class="py-3 px-3">Site</th>
                                 <th class="py-3 px-3 cursor-help" title="แหล่งที่มาของ risk เช่น อุบัติการณ์หน้างาน, มาตรฐานสำคัญจำเป็น 9 ข้อ, 3P safety">Source</th>
@@ -1204,8 +1204,7 @@
                                 <th class="py-3 px-3 text-left bg-slate-100">ไตรมาส</th>
                                 <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="จำนวนครั้งการเกิด HAI (นับจากทะเบียน-1)">จำนวนครั้ง</th>
                                 <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="ความถี่ที่เกิดขึ้น — คำนวณจากจำนวนครั้ง (ดูตารางคำอธิบาย risk matrix)">Likelihood</th>
-                                <th class="py-3 px-3 text-center cursor-help" title="ความรุนแรงที่เกิดขึ้น เลือกความรุนแรงสูงสุดที่เกิดขึ้น (1-5)">Consequence</th>
-                                <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="Likelihood x Consequence">Risk Level</th>
+                                <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="Likelihood × Consequence (Consequence แก้ที่ทะเบียนด้านบน)">Risk Level</th>
                                 <th class="py-3 px-3 cursor-help" title="มาตรการป้องกันความเสี่ยง ที่มีอยู่เดิม">Prevention</th>
                                 <th class="py-3 px-3 cursor-help" title="ติดตามอุบัติการณ์จากช่องทางใด เช่น จำนวน Incident report จาก HRMS หรือจากข้อมูลที่เก็บมือ">Monitor &amp; Control</th>
                                 <th class="py-3 px-3 cursor-help" title="ถ้าเกิดอุบัติการณ์ขึ้น จะมีแนวทางปฏิบัติเพื่อบรรเทาอันตราย/ความเสียหายอย่างไร">Mitigation</th>
@@ -3847,6 +3846,7 @@
             const status = document.getElementById('riskStatus');
             if (src === 'auto') {
                 RISK_DATA = computeRiskAnalysis();
+                applyRiskConsOverrides();
                 renderRisk();
                 if (status) {
                     const qv = document.getElementById('filterQuarter').value;
@@ -3927,13 +3927,15 @@
             const combo = (o, f) => '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100"><input list="dl_' + f + '" data-site="' + o.site + '" data-f="' + f + '" value="' + esc(o._d[f]) + '" class="riskFin w-52 rounded border border-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="เลือกหรือพิมพ์..."></td>';
             const dt = (o, f) => '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100"><input type="date" data-site="' + o.site + '" data-f="' + f + '" value="' + esc(o._d[f]) + '" class="riskFin rounded border border-slate-200 px-2 py-1 text-sm"></td>';
             const today = new Date().toISOString().slice(0, 10);
-            riskFormSites().forEach(o => {
+            // แสดงเฉพาะรายการที่ติ๊กเลือกไว้ในทะเบียนด้านบน
+            const sites = riskFormSites().filter(o => (draft[o.site] || {}).include);
+            if (!sites.length) {
+                body.innerHTML = '<tr><td colspan="30" class="py-8 text-center text-slate-400">— ติ๊กช่อง "รายงาน" ที่ทะเบียนด้านบน เพื่อเลือกรายการมาแสดง/กรอกในแบบฟอร์ม —</td></tr>';
+            }
+            sites.forEach(o => {
                 const d = draft[o.site] || {}; o._d = d;
                 if (!d.dataAdded) d.dataAdded = today;
                 const cons = d.consequence != null && d.consequence !== '' ? +d.consequence : o.i;
-                const checked = (d.include != null ? d.include : (o.year > 0)) ? 'checked' : '';
-                const consSel = '<td' + RS + ' class="py-2 px-2 text-center align-top border-r border-slate-100"><select data-site="' + o.site + '" data-f="consequence" class="riskCons rounded border border-slate-200 px-2 py-1 text-sm text-center">' +
-                    [1, 2, 3, 4, 5].map(n => '<option value="' + n + '"' + (n === cons ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></td>';
                 // 5 แถว: Q1-Q4 + ทั้งปีงบประมาณ
                 const qs = ['Q1', 'Q2', 'Q3', 'Q4'].map(Q => ({ q: Q, c: o.q[Q] || 0, l: likelihoodFromCount(o.q[Q] || 0, false) }));
                 qs.push({ q: 'ทั้งปีงบประมาณ', c: o.year || 0, l: o.ly, annual: true });
@@ -3941,16 +3943,14 @@
                     const rl = qr.l != null ? qr.l * cons : '-', bz = qr.l != null ? riskZone(cons, qr.l) : null;
                     let html = '<tr class="' + (qr.annual ? 'bg-slate-50/50 font-semibold' : 'hover:bg-slate-50') + (j === 0 ? ' border-t-2 border-slate-200' : '') + '">';
                     if (j === 0) {
-                        html += '<td' + RS + ' class="py-2 px-3 text-center align-top border-r border-slate-100"><input type="checkbox" class="riskInc" data-site="' + o.site + '" ' + checked + '></td>' +
-                            sel(o, 'riskId') +
+                        html += sel(o, 'riskId') +
                             '<td' + RS + ' class="py-2 px-3 font-semibold text-slate-800 align-top whitespace-nowrap border-r border-slate-100">' + o.site + '</td>' +
                             sel(o, 'source') + dt(o, 'dataAdded') + area(o, 'title') + area(o, 'desc');
                     }
                     html += '<td class="py-2 px-3 text-left whitespace-nowrap ' + (qr.annual ? 'text-slate-800' : 'text-slate-500') + '">' + qr.q + '</td>' +
                         '<td class="py-2 px-3 text-center">' + qr.c + '</td>' +
-                        '<td class="py-2 px-3 text-center">' + (qr.l ?? '-') + '</td>';
-                    if (j === 0) html += consSel;
-                    html += '<td class="py-2 px-3 text-center font-bold border-r border-slate-100 ' + (bz ? bz.pill.split(' ')[1] : 'text-slate-400') + '">' + rl + '</td>';
+                        '<td class="py-2 px-3 text-center">' + (qr.l ?? '-') + '</td>' +
+                        '<td class="py-2 px-3 text-center font-bold border-r border-slate-100 ' + (bz ? bz.pill.split(' ')[1] : 'text-slate-400') + '">' + rl + '</td>';
                     if (j === 0) html += combo(o, 'prevention') + combo(o, 'monitor') + combo(o, 'mitigation') + combo(o, 'qi') + combo(o, 'owner') +
                         sel(o, 'reviewFreq') + dt(o, 'lastReview') + sel(o, 'residual') + sel(o, 'status');
                     html += '</tr>';
@@ -4046,6 +4046,7 @@
 
         function renderRisk() {
             const grouped = ((document.getElementById('riskSource') || {}).value) === 'auto';
+            const riskDraftAll = riskFormDraft();
             const base = (RISK_DATA || RISK_SEED.map(r => ({ ...r, score: r.l * r.i, level: '' })));
             // โหมดคำนวณ: คงลำดับ site→ไตรมาส · โหมดชีต: เรียงตามคะแนน
             const items = grouped ? base.slice() : base.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
@@ -4116,9 +4117,19 @@
                 const countCls = r.count > 0 ? 'text-slate-700' : 'text-slate-300';
                 if (grouped) {
                     const firstOfSite = !seenSite[r.site];
-                    const commonCells = firstOfSite
-                        ? '<td rowspan="' + siteRows[r.site] + '" class="py-3 px-4 text-slate-400 align-top border-r border-slate-100">' + (++siteIdx) + '</td>' +
-                          '<td rowspan="' + siteRows[r.site] + '" class="py-3 px-4 font-semibold text-slate-800 align-top border-r border-slate-100 whitespace-nowrap">' + esc(r.site) + '</td>'
+                    const rs = siteRows[r.site];
+                    const dS = riskDraftAll[r.site] || {};
+                    let commonCells = '';
+                    if (firstOfSite) {
+                        commonCells =
+                            '<td rowspan="' + rs + '" class="py-3 px-3 text-center align-top border-r border-slate-100"><input type="checkbox" class="riskSelInc" data-site="' + esc(r.site) + '" ' + (dS.include ? 'checked' : '') + '></td>' +
+                            '<td rowspan="' + rs + '" class="py-3 px-4 text-slate-400 align-top border-r border-slate-100">' + (++siteIdx) + '</td>' +
+                            '<td rowspan="' + rs + '" class="py-3 px-4 font-semibold text-slate-800 align-top border-r border-slate-100 whitespace-nowrap">' + esc(r.site) + '</td>';
+                    }
+                    // Consequence: แก้ได้ที่ทะเบียน (rowspan ระดับ site)
+                    const consCell = firstOfSite
+                        ? '<td rowspan="' + rs + '" class="py-3 px-2 text-center align-top"><select class="riskSelCons rounded border border-slate-200 px-2 py-1 text-sm text-center" data-site="' + esc(r.site) + '">' +
+                          [1, 2, 3, 4, 5].map(n => '<option value="' + n + '"' + (n === r.i ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></td>'
                         : '';
                     seenSite[r.site] = 1;
                     const rowCls = r.annual ? 'bg-slate-50 font-semibold border-t border-slate-200' : 'hover:bg-slate-50 transition-colors';
@@ -4128,7 +4139,7 @@
                         '<td class="py-3 px-4 text-center whitespace-nowrap ' + (r.annual ? 'text-slate-800' : 'text-slate-600') + '">' + r.quarter + '</td>' +
                         '<td class="py-3 px-4 text-center font-semibold ' + (r.annual ? 'text-slate-800' : countCls) + '">' + r.count + '</td>' +
                         '<td class="py-3 px-4 text-center">' + dash(r.l) + '</td>' +
-                        '<td class="py-3 px-4 text-center">' + dash(r.i) + '</td>' +
+                        consCell +
                         '<td class="py-3 px-4 text-center font-bold ' + scoreCls + '">' + dash(r.score) + '</td>' +
                         '<td class="py-3 px-4 text-center">' + levelHtml + '</td></tr>');
                     return;
@@ -4138,6 +4149,7 @@
                     : '<span class="font-medium text-slate-700">' + esc(r.site || r.name) + '</span>';
                 body.insertAdjacentHTML('beforeend',
                     '<tr class="hover:bg-slate-50 transition-colors align-top">' +
+                    '<td class="py-3 px-3"></td>' +
                     '<td class="py-3 px-4 text-slate-400">' + (idx + 1) + '</td>' +
                     '<td class="py-3 px-4 whitespace-normal min-w-[14rem]">' + nameCell + '</td>' +
                     '<td class="py-3 px-4 text-center whitespace-nowrap text-slate-600">' + esc(dash(r.quarter)) + '</td>' +
@@ -4146,6 +4158,29 @@
                     '<td class="py-3 px-4 text-center">' + dash(r.i) + '</td>' +
                     '<td class="py-3 px-4 text-center font-bold ' + scoreCls + '">' + dash(r.score) + '</td>' +
                     '<td class="py-3 px-4 text-center">' + levelHtml + '</td></tr>');
+            });
+            // เลือกรายการไปแสดงในฟอร์มรายงาน + แก้ Consequence ที่ทะเบียน
+            if (grouped) {
+                body.querySelectorAll('.riskSelInc').forEach(el => el.addEventListener('change', () => {
+                    const d = riskFormDraft(); const s = el.dataset.site;
+                    (d[s] || (d[s] = {})).include = el.checked; riskFormSaveDraft(d);
+                    renderRiskForm();
+                }));
+                body.querySelectorAll('.riskSelCons').forEach(el => el.addEventListener('change', () => {
+                    const s = el.dataset.site, val = +el.value;
+                    const d = riskFormDraft(); (d[s] || (d[s] = {})).consequence = val; riskFormSaveDraft(d);
+                    if (RISK_DATA) RISK_DATA.forEach(it => { if (it.site === s) { it.i = val; it.score = it.l != null ? it.l * val : null; } });
+                    renderRisk(); renderRiskForm();
+                }));
+            }
+        }
+        // นำ Consequence ที่แก้ในทะเบียน (draft) มาทับค่าใน RISK_DATA
+        function applyRiskConsOverrides() {
+            if (!RISK_DATA) return;
+            const d = riskFormDraft();
+            RISK_DATA.forEach(it => {
+                const c = d[it.site] && d[it.site].consequence;
+                if (c != null && c !== '') { it.i = +c; it.score = it.l != null ? it.l * (+c) : null; }
             });
         }
         function exportRiskCSV() {
