@@ -1223,6 +1223,7 @@
                         <tbody id="riskFormBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
+                <div id="riskDatalists"></div>
                 <div class="p-4 text-xs text-slate-400 border-t border-slate-100">
                     <details>
                         <summary class="cursor-pointer font-medium text-slate-500">วิธีตั้งค่า Google Apps Script (ครั้งเดียว)</summary>
@@ -3872,7 +3873,8 @@
             owner: [''],
             reviewFreq: ['', 'ทุกเดือน', 'ทุกไตรมาส', 'ทุก 6 เดือน', 'ทุกปี'],
             residual: ['', 'น้อย', 'ปานกลาง', 'สูง', 'สูงมาก'],
-            status: ['', 'Active (Improve)', 'Active (Stable)', 'Active (Worsening)', 'Inactive', 'Closed']
+            status: ['', 'Active (Improve)', 'Active (Stable)', 'Active (Worsening)', 'Inactive', 'Closed'],
+            prevention: [], monitor: [], mitigation: [], qi: []
         };
         try { const c = JSON.parse(localStorage.getItem('riskOpts') || 'null'); if (c) Object.assign(RISK_OPTS, c); } catch (e) { }
         let riskOptsLoaded = false;
@@ -3882,7 +3884,7 @@
             try {
                 const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=options&_=' + Date.now());
                 const data = await res.json();
-                ['riskId', 'source', 'owner', 'reviewFreq', 'residual', 'status'].forEach(k => {
+                ['riskId', 'source', 'owner', 'reviewFreq', 'residual', 'status', 'prevention', 'monitor', 'mitigation', 'qi'].forEach(k => {
                     if (Array.isArray(data[k]) && data[k].length) RISK_OPTS[k] = [''].concat(data[k].filter(x => (x || '').toString().trim() !== ''));
                 });
                 try { localStorage.setItem('riskOpts', JSON.stringify(RISK_OPTS)); } catch (e) { }
@@ -3911,6 +3913,8 @@
             // dropdown
             const sel = (o, f) => '<td class="py-2 px-2 align-top"><select data-site="' + o.site + '" data-f="' + f + '" class="riskFin rounded border border-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400">' +
                 RISK_OPTS[f].map(opt => '<option value="' + esc(opt) + '"' + ((o._d[f] || '') === opt ? ' selected' : '') + '>' + (esc(opt) || '—') + '</option>').join('') + '</select></td>';
+            // combo: เลือกจากรายการ (datalist) หรือพิมพ์เอง — สำหรับช่องข้อความยาว
+            const combo = (o, f) => '<td class="py-2 px-2 align-top"><input list="dl_' + f + '" data-site="' + o.site + '" data-f="' + f + '" value="' + esc(o._d[f]) + '" class="riskFin w-52 rounded border border-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="เลือกหรือพิมพ์..."></td>';
             // วันที่
             const dt = (o, f) => '<td class="py-2 px-2 align-top"><input type="date" data-site="' + o.site + '" data-f="' + f + '" value="' + esc(o._d[f]) + '" class="riskFin rounded border border-slate-200 px-2 py-1 text-sm"></td>';
             const today = new Date().toISOString().slice(0, 10);
@@ -3937,10 +3941,15 @@
                     '<td class="py-2 px-3 text-center bg-slate-50 font-semibold align-top">' + (o.ly ?? '-') + '</td>' +
                     consSel +
                     '<td class="py-2 px-3 text-center bg-slate-50 font-bold align-top ' + (b ? b.pill.split(' ')[1] : '') + '" data-rl="' + o.site + '">' + rl + '</td>' +
-                    area(o, 'prevention') + area(o, 'monitor') + area(o, 'mitigation') + area(o, 'qi') + sel(o, 'owner') +
+                    combo(o, 'prevention') + combo(o, 'monitor') + combo(o, 'mitigation') + combo(o, 'qi') + combo(o, 'owner') +
                     sel(o, 'reviewFreq') + dt(o, 'lastReview') + sel(o, 'residual') + sel(o, 'status') +
                     '</tr>');
             });
+            // สร้าง datalist สำหรับช่อง combo (เลือก preset ยาว ๆ จากชีต)
+            const dl = document.getElementById('riskDatalists');
+            if (dl) dl.innerHTML = ['prevention', 'monitor', 'mitigation', 'qi', 'owner'].map(f =>
+                '<datalist id="dl_' + f + '">' + (RISK_OPTS[f] || []).filter(x => (x || '').toString().trim() !== '')
+                    .map(o => '<option value="' + esc(o) + '"></option>').join('') + '</datalist>').join('');
             // เก็บ draft เมื่อพิมพ์ + คำนวณ Risk Level สดเมื่อแก้ Consequence
             const onEdit = el => {
                 const d = riskFormDraft();
