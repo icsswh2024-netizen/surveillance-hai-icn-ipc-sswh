@@ -3698,17 +3698,22 @@
         function computeRiskAnalysis() {
             const cases = getFilteredCases();
             const qv = document.getElementById('filterQuarter').value;
-            const yearly = (qv === 'ALL');
-            const qLabel = yearly ? 'ทั้งปี' : qv;
-            const cnt = {}; RISK_SITES.forEach(s => cnt[s] = 0);
-            cases.forEach(c => { if (cnt[c.siteType] !== undefined) cnt[c.siteType]++; });
-            return RISK_SITES.map(s => {
-                const count = cnt[s];
-                const l = likelihoodFromCount(count, yearly);
-                const i = CONSEQUENCE_BY_SITE[s] || 3;
-                const score = (l != null) ? l * i : null;
-                return { site: s, quarter: qLabel, count, name: '', cat: '', l, i, score, level: '', ctrl: '', owner: '', status: '' };
+            // เลือกทุกไตรมาส → แยกเป็น Q1-Q4 · เลือกไตรมาสเดียว → เฉพาะไตรมาสนั้น
+            const quarters = qv === 'ALL' ? ['Q1', 'Q2', 'Q3', 'Q4'] : [qv];
+            const out = [];
+            quarters.forEach(Q => {
+                const cnt = {}; RISK_SITES.forEach(s => cnt[s] = 0);
+                cases.forEach(c => { if (c.quarter === Q && cnt[c.siteType] !== undefined) cnt[c.siteType]++; });
+                RISK_SITES.forEach(s => {
+                    const count = cnt[s];
+                    const l = likelihoodFromCount(count, false); // นับรายไตรมาส → ใช้เกณฑ์ความถี่รายไตรมาส
+                    const i = CONSEQUENCE_BY_SITE[s] || 3;
+                    const score = (l != null) ? l * i : null;
+                    out.push({ site: s, quarter: Q, count, name: '', cat: '', l, i, score, level: '', ctrl: '', owner: '', status: '' });
+                });
             });
+            // แสดงเฉพาะ site-ไตรมาสที่มีการเกิด (count > 0) เพื่อไม่ให้ตารางรก
+            return out.filter(r => r.count > 0);
         }
 
         // จับคอลัมน์จากหัวตาราง (รองรับหลายชื่อ ทั้งไทย/อังกฤษ)
@@ -3787,8 +3792,8 @@
                 renderRisk();
                 if (status) {
                     const qv = document.getElementById('filterQuarter').value;
-                    const n = RISK_DATA.filter(r => r.count > 0).length;
-                    status.textContent = 'คำนวณจากทะเบียน-1 · ' + (qv === 'ALL' ? 'ทั้งปี' : qv) + ' · พบการเกิด HAI ' + n + ' site';
+                    const n = RISK_DATA.length;
+                    status.textContent = 'คำนวณจากทะเบียน-1 · ' + (qv === 'ALL' ? 'แยกไตรมาส Q1–Q4' : qv) + ' · ' + n + ' รายการ (site × ไตรมาส ที่มีการเกิด)';
                     status.className = 'text-xs text-slate-400 mt-1';
                 }
             } else {
