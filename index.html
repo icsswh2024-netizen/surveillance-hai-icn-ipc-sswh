@@ -1096,6 +1096,7 @@
                     <div>
                         <h3 class="text-lg font-semibold text-slate-800">ทะเบียนความเสี่ยง (Risk Register) — งาน ICN/IPC</h3>
                         <p class="text-xs text-slate-400 mt-1">คะแนน = โอกาส × ผลกระทบ · แต่งสีตามระดับความเสี่ยง (เขียว/เหลือง/ส้ม/แดง)</p>
+                        <p class="text-xs text-slate-400 mt-1" id="riskStatus">กำลังโหลด...</p>
                     </div>
                     <button id="btnExportRisk" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
                 </div>
@@ -1590,6 +1591,8 @@
             '2567': POSTDC_PUB + '?output=csv&gid=1236199399',
             '2566': POSTDC_PUB + '?output=csv&gid=1599034641'
         };
+        // Risk register (เผยแพร่เป็น CSV) — ทะเบียนความเสี่ยงที่ส่งประจำทุกปี
+        const RISK_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSuIY2w-vvQ6Ic-bB5e68k7JJt-nW3md8xPp0WVJO7R4q7IQX5UKTBkNuboi-LCMeNV7FSZg2MEfutp/pub?output=csv';
 
         async function loadData() {
             const res = await fetch(SHEET_CSV_URL);
@@ -3552,9 +3555,9 @@
         }
 
         // ===================== Risk register =====================
-        // ทะเบียนความเสี่ยงงาน ICN/IPC · แก้ไข/เพิ่มรายการได้ที่อาร์เรย์นี้
+        // โหลดจาก Google Sheet (RISK_CSV_URL) · ถ้าโหลดไม่ได้ใช้ RISK_SEED เป็นข้อมูลสำรอง
         // l = โอกาสเกิด (1-5), i = ผลกระทบ (1-5) · คะแนน = l × i
-        const RISK_ITEMS = [
+        const RISK_SEED = [
             { name: 'อัตราการติดเชื้อ CLABSI สูงกว่าเกณฑ์ในหน่วยวิกฤต', cat: 'การติดเชื้อ', l: 3, i: 5, ctrl: 'ทำ CLABSI bundle · นิเทศการดูแลสายสวนหลอดเลือดดำส่วนกลาง', owner: 'ICN/หอ ICU', status: 'กำลังดำเนินการ' },
             { name: 'การปนเปื้อนเชื้อดื้อยา (MDR) แพร่กระจายระหว่างผู้ป่วย', cat: 'เชื้อดื้อยา', l: 3, i: 5, ctrl: 'แยกผู้ป่วย (Contact precaution) · เฝ้าระวัง active surveillance', owner: 'ICN', status: 'กำลังดำเนินการ' },
             { name: 'บุคลากรล้างมือไม่ครบ 5 moments', cat: 'Hand hygiene', l: 4, i: 3, ctrl: 'สุ่มประเมิน HH compliance · จัดจุดเจลแอลกอฮอล์ให้เพียงพอ', owner: 'ICN/IC ward nurse', status: 'กำลังดำเนินการ' },
@@ -3571,17 +3574,81 @@
             if (score >= 4) return { label: 'ปานกลาง', cell: 'bg-amber-300 text-amber-900', pill: 'bg-amber-100 text-amber-800' };
             return { label: 'น้อย', cell: 'bg-emerald-300 text-emerald-900', pill: 'bg-emerald-100 text-emerald-800' };
         }
+        // จับคอลัมน์จากหัวตาราง (รองรับหลายชื่อ ทั้งไทย/อังกฤษ)
+        function riskFindCol(headers, kws) {
+            const low = s => (s || '').toString().toLowerCase().trim();
+            return headers.find(h => kws.some(k => low(h).includes(k)));
+        }
+        function riskNum(v) {
+            const n = parseFloat((v || '').toString().replace(/[^0-9.]/g, ''));
+            return isNaN(n) ? null : n;
+        }
+        // แปลงแถว CSV → รูปแบบมาตรฐานของทะเบียนความเสี่ยง
+        function normalizeRiskRows(headers, rows) {
+            const cName = riskFindCol(headers, ['ประเด็น', 'ความเสี่ยง', 'หัวข้อ', 'เหตุการณ์', 'รายการ', 'risk', 'hazard']);
+            const cCat = riskFindCol(headers, ['หมวด', 'ประเภท', 'กลุ่ม', 'ด้าน', 'category', 'type', 'domain']);
+            const cL = riskFindCol(headers, ['โอกาส', 'ความถี่', 'likeli', 'probab', 'frequency']);
+            const cI = riskFindCol(headers, ['ผลกระทบ', 'ความรุนแรง', 'impact', 'severity', 'consequence']);
+            const cScore = riskFindCol(headers, ['คะแนน', 'score', 'ระดับความเสี่ยง', 'risk level', 'rpn', 'ค่าความเสี่ยง']);
+            const cLevel = riskFindCol(headers, ['ระดับ', 'level', 'band', 'จัดระดับ']);
+            const cCtrl = riskFindCol(headers, ['มาตรการ', 'ควบคุม', 'จัดการ', 'แก้ไข', 'ป้องกัน', 'แผน', 'control', 'action', 'treatment']);
+            const cOwner = riskFindCol(headers, ['ผู้รับผิดชอบ', 'รับผิดชอบ', 'ผู้เกี่ยวข้อง', 'หน่วยงาน', 'owner', 'respons']);
+            const cStatus = riskFindCol(headers, ['สถานะ', 'ผลการ', 'ติดตาม', 'status', 'progress']);
+            return rows.map(r => {
+                const l = cL ? riskNum(r[cL]) : null;
+                const i = cI ? riskNum(r[cI]) : null;
+                let score = (l != null && i != null) ? l * i : (cScore ? riskNum(r[cScore]) : null);
+                return {
+                    name: (cName ? r[cName] : (r[headers[0]] || '')) || '',
+                    cat: cCat ? (r[cCat] || '') : '',
+                    l, i, score,
+                    level: cLevel ? (r[cLevel] || '') : '',
+                    ctrl: cCtrl ? (r[cCtrl] || '') : '',
+                    owner: cOwner ? (r[cOwner] || '') : '',
+                    status: cStatus ? (r[cStatus] || '') : ''
+                };
+            }).filter(r => (r.name || '').toString().trim() !== '');
+        }
+        let RISK_DATA = null;         // ข้อมูลปัจจุบัน (จากชีต หรือ seed)
+        let riskLoaded = false;
+        async function loadRisk(force) {
+            const status = document.getElementById('riskStatus');
+            if (riskLoaded && !force) { renderRisk(); return; }
+            if (status) { status.textContent = 'กำลังโหลดจาก Google Sheet...'; status.className = 'text-xs text-slate-400 mt-1'; }
+            try {
+                const res = await fetch(RISK_CSV_URL + (RISK_CSV_URL.includes('?') ? '&' : '?') + '_=' + Date.now());
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const rows = parseCSV(await res.text());
+                if (!rows.length) throw new Error('ไม่มีข้อมูล');
+                const headers = Object.keys(rows[0]).filter(h => h !== '' && h !== '__norm');
+                const norm = normalizeRiskRows(headers, rows);
+                if (!norm.length) throw new Error('ไม่พบคอลัมน์ประเด็นความเสี่ยง');
+                RISK_DATA = norm; riskLoaded = true;
+                renderRisk();
+                if (status) status.textContent = 'โหลดสำเร็จ — ' + norm.length + ' รายการ (' +
+                    new Date().toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ')';
+            } catch (err) {
+                console.error(err);
+                RISK_DATA = RISK_SEED.map(r => ({ ...r, score: r.l * r.i, level: '' }));
+                renderRisk();
+                if (status) { status.textContent = '⚠️ โหลดชีตไม่สำเร็จ กำลังแสดงข้อมูลตัวอย่าง (' + err.message + ')'; status.className = 'text-xs text-rose-600 mt-1'; }
+            }
+        }
         function renderRisk() {
-            const items = RISK_ITEMS.map(r => ({ ...r, score: r.l * r.i })).sort((a, b) => b.score - a.score);
-            // การ์ดสรุป
+            const items = (RISK_DATA || RISK_SEED.map(r => ({ ...r, score: r.l * r.i, level: '' })))
+                .slice().sort((a, b) => (b.score || 0) - (a.score || 0));
+            // การ์ดสรุป (นับเฉพาะรายการที่มีคะแนน)
             let high = 0, med = 0, low = 0;
-            items.forEach(r => { if (r.score >= 10) high++; else if (r.score >= 4) med++; else low++; });
+            items.forEach(r => { if (r.score == null) return; if (r.score >= 10) high++; else if (r.score >= 4) med++; else low++; });
             document.getElementById('riskTotal').textContent = items.length;
             document.getElementById('riskHigh').textContent = high;
             document.getElementById('riskMed').textContent = med;
             document.getElementById('riskLow').textContent = low;
-            // Risk matrix 5×5 (แถว = โอกาส 5→1, คอลัมน์ = ผลกระทบ 1→5)
-            const cnt = {}; items.forEach(r => { const k = r.l + 'x' + r.i; cnt[k] = (cnt[k] || 0) + 1; });
+            // Risk matrix 5×5 (แถว = โอกาส 5→1, คอลัมน์ = ผลกระทบ 1→5) — นับเฉพาะที่มี l,i 1..5
+            const cnt = {}; items.forEach(r => {
+                const l = Math.round(r.l), i = Math.round(r.i);
+                if (l >= 1 && l <= 5 && i >= 1 && i <= 5) { const k = l + 'x' + i; cnt[k] = (cnt[k] || 0) + 1; }
+            });
             let mx = '<table class="border-collapse text-center text-sm"><tbody>';
             for (let l = 5; l >= 1; l--) {
                 mx += '<tr>';
@@ -3604,28 +3671,36 @@
             const esc = s => (s || '').toString().replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
             const body = document.getElementById('riskBody');
             body.innerHTML = '';
+            const dash = v => (v == null || v === '') ? '-' : v;
             items.forEach((r, idx) => {
-                const b = riskBand(r.score);
+                const hasScore = r.score != null;
+                const b = riskBand(r.score || 0);
+                const levelTxt = (r.level || '').toString().trim() || (hasScore ? b.label : '-');
+                const levelHtml = hasScore
+                    ? '<span class="text-xs font-semibold rounded-full px-2.5 py-1 ' + b.pill + '">' + esc(levelTxt) + '</span>'
+                    : '<span class="text-slate-500">' + esc(levelTxt) + '</span>';
                 body.insertAdjacentHTML('beforeend',
                     '<tr class="hover:bg-slate-50 transition-colors align-top">' +
                     '<td class="py-3 px-4 text-slate-400">' + (idx + 1) + '</td>' +
                     '<td class="py-3 px-4 font-medium text-slate-700 whitespace-normal min-w-[16rem]">' + esc(r.name) + '</td>' +
-                    '<td class="py-3 px-4 whitespace-nowrap"><span class="text-xs bg-slate-100 text-slate-600 rounded px-2 py-0.5">' + esc(r.cat) + '</span></td>' +
-                    '<td class="py-3 px-4 text-center">' + r.l + '</td>' +
-                    '<td class="py-3 px-4 text-center">' + r.i + '</td>' +
-                    '<td class="py-3 px-4 text-center font-bold ' + b.pill.split(' ')[1] + '">' + r.score + '</td>' +
-                    '<td class="py-3 px-4 text-center"><span class="text-xs font-semibold rounded-full px-2.5 py-1 ' + b.pill + '">' + b.label + '</span></td>' +
+                    '<td class="py-3 px-4 whitespace-nowrap">' + (r.cat ? '<span class="text-xs bg-slate-100 text-slate-600 rounded px-2 py-0.5">' + esc(r.cat) + '</span>' : '-') + '</td>' +
+                    '<td class="py-3 px-4 text-center">' + dash(r.l) + '</td>' +
+                    '<td class="py-3 px-4 text-center">' + dash(r.i) + '</td>' +
+                    '<td class="py-3 px-4 text-center font-bold ' + (hasScore ? b.pill.split(' ')[1] : 'text-slate-400') + '">' + dash(r.score) + '</td>' +
+                    '<td class="py-3 px-4 text-center">' + levelHtml + '</td>' +
                     '<td class="py-3 px-4 whitespace-normal min-w-[16rem] text-slate-600">' + esc(r.ctrl) + '</td>' +
                     '<td class="py-3 px-4 whitespace-nowrap text-slate-600">' + esc(r.owner) + '</td>' +
                     '<td class="py-3 px-4 text-center whitespace-nowrap text-slate-500">' + esc(r.status) + '</td></tr>');
             });
         }
         function exportRiskCSV() {
-            const items = RISK_ITEMS.map(r => ({ ...r, score: r.l * r.i })).sort((a, b) => b.score - a.score);
-            const q = s => '"' + (s || '').toString().replace(/"/g, '""') + '"';
+            const items = (RISK_DATA || RISK_SEED.map(r => ({ ...r, score: r.l * r.i, level: '' })))
+                .slice().sort((a, b) => (b.score || 0) - (a.score || 0));
+            const q = s => '"' + (s == null ? '' : s).toString().replace(/"/g, '""') + '"';
             let csv = 'ลำดับ,ประเด็นความเสี่ยง,หมวด,โอกาส,ผลกระทบ,คะแนน,ระดับ,มาตรการควบคุม,ผู้รับผิดชอบ,สถานะ\n';
             items.forEach((r, idx) => {
-                csv += [idx + 1, q(r.name), q(r.cat), r.l, r.i, r.score, q(riskBand(r.score).label), q(r.ctrl), q(r.owner), q(r.status)].join(',') + '\n';
+                const lvl = (r.level || '').toString().trim() || (r.score != null ? riskBand(r.score).label : '');
+                csv += [idx + 1, q(r.name), q(r.cat), (r.l ?? ''), (r.i ?? ''), (r.score ?? ''), q(lvl), q(r.ctrl), q(r.owner), q(r.status)].join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -3667,7 +3742,7 @@
             if (view === 'special') updateSpecialView();
             if (view === 'postdc') loadPostDC();
             if (view === 'control') updateControlView();
-            if (view === 'risk') renderRisk();
+            if (view === 'risk') loadRisk();
         }
 
         // Event listeners
