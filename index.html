@@ -3859,17 +3859,34 @@
                 loadRisk(true);
             }
             renderRiskForm();
+            if (!riskOptsLoaded) { riskOptsLoaded = true; loadRiskOptions(); } // ดึงตัวเลือกจากชีตครั้งแรก
         }
 
         // ===== แบบฟอร์มรายงาน Risk Register (บันทึกลง Google Sheet) =====
         const RISK_FORM_FIELDS = ['source', 'dataAdded', 'title', 'desc', 'prevention', 'monitor', 'mitigation', 'qi', 'owner', 'reviewFreq', 'lastReview', 'residual', 'status'];
         // ตัวเลือก dropdown
+        // ตัวเลือก dropdown (ค่าตั้งต้น) — ถ้ามีชีต "ตัวเลือก" จะอ่านทับด้วยค่าจากชีต
         const RISK_OPTS = {
             source: ['', 'อุบัติการณ์หน้างาน', 'มาตรฐานสำคัญจำเป็น 9 ข้อ', '3P safety', 'อื่นๆ'],
             reviewFreq: ['', 'ทุกเดือน', 'ทุกไตรมาส', 'ทุก 6 เดือน', 'ทุกปี'],
             residual: ['', 'น้อย', 'ปานกลาง', 'สูง', 'สูงมาก'],
             status: ['', 'Active (Improve)', 'Active (Stable)', 'Active (Worsening)', 'Inactive', 'Closed']
         };
+        try { const c = JSON.parse(localStorage.getItem('riskOpts') || 'null'); if (c) Object.assign(RISK_OPTS, c); } catch (e) { }
+        let riskOptsLoaded = false;
+        // อ่านตัวเลือก dropdown จากชีต (action=options) เพื่อให้แก้ในชีตได้เอง
+        async function loadRiskOptions() {
+            const url = riskSaveUrl(); if (!url) return;
+            try {
+                const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=options&_=' + Date.now());
+                const data = await res.json();
+                ['source', 'reviewFreq', 'residual', 'status'].forEach(k => {
+                    if (Array.isArray(data[k]) && data[k].length) RISK_OPTS[k] = [''].concat(data[k].filter(x => (x || '').toString().trim() !== ''));
+                });
+                try { localStorage.setItem('riskOpts', JSON.stringify(RISK_OPTS)); } catch (e) { }
+                renderRiskForm();
+            } catch (e) { /* ใช้ค่าตั้งต้นถ้าอ่านชีตไม่ได้ */ }
+        }
         function riskFormDraft() { try { return JSON.parse(localStorage.getItem('riskFormDraft') || '{}'); } catch (e) { return {}; } }
         function riskFormSaveDraft(d) { try { localStorage.setItem('riskFormDraft', JSON.stringify(d)); } catch (e) { } }
         // รวมผลวิเคราะห์เป็นรายบรรทัดต่อ site (Q1-4 + ทั้งปี)
