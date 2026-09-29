@@ -3948,8 +3948,10 @@
                         '<td class="py-1 px-3 text-center font-bold ' + (bz ? bz.pill.split(' ')[1] : 'text-slate-400') + '">' + rl + '</td>' +
                         '<td class="py-1 px-3">' + (bz ? '<span class="text-xs font-semibold rounded-full px-2 py-0.5 ' + bz.pill + '">' + bz.label + '</span>' : '-') + '</td></tr>';
                 }).join('');
-                return '<tr class="riskDetailRow bg-slate-50/60" data-site="' + o.site + '"><td colspan="' + colCount + '" class="px-6 py-2">' +
-                    '<div class="text-xs font-semibold text-slate-500 mb-1">รายไตรมาส — ' + o.site + ' (จำนวนครั้ง → Likelihood × Consequence = Risk Level)</div>' +
+                const LEAD = 7; // เว้นคอลัมน์ซ้าย (เลือก/Risk ID/Site/Source/Data Added/Title/Description) ให้ตรงกับตารางหลัก
+                return '<tr class="riskDetailRow bg-slate-50/60" data-site="' + o.site + '">' +
+                    '<td colspan="' + LEAD + '" class="bg-white"></td>' +
+                    '<td colspan="' + Math.max(1, colCount - LEAD) + '" class="px-3 py-2">' +
                     '<table class="text-sm text-slate-600"><thead class="text-slate-400"><tr>' +
                     '<th class="py-1 px-3 text-left">ไตรมาส</th><th class="py-1 px-3">จำนวนครั้ง</th><th class="py-1 px-3">Likelihood</th><th class="py-1 px-3">Consequence</th><th class="py-1 px-3">Risk Level</th><th class="py-1 px-3 text-left">ระดับ</th>' +
                     '</tr></thead><tbody>' + mini + '</tbody></table></td></tr>';
