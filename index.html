@@ -3879,12 +3879,27 @@
         };
         try { const c = JSON.parse(localStorage.getItem('riskOpts') || 'null'); if (c) Object.assign(RISK_OPTS, c); } catch (e) { }
         let riskOptsLoaded = false;
+        // อ่านข้อมูลจาก Apps Script ด้วย JSONP (ข้าม CORS) — โหลดผ่าน <script>
+        function jsonpGet(extra) {
+            const url = riskSaveUrl();
+            return new Promise((resolve, reject) => {
+                if (!url) { reject(new Error('ยังไม่มี URL')); return; }
+                const cb = 'riskCb_' + Math.random().toString(36).slice(2);
+                let s;
+                const cleanup = () => { try { delete window[cb]; } catch (e) { } if (s && s.parentNode) s.remove(); };
+                window[cb] = d => { cleanup(); resolve(d); };
+                s = document.createElement('script');
+                s.src = url + (url.includes('?') ? '&' : '?') + extra + '&callback=' + cb + '&_=' + Date.now();
+                s.onerror = () => { cleanup(); reject(new Error('โหลดไม่สำเร็จ')); };
+                document.body.appendChild(s);
+                setTimeout(() => { if (window[cb]) { cleanup(); reject(new Error('หมดเวลา')); } }, 15000);
+            });
+        }
         // อ่านตัวเลือก dropdown จากชีต (action=options) เพื่อให้แก้ในชีตได้เอง
         async function loadRiskOptions() {
-            const url = riskSaveUrl(); if (!url) return;
+            if (!riskSaveUrl()) return;
             try {
-                const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=options&_=' + Date.now());
-                const data = await res.json();
+                const data = await jsonpGet('action=options');
                 ['riskId', 'source', 'owner', 'reviewFreq', 'residual', 'status', 'prevention', 'monitor', 'mitigation', 'qi'].forEach(k => {
                     if (Array.isArray(data[k]) && data[k].length) RISK_OPTS[k] = [''].concat(data[k].filter(x => (x || '').toString().trim() !== ''));
                 });
@@ -4019,8 +4034,7 @@
             if (!url) { st.textContent = '⚠️ กรุณาวาง URL ก่อน'; st.className = 'text-xs mt-2 text-rose-600'; return; }
             st.textContent = 'กำลังเรียกดู...'; st.className = 'text-xs mt-2 text-slate-500';
             try {
-                const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=load&_=' + Date.now());
-                const data = await res.json();
+                const data = await jsonpGet('action=load');
                 const rows = Array.isArray(data) ? data : (data.rows || []);
                 const draft = {};
                 rows.forEach(r => {
