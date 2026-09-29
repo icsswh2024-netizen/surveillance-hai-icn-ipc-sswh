@@ -1157,11 +1157,11 @@
                         <thead class="bg-slate-50 text-slate-700 font-semibold whitespace-nowrap">
                             <tr>
                                 <th class="py-3 px-4">#</th>
-                                <th class="py-3 px-4">ประเด็นความเสี่ยง</th>
-                                <th class="py-3 px-4">หมวด</th>
-                                <th class="py-3 px-4 text-center">โอกาส</th>
-                                <th class="py-3 px-4 text-center">ผลกระทบ</th>
-                                <th class="py-3 px-4 text-center">คะแนน</th>
+                                <th class="py-3 px-4">Site / ประเด็นความเสี่ยง</th>
+                                <th class="py-3 px-4 text-center">Quarter</th>
+                                <th class="py-3 px-4 text-center">Likelihood<br><span class="font-normal text-slate-400">โอกาส</span></th>
+                                <th class="py-3 px-4 text-center">Consequence<br><span class="font-normal text-slate-400">ความรุนแรง</span></th>
+                                <th class="py-3 px-4 text-center">Risk Level<br><span class="font-normal text-slate-400">L×C</span></th>
                                 <th class="py-3 px-4 text-center">ระดับ</th>
                                 <th class="py-3 px-4">มาตรการควบคุม</th>
                                 <th class="py-3 px-4">ผู้รับผิดชอบ</th>
@@ -3689,12 +3689,14 @@
         }
         // แปลงแถว CSV → รูปแบบมาตรฐานของทะเบียนความเสี่ยง
         function normalizeRiskRows(headers, rows) {
-            const cName = riskFindCol(headers, ['ประเด็น', 'ความเสี่ยง', 'หัวข้อ', 'เหตุการณ์', 'รายการ', 'risk', 'hazard']);
+            const cSite = riskFindCol(headers, ['site', 'ตำแหน่ง', 'ชนิดการติดเชื้อ', 'จุดเสี่ยง']);
+            const cQuarter = riskFindCol(headers, ['quarter', 'ไตรมาส', 'งวด', 'ช่วงเวลา']);
+            const cName = riskFindCol(headers, ['ประเด็น', 'ความเสี่ยง', 'หัวข้อ', 'เหตุการณ์', 'รายการ', 'risk topic', 'hazard', 'process']);
             const cCat = riskFindCol(headers, ['หมวด', 'ประเภท', 'กลุ่ม', 'ด้าน', 'category', 'type', 'domain']);
-            const cL = riskFindCol(headers, ['โอกาส', 'ความถี่', 'likeli', 'probab', 'frequency']);
-            const cI = riskFindCol(headers, ['ผลกระทบ', 'ความรุนแรง', 'impact', 'severity', 'consequence']);
-            const cScore = riskFindCol(headers, ['คะแนน', 'score', 'ระดับความเสี่ยง', 'risk level', 'rpn', 'ค่าความเสี่ยง']);
-            const cLevel = riskFindCol(headers, ['ระดับ', 'level', 'band', 'จัดระดับ']);
+            const cL = riskFindCol(headers, ['likeli', 'โอกาส', 'ความถี่', 'probab', 'frequency']);
+            const cI = riskFindCol(headers, ['consequence', 'ความรุนแรง', 'ผลกระทบ', 'impact', 'severity']);
+            const cScore = riskFindCol(headers, ['risk level', 'คะแนน', 'ระดับความเสี่ยง', 'risk score', 'rpn', 'ค่าความเสี่ยง']);
+            const cLevel = riskFindCol(headers, ['จัดระดับ', 'ระดับความเสี่ยง (', 'risk rating', 'band']);
             const cCtrl = riskFindCol(headers, ['มาตรการ', 'ควบคุม', 'จัดการ', 'แก้ไข', 'ป้องกัน', 'แผน', 'control', 'action', 'treatment']);
             const cOwner = riskFindCol(headers, ['ผู้รับผิดชอบ', 'รับผิดชอบ', 'ผู้เกี่ยวข้อง', 'หน่วยงาน', 'owner', 'respons']);
             const cStatus = riskFindCol(headers, ['สถานะ', 'ผลการ', 'ติดตาม', 'status', 'progress']);
@@ -3702,8 +3704,12 @@
                 const l = cL ? riskNum(r[cL]) : null;
                 const i = cI ? riskNum(r[cI]) : null;
                 let score = (l != null && i != null) ? l * i : (cScore ? riskNum(r[cScore]) : null);
+                const site = cSite ? (r[cSite] || '') : '';
+                const nameRaw = cName ? (r[cName] || '') : '';
                 return {
-                    name: (cName ? r[cName] : (r[headers[0]] || '')) || '',
+                    site,
+                    quarter: cQuarter ? (r[cQuarter] || '') : '',
+                    name: (nameRaw || site || r[headers[0]] || '') || '',
                     cat: cCat ? (r[cCat] || '') : '',
                     l, i, score,
                     level: cLevel ? (r[cLevel] || '') : '',
@@ -3711,7 +3717,7 @@
                     owner: cOwner ? (r[cOwner] || '') : '',
                     status: cStatus ? (r[cStatus] || '') : ''
                 };
-            }).filter(r => (r.name || '').toString().trim() !== '');
+            }).filter(r => ((r.name || r.site || '').toString().trim() !== '') && (r.l != null || r.i != null || r.score != null));
         }
         let RISK_DATA = null;         // ข้อมูลปัจจุบัน (จากชีต หรือ seed)
         let riskLoaded = false;
@@ -3794,17 +3800,20 @@
             const dash = v => (v == null || v === '') ? '-' : v;
             items.forEach((r, idx) => {
                 const hasScore = r.score != null;
-                const b = riskBandOf(r) || RZ.g;
                 const graded = riskBandOf(r) != null;
-                const levelTxt = (r.level || '').toString().trim() || (graded ? b.label : '-');
+                const b = riskBandOf(r) || RZ.g;
+                const levelTxt = graded ? b.label : ((r.level || '').toString().trim() || '-');
                 const levelHtml = graded
                     ? '<span class="text-xs font-semibold rounded-full px-2.5 py-1 ' + b.pill + '">' + esc(levelTxt) + '</span>'
                     : '<span class="text-slate-500">' + esc(levelTxt) + '</span>';
+                const nameCell = (r.site && r.name && r.site !== r.name)
+                    ? '<span class="font-semibold text-slate-800">' + esc(r.site) + '</span> · <span class="text-slate-600">' + esc(r.name) + '</span>'
+                    : '<span class="font-medium text-slate-700">' + esc(r.site || r.name) + '</span>';
                 body.insertAdjacentHTML('beforeend',
                     '<tr class="hover:bg-slate-50 transition-colors align-top">' +
                     '<td class="py-3 px-4 text-slate-400">' + (idx + 1) + '</td>' +
-                    '<td class="py-3 px-4 font-medium text-slate-700 whitespace-normal min-w-[16rem]">' + esc(r.name) + '</td>' +
-                    '<td class="py-3 px-4 whitespace-nowrap">' + (r.cat ? '<span class="text-xs bg-slate-100 text-slate-600 rounded px-2 py-0.5">' + esc(r.cat) + '</span>' : '-') + '</td>' +
+                    '<td class="py-3 px-4 whitespace-normal min-w-[14rem]">' + nameCell + '</td>' +
+                    '<td class="py-3 px-4 text-center whitespace-nowrap text-slate-600">' + esc(dash(r.quarter)) + '</td>' +
                     '<td class="py-3 px-4 text-center">' + dash(r.l) + '</td>' +
                     '<td class="py-3 px-4 text-center">' + dash(r.i) + '</td>' +
                     '<td class="py-3 px-4 text-center font-bold ' + (hasScore ? b.pill.split(' ')[1] : 'text-slate-400') + '">' + dash(r.score) + '</td>' +
@@ -3818,10 +3827,10 @@
             const items = (RISK_DATA || RISK_SEED.map(r => ({ ...r, score: r.l * r.i, level: '' })))
                 .slice().sort((a, b) => (b.score || 0) - (a.score || 0));
             const q = s => '"' + (s == null ? '' : s).toString().replace(/"/g, '""') + '"';
-            let csv = 'ลำดับ,ประเด็นความเสี่ยง,หมวด,โอกาส,ผลกระทบ,คะแนน,ระดับ,มาตรการควบคุม,ผู้รับผิดชอบ,สถานะ\n';
+            let csv = 'ลำดับ,Site,ประเด็นความเสี่ยง,Quarter,Likelihood,Consequence,Risk Level,ระดับ,มาตรการควบคุม,ผู้รับผิดชอบ,สถานะ\n';
             items.forEach((r, idx) => {
-                const lvl = (r.level || '').toString().trim() || (r.score != null ? riskBand(r.score).label : '');
-                csv += [idx + 1, q(r.name), q(r.cat), (r.l ?? ''), (r.i ?? ''), (r.score ?? ''), q(lvl), q(r.ctrl), q(r.owner), q(r.status)].join(',') + '\n';
+                const lvl = (r.l != null && r.i != null) ? riskZone(r.i, r.l).label : (r.score != null ? riskBand(r.score).label : ((r.level || '').toString().trim()));
+                csv += [idx + 1, q(r.site), q(r.name), q(r.quarter), (r.l ?? ''), (r.i ?? ''), (r.score ?? ''), q(lvl), q(r.ctrl), q(r.owner), q(r.status)].join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
