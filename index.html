@@ -1206,7 +1206,6 @@
                                 <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="ความถี่ที่เกิดขึ้น — คำนวณจากจำนวนครั้ง (ดูตารางคำอธิบาย risk matrix)">Likelihood</th>
                                 <th class="py-3 px-3 text-center cursor-help" title="ความรุนแรงที่เกิดขึ้น เลือกความรุนแรงสูงสุดที่เกิดขึ้น (1-5)">Consequence</th>
                                 <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="Likelihood x Consequence">Risk Level</th>
-                                <th class="py-3 px-3 text-left bg-slate-100">ระดับ</th>
                                 <th class="py-3 px-3 cursor-help" title="มาตรการป้องกันความเสี่ยง ที่มีอยู่เดิม">Prevention</th>
                                 <th class="py-3 px-3 cursor-help" title="ติดตามอุบัติการณ์จากช่องทางใด เช่น จำนวน Incident report จาก HRMS หรือจากข้อมูลที่เก็บมือ">Monitor &amp; Control</th>
                                 <th class="py-3 px-3 cursor-help" title="ถ้าเกิดอุบัติการณ์ขึ้น จะมีแนวทางปฏิบัติเพื่อบรรเทาอันตราย/ความเสียหายอย่างไร">Mitigation</th>
@@ -3951,8 +3950,7 @@
                         '<td class="py-2 px-3 text-center">' + qr.c + '</td>' +
                         '<td class="py-2 px-3 text-center">' + (qr.l ?? '-') + '</td>';
                     if (j === 0) html += consSel;
-                    html += '<td class="py-2 px-3 text-center font-bold ' + (bz ? bz.pill.split(' ')[1] : 'text-slate-400') + '">' + rl + '</td>' +
-                        '<td class="py-2 px-3 text-center border-r border-slate-100">' + (bz ? '<span class="text-xs font-semibold rounded-full px-2 py-0.5 ' + bz.pill + '">' + bz.label + '</span>' : '-') + '</td>';
+                    html += '<td class="py-2 px-3 text-center font-bold border-r border-slate-100 ' + (bz ? bz.pill.split(' ')[1] : 'text-slate-400') + '">' + rl + '</td>';
                     if (j === 0) html += combo(o, 'prevention') + combo(o, 'monitor') + combo(o, 'mitigation') + combo(o, 'qi') + combo(o, 'owner') +
                         sel(o, 'reviewFreq') + dt(o, 'lastReview') + sel(o, 'residual') + sel(o, 'status');
                     html += '</tr>';
