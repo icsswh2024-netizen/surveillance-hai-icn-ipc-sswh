@@ -1170,9 +1170,6 @@
                                 <th class="py-3 px-4 text-center">Consequence<br><span class="font-normal text-slate-400">ความรุนแรง</span></th>
                                 <th class="py-3 px-4 text-center">Risk Level<br><span class="font-normal text-slate-400">L×C</span></th>
                                 <th class="py-3 px-4 text-center">ระดับ</th>
-                                <th class="py-3 px-4">มาตรการควบคุม</th>
-                                <th class="py-3 px-4">ผู้รับผิดชอบ</th>
-                                <th class="py-3 px-4 text-center">สถานะ</th>
                             </tr>
                         </thead>
                         <tbody id="riskBody" class="divide-y divide-slate-100"></tbody>
@@ -3884,10 +3881,7 @@
                         '<td class="py-3 px-4 text-center">' + dash(r.l) + '</td>' +
                         '<td class="py-3 px-4 text-center">' + dash(r.i) + '</td>' +
                         '<td class="py-3 px-4 text-center font-bold ' + scoreCls + '">' + dash(r.score) + '</td>' +
-                        '<td class="py-3 px-4 text-center">' + levelHtml + '</td>' +
-                        '<td class="py-3 px-4 whitespace-normal min-w-[14rem] text-slate-500">' + esc(r.ctrl) + '</td>' +
-                        '<td class="py-3 px-4 whitespace-nowrap text-slate-500">' + esc(r.owner) + '</td>' +
-                        '<td class="py-3 px-4 text-center whitespace-nowrap text-slate-500">' + esc(r.status) + '</td></tr>');
+                        '<td class="py-3 px-4 text-center">' + levelHtml + '</td></tr>');
                     return;
                 }
                 const nameCell = (r.site && r.name && r.site !== r.name)
@@ -3902,20 +3896,17 @@
                     '<td class="py-3 px-4 text-center">' + dash(r.l) + '</td>' +
                     '<td class="py-3 px-4 text-center">' + dash(r.i) + '</td>' +
                     '<td class="py-3 px-4 text-center font-bold ' + scoreCls + '">' + dash(r.score) + '</td>' +
-                    '<td class="py-3 px-4 text-center">' + levelHtml + '</td>' +
-                    '<td class="py-3 px-4 whitespace-normal min-w-[16rem] text-slate-600">' + esc(r.ctrl) + '</td>' +
-                    '<td class="py-3 px-4 whitespace-nowrap text-slate-600">' + esc(r.owner) + '</td>' +
-                    '<td class="py-3 px-4 text-center whitespace-nowrap text-slate-500">' + esc(r.status) + '</td></tr>');
+                    '<td class="py-3 px-4 text-center">' + levelHtml + '</td></tr>');
             });
         }
         function exportRiskCSV() {
             const items = (RISK_DATA || RISK_SEED.map(r => ({ ...r, score: r.l * r.i, level: '' })))
                 .slice().sort((a, b) => (b.score || 0) - (a.score || 0));
             const q = s => '"' + (s == null ? '' : s).toString().replace(/"/g, '""') + '"';
-            let csv = 'ลำดับ,Site,ประเด็นความเสี่ยง,Quarter,จำนวนครั้ง HAI,Likelihood,Consequence,Risk Level,ระดับ,มาตรการควบคุม,ผู้รับผิดชอบ,สถานะ\n';
+            let csv = 'ลำดับ,Site,ประเด็นความเสี่ยง,Quarter,จำนวนครั้ง HAI,Likelihood,Consequence,Risk Level,ระดับ\n';
             items.forEach((r, idx) => {
                 const lvl = (r.l != null && r.i != null) ? riskZone(r.i, r.l).label : (r.score != null ? riskBand(r.score).label : ((r.level || '').toString().trim()));
-                csv += [idx + 1, q(r.site), q(r.name), q(r.quarter), (r.count ?? ''), (r.l ?? ''), (r.i ?? ''), (r.score ?? ''), q(lvl), q(r.ctrl), q(r.owner), q(r.status)].join(',') + '\n';
+                csv += [idx + 1, q(r.site), q(r.name), q(r.quarter), (r.count ?? ''), (r.l ?? ''), (r.i ?? ''), (r.score ?? ''), q(lvl)].join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
