@@ -1177,6 +1177,63 @@
                 </div>
             </div>
             <p class="text-xs text-slate-400 text-center">โหมด "คำนวณจากทะเบียน-1": Likelihood แปลงจากจำนวนครั้งการเกิดตามตารางความถี่ (รายไตรมาส/รายปีตามตัวกรองบน) · Consequence ใช้ค่าตั้งต้นต่อ site (ปรับได้) · Risk Level = Likelihood × Consequence</p>
+
+            <!-- แบบฟอร์มรายงาน Risk Register (บันทึกลง Google Sheet) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h3 class="text-lg font-semibold text-slate-800">แบบฟอร์มรายงาน Risk Register — บันทึกลง Google Sheet</h3>
+                    <p class="text-xs text-slate-400 mt-1">เลือกรายการ (Site) ที่ต้องการรายงาน · คอลัมน์ auto มาจากทะเบียน-1 · คอลัมน์สีขาวพิมพ์เติมเอง · กด "บันทึก" เพื่อเก็บลงชีต (แก้ไข/เรียกดูใหม่ได้)</p>
+                    <div class="flex flex-col sm:flex-row gap-2 mt-4">
+                        <input id="riskSaveUrl" type="url" placeholder="วาง URL ของ Apps Script Web App ที่นี่" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <div class="flex gap-2">
+                            <button id="btnRiskLoad" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-3 rounded-lg font-medium">เรียกดูที่บันทึกไว้</button>
+                            <button id="btnRiskSave" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg font-medium">บันทึกลงชีต</button>
+                        </div>
+                    </div>
+                    <p class="text-xs mt-2" id="riskSaveStatus"></p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="py-3 px-3 text-center">เลือก</th>
+                                <th class="py-3 px-3">Site</th>
+                                <th class="py-3 px-3">Source</th>
+                                <th class="py-3 px-3">Risk Title</th>
+                                <th class="py-3 px-3">Risk Description</th>
+                                <th class="py-3 px-3 text-center bg-slate-100">Q1</th>
+                                <th class="py-3 px-3 text-center bg-slate-100">Q2</th>
+                                <th class="py-3 px-3 text-center bg-slate-100">Q3</th>
+                                <th class="py-3 px-3 text-center bg-slate-100">Q4</th>
+                                <th class="py-3 px-3 text-center bg-slate-100">ทั้งปี</th>
+                                <th class="py-3 px-3 text-center bg-slate-100">Likelihood</th>
+                                <th class="py-3 px-3 text-center">Consequence</th>
+                                <th class="py-3 px-3 text-center bg-slate-100">Risk Level</th>
+                                <th class="py-3 px-3">Prevention</th>
+                                <th class="py-3 px-3">Monitor &amp; Control</th>
+                                <th class="py-3 px-3">Mitigation</th>
+                                <th class="py-3 px-3">QI plan</th>
+                                <th class="py-3 px-3">Risk Owner</th>
+                                <th class="py-3 px-3">Review freq</th>
+                                <th class="py-3 px-3">Residual Level</th>
+                                <th class="py-3 px-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="riskFormBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+                <div class="p-4 text-xs text-slate-400 border-t border-slate-100">
+                    <details>
+                        <summary class="cursor-pointer font-medium text-slate-500">วิธีตั้งค่า Google Apps Script (ครั้งเดียว)</summary>
+                        <ol class="list-decimal ml-5 mt-2 space-y-1">
+                            <li>เปิดชีต Risk register → เมนู <b>ส่วนขยาย (Extensions) → Apps Script</b></li>
+                            <li>วางโค้ดที่ผมให้ในแชท แล้วกดบันทึก</li>
+                            <li><b>Deploy → New deployment → Web app</b> · Execute as = <i>Me</i> · Who has access = <i>Anyone</i></li>
+                            <li>คัดลอก <b>Web app URL</b> มาวางในช่องด้านบน แล้วกด "บันทึกลงชีต"</li>
+                        </ol>
+                    </details>
+                </div>
+            </div>
         </div><!-- /viewRisk -->
     </div><!-- /max-w container -->
     </main>
@@ -3801,7 +3858,141 @@
             } else {
                 loadRisk(true);
             }
+            renderRiskForm();
         }
+
+        // ===== แบบฟอร์มรายงาน Risk Register (บันทึกลง Google Sheet) =====
+        const RISK_FORM_FIELDS = ['source', 'title', 'desc', 'prevention', 'monitor', 'mitigation', 'qi', 'owner', 'reviewFreq', 'residual', 'status'];
+        function riskFormDraft() { try { return JSON.parse(localStorage.getItem('riskFormDraft') || '{}'); } catch (e) { return {}; } }
+        function riskFormSaveDraft(d) { try { localStorage.setItem('riskFormDraft', JSON.stringify(d)); } catch (e) { } }
+        // รวมผลวิเคราะห์เป็นรายบรรทัดต่อ site (Q1-4 + ทั้งปี)
+        function riskFormSites() {
+            const rows = computeRiskAnalysis();
+            const bySite = {};
+            rows.forEach(r => {
+                const o = bySite[r.site] || (bySite[r.site] = { site: r.site, q: {}, i: r.i });
+                if (r.annual) { o.year = r.count; o.ly = r.l; } else o.q[r.quarter] = r.count;
+            });
+            return RISK_SITES.map(s => bySite[s]).filter(Boolean);
+        }
+        function renderRiskForm() {
+            const body = document.getElementById('riskFormBody'); if (!body) return;
+            const draft = riskFormDraft();
+            const esc = s => (s || '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            body.innerHTML = '';
+            riskFormSites().forEach(o => {
+                const d = draft[o.site] || {};
+                const cons = d.consequence != null && d.consequence !== '' ? +d.consequence : o.i;
+                const rl = (o.ly != null) ? o.ly * cons : '';
+                const b = (o.ly != null) ? riskZone(cons, o.ly) : null;
+                const inp = (f, w) => '<td class="py-2 px-2"><input data-site="' + o.site + '" data-f="' + f + '" value="' + esc(d[f]) + '" class="riskFin w-' + (w || 40) + ' min-w-[8rem] rounded border border-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400"></td>';
+                const checked = (d.include != null ? d.include : (o.year > 0)) ? 'checked' : '';
+                body.insertAdjacentHTML('beforeend',
+                    '<tr class="hover:bg-slate-50">' +
+                    '<td class="py-2 px-3 text-center"><input type="checkbox" class="riskInc" data-site="' + o.site + '" ' + checked + '></td>' +
+                    '<td class="py-2 px-3 font-semibold text-slate-800">' + o.site + '</td>' +
+                    inp('source') + inp('title') + inp('desc') +
+                    '<td class="py-2 px-3 text-center bg-slate-50">' + (o.q.Q1 || 0) + '</td>' +
+                    '<td class="py-2 px-3 text-center bg-slate-50">' + (o.q.Q2 || 0) + '</td>' +
+                    '<td class="py-2 px-3 text-center bg-slate-50">' + (o.q.Q3 || 0) + '</td>' +
+                    '<td class="py-2 px-3 text-center bg-slate-50">' + (o.q.Q4 || 0) + '</td>' +
+                    '<td class="py-2 px-3 text-center bg-slate-50 font-semibold">' + (o.year || 0) + '</td>' +
+                    '<td class="py-2 px-3 text-center bg-slate-50 font-semibold">' + (o.ly ?? '-') + '</td>' +
+                    '<td class="py-2 px-2 text-center"><input type="number" min="1" max="5" data-site="' + o.site + '" data-f="consequence" value="' + cons + '" class="riskCons w-16 rounded border border-slate-200 px-2 py-1 text-sm text-center"></td>' +
+                    '<td class="py-2 px-3 text-center bg-slate-50 font-bold ' + (b ? b.pill.split(' ')[1] : '') + '" data-rl="' + o.site + '">' + rl + '</td>' +
+                    inp('prevention') + inp('monitor') + inp('mitigation') + inp('qi') + inp('owner') + inp('reviewFreq') + inp('residual') + inp('status') +
+                    '</tr>');
+            });
+            // เก็บ draft เมื่อพิมพ์ + คำนวณ Risk Level สดเมื่อแก้ Consequence
+            body.querySelectorAll('.riskFin, .riskCons, .riskInc').forEach(el => {
+                el.addEventListener('input', () => {
+                    const d = riskFormDraft();
+                    const s = el.dataset.site;
+                    const rec = d[s] || (d[s] = {});
+                    if (el.classList.contains('riskInc')) rec.include = el.checked;
+                    else rec[el.dataset.f] = el.value;
+                    riskFormSaveDraft(d);
+                    if (el.dataset.f === 'consequence') updateRiskFormRL(el);
+                });
+            });
+        }
+        function updateRiskFormRL(consEl) {
+            const s = consEl.dataset.site;
+            const o = riskFormSites().find(x => x.site === s); if (!o || o.ly == null) return;
+            const cons = +consEl.value || o.i;
+            const cell = document.querySelector('[data-rl="' + s + '"]'); if (!cell) return;
+            const b = riskZone(cons, o.ly);
+            cell.textContent = o.ly * cons;
+            cell.className = 'py-2 px-3 text-center bg-slate-50 font-bold ' + b.pill.split(' ')[1];
+        }
+        // สร้าง payload ตามคอลัมน์ฟอร์มทางการ (ขยายเป็นรายไตรมาส + ทั้งปี)
+        function riskFormPayload() {
+            const draft = riskFormDraft();
+            const today = new Date().toISOString().slice(0, 10);
+            const rows = [];
+            riskFormSites().forEach(o => {
+                const d = draft[o.site] || {};
+                if (!(d.include != null ? d.include : (o.year > 0))) return; // ข้ามรายการที่ไม่เลือก
+                const cons = d.consequence != null && d.consequence !== '' ? +d.consequence : o.i;
+                const mk = (quarter, count, l) => ({
+                    source: d.source || '', dataAddedDate: today,
+                    riskTitle: d.title || o.site, riskDescription: d.desc || '',
+                    quarter, count, likelihood: (l ?? ''), consequence: cons, riskLevel: (l != null ? l * cons : ''),
+                    prevention: d.prevention || '', monitorControl: d.monitor || '', mitigation: d.mitigation || '', qiPlan: d.qi || '',
+                    riskOwner: d.owner || '', reviewFrequency: d.reviewFreq || '', residualLevel: d.residual || '', riskStatus: d.status || ''
+                });
+                ['Q1', 'Q2', 'Q3', 'Q4'].forEach(Q => rows.push(mk(Q, o.q[Q] || 0, likelihoodFromCount(o.q[Q] || 0, false))));
+                rows.push(mk('ทั้งปีงบประมาณ', o.year || 0, o.ly));
+            });
+            return rows;
+        }
+        function riskSaveUrl() { return (document.getElementById('riskSaveUrl').value || '').trim(); }
+        async function saveRiskRegister() {
+            const st = document.getElementById('riskSaveStatus');
+            const url = riskSaveUrl();
+            if (!url) { st.textContent = '⚠️ กรุณาวาง URL ของ Apps Script Web App ก่อน'; st.className = 'text-xs mt-2 text-rose-600'; return; }
+            try { localStorage.setItem('riskSaveUrl', url); } catch (e) { }
+            const payload = riskFormPayload();
+            st.textContent = 'กำลังบันทึก ' + payload.length + ' แถว...'; st.className = 'text-xs mt-2 text-slate-500';
+            try {
+                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'save', rows: payload }) });
+                st.textContent = '✅ ส่งข้อมูลแล้ว ' + payload.length + ' แถว · โปรดตรวจสอบในชีต (แท็บ RiskRegister)';
+                st.className = 'text-xs mt-2 text-emerald-600';
+            } catch (err) {
+                st.textContent = '⚠️ บันทึกไม่สำเร็จ: ' + err.message + ' (ตรวจสอบ URL และการ Deploy)';
+                st.className = 'text-xs mt-2 text-rose-600';
+            }
+        }
+        async function loadRiskRegister() {
+            const st = document.getElementById('riskSaveStatus');
+            const url = riskSaveUrl();
+            if (!url) { st.textContent = '⚠️ กรุณาวาง URL ก่อน'; st.className = 'text-xs mt-2 text-rose-600'; return; }
+            st.textContent = 'กำลังเรียกดู...'; st.className = 'text-xs mt-2 text-slate-500';
+            try {
+                const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=load&_=' + Date.now());
+                const data = await res.json();
+                const rows = Array.isArray(data) ? data : (data.rows || []);
+                const draft = {};
+                rows.forEach(r => {
+                    const s = (r.riskTitle || '').toString().trim();
+                    const key = RISK_SITES.find(x => s.includes(x)) || s;
+                    if (!key) return;
+                    draft[key] = {
+                        source: r.source, title: r.riskTitle, desc: r.riskDescription, consequence: r.consequence,
+                        prevention: r.prevention, monitor: r.monitorControl, mitigation: r.mitigation, qi: r.qiPlan,
+                        owner: r.riskOwner, reviewFreq: r.reviewFrequency, residual: r.residualLevel, status: r.riskStatus, include: true
+                    };
+                });
+                riskFormSaveDraft(draft);
+                renderRiskForm();
+                st.textContent = '✅ เรียกดูสำเร็จ ' + rows.length + ' แถว';
+                st.className = 'text-xs mt-2 text-emerald-600';
+            } catch (err) {
+                st.textContent = '⚠️ เรียกดูไม่สำเร็จ: ' + err.message;
+                st.className = 'text-xs mt-2 text-rose-600';
+            }
+        }
+
         function renderRisk() {
             const grouped = ((document.getElementById('riskSource') || {}).value) === 'auto';
             const base = (RISK_DATA || RISK_SEED.map(r => ({ ...r, score: r.l * r.i, level: '' })));
@@ -3985,6 +4176,9 @@
         document.getElementById('menuRisk').addEventListener('click', () => switchView('risk'));
         document.getElementById('btnExportRisk').addEventListener('click', exportRiskCSV);
         document.getElementById('riskSource').addEventListener('change', refreshRisk);
+        document.getElementById('btnRiskSave').addEventListener('click', saveRiskRegister);
+        document.getElementById('btnRiskLoad').addEventListener('click', loadRiskRegister);
+        try { const u = localStorage.getItem('riskSaveUrl'); if (u) document.getElementById('riskSaveUrl').value = u; } catch (e) { }
         document.getElementById('ctrlSite').addEventListener('change', () => updateControlView());
         document.getElementById('ctrlType').addEventListener('change', () => updateControlView());
         document.getElementById('ctrlPeriod').addEventListener('change', () => updateControlView());
