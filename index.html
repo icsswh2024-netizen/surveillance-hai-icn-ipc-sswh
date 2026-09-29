@@ -3862,7 +3862,7 @@
                 loadRisk(true);
             }
             renderRiskForm();
-            if (!riskOptsLoaded) { riskOptsLoaded = true; loadRiskOptions(); } // ดึงตัวเลือกจากชีตครั้งแรก
+            loadRiskOptions(); // ดึงตัวเลือกจากชีตใหม่ทุกครั้งที่เปิด/รีเฟรชหน้า Risk
         }
 
         // ===== แบบฟอร์มรายงาน Risk Register (บันทึกลง Google Sheet) =====
