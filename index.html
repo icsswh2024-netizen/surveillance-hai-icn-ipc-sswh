@@ -1195,6 +1195,7 @@
                         <thead class="bg-slate-50 text-slate-700 font-semibold">
                             <tr>
                                 <th class="py-3 px-3 text-center">เลือก</th>
+                                <th class="py-3 px-3 cursor-help" title="รหัสประจำความเสี่ยง เช่น R01, R02 (เลือกจากแท็บ ตัวเลือกเพิ่ม)">Risk ID</th>
                                 <th class="py-3 px-3">Site</th>
                                 <th class="py-3 px-3 cursor-help" title="แหล่งที่มาของ risk เช่น อุบัติการณ์หน้างาน, มาตรฐานสำคัญจำเป็น 9 ข้อ, 3P safety">Source</th>
                                 <th class="py-3 px-3 cursor-help" title="วันที่บรรจุ risk ลงใน risk register">Data Added Date</th>
@@ -3863,11 +3864,12 @@
         }
 
         // ===== แบบฟอร์มรายงาน Risk Register (บันทึกลง Google Sheet) =====
-        const RISK_FORM_FIELDS = ['source', 'dataAdded', 'title', 'desc', 'prevention', 'monitor', 'mitigation', 'qi', 'owner', 'reviewFreq', 'lastReview', 'residual', 'status'];
-        // ตัวเลือก dropdown
-        // ตัวเลือก dropdown (ค่าตั้งต้น) — ถ้ามีชีต "ตัวเลือก" จะอ่านทับด้วยค่าจากชีต
+        const RISK_FORM_FIELDS = ['riskId', 'source', 'dataAdded', 'title', 'desc', 'prevention', 'monitor', 'mitigation', 'qi', 'owner', 'reviewFreq', 'lastReview', 'residual', 'status'];
+        // ตัวเลือก dropdown (ค่าตั้งต้น) — ถ้ามีแท็บ "ตัวเลือกเพิ่ม" จะอ่านทับด้วยค่าจากชีต
         const RISK_OPTS = {
+            riskId: [''],
             source: ['', 'อุบัติการณ์หน้างาน', 'มาตรฐานสำคัญจำเป็น 9 ข้อ', '3P safety', 'อื่นๆ'],
+            owner: [''],
             reviewFreq: ['', 'ทุกเดือน', 'ทุกไตรมาส', 'ทุก 6 เดือน', 'ทุกปี'],
             residual: ['', 'น้อย', 'ปานกลาง', 'สูง', 'สูงมาก'],
             status: ['', 'Active (Improve)', 'Active (Stable)', 'Active (Worsening)', 'Inactive', 'Closed']
@@ -3880,7 +3882,7 @@
             try {
                 const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=options&_=' + Date.now());
                 const data = await res.json();
-                ['source', 'reviewFreq', 'residual', 'status'].forEach(k => {
+                ['riskId', 'source', 'owner', 'reviewFreq', 'residual', 'status'].forEach(k => {
                     if (Array.isArray(data[k]) && data[k].length) RISK_OPTS[k] = [''].concat(data[k].filter(x => (x || '').toString().trim() !== ''));
                 });
                 try { localStorage.setItem('riskOpts', JSON.stringify(RISK_OPTS)); } catch (e) { }
@@ -3924,6 +3926,7 @@
                 body.insertAdjacentHTML('beforeend',
                     '<tr class="hover:bg-slate-50">' +
                     '<td class="py-2 px-3 text-center align-top"><input type="checkbox" class="riskInc" data-site="' + o.site + '" ' + checked + '></td>' +
+                    sel(o, 'riskId') +
                     '<td class="py-2 px-3 font-semibold text-slate-800 align-top whitespace-nowrap">' + o.site + '</td>' +
                     sel(o, 'source') + dt(o, 'dataAdded') + area(o, 'title') + area(o, 'desc') +
                     '<td class="py-2 px-3 text-center bg-slate-50 align-top">' + (o.q.Q1 || 0) + '</td>' +
@@ -3934,7 +3937,7 @@
                     '<td class="py-2 px-3 text-center bg-slate-50 font-semibold align-top">' + (o.ly ?? '-') + '</td>' +
                     consSel +
                     '<td class="py-2 px-3 text-center bg-slate-50 font-bold align-top ' + (b ? b.pill.split(' ')[1] : '') + '" data-rl="' + o.site + '">' + rl + '</td>' +
-                    area(o, 'prevention') + area(o, 'monitor') + area(o, 'mitigation') + area(o, 'qi') + area(o, 'owner') +
+                    area(o, 'prevention') + area(o, 'monitor') + area(o, 'mitigation') + area(o, 'qi') + sel(o, 'owner') +
                     sel(o, 'reviewFreq') + dt(o, 'lastReview') + sel(o, 'residual') + sel(o, 'status') +
                     '</tr>');
             });
@@ -3972,7 +3975,7 @@
                 if (!(d.include != null ? d.include : (o.year > 0))) return; // ข้ามรายการที่ไม่เลือก
                 const cons = d.consequence != null && d.consequence !== '' ? +d.consequence : o.i;
                 const mk = (quarter, count, l) => ({
-                    source: d.source || '', dataAddedDate: d.dataAdded || today,
+                    riskId: d.riskId || '', source: d.source || '', dataAddedDate: d.dataAdded || today,
                     riskTitle: d.title || o.site, riskDescription: d.desc || '',
                     quarter, count, likelihood: (l ?? ''), consequence: cons, riskLevel: (l != null ? l * cons : ''),
                     prevention: d.prevention || '', monitorControl: d.monitor || '', mitigation: d.mitigation || '', qiPlan: d.qi || '',
@@ -4015,7 +4018,7 @@
                     const key = RISK_SITES.find(x => s.includes(x)) || s;
                     if (!key) return;
                     draft[key] = {
-                        source: r.source, dataAdded: r.dataAddedDate, title: r.riskTitle, desc: r.riskDescription, consequence: r.consequence,
+                        riskId: r.riskId, source: r.source, dataAdded: r.dataAddedDate, title: r.riskTitle, desc: r.riskDescription, consequence: r.consequence,
                         prevention: r.prevention, monitor: r.monitorControl, mitigation: r.mitigation, qi: r.qiPlan,
                         owner: r.riskOwner, reviewFreq: r.reviewFrequency, lastReview: r.dataLastReview, residual: r.residualLevel, status: r.riskStatus, include: true
                     };
@@ -4138,10 +4141,12 @@
             const items = (RISK_DATA || RISK_SEED.map(r => ({ ...r, score: r.l * r.i, level: '' })))
                 .slice().sort((a, b) => (b.score || 0) - (a.score || 0));
             const q = s => '"' + (s == null ? '' : s).toString().replace(/"/g, '""') + '"';
-            let csv = 'ลำดับ,Site,ประเด็นความเสี่ยง,Quarter,จำนวนครั้ง HAI,Likelihood,Consequence,Risk Level,ระดับ\n';
+            let csv = 'ลำดับ,Risk ID,Site,ประเด็นความเสี่ยง,Quarter,จำนวนครั้ง HAI,Likelihood,Consequence,Risk Level,ระดับ\n';
+            const draft = riskFormDraft();
             items.forEach((r, idx) => {
                 const lvl = (r.l != null && r.i != null) ? riskZone(r.i, r.l).label : (r.score != null ? riskBand(r.score).label : ((r.level || '').toString().trim()));
-                csv += [idx + 1, q(r.site), q(r.name), q(r.quarter), (r.count ?? ''), (r.l ?? ''), (r.i ?? ''), (r.score ?? ''), q(lvl)].join(',') + '\n';
+                const rid = (draft[r.site] || {}).riskId || '';
+                csv += [idx + 1, q(rid), q(r.site), q(r.name), q(r.quarter), (r.count ?? ''), (r.l ?? ''), (r.i ?? ''), (r.score ?? ''), q(lvl)].join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
