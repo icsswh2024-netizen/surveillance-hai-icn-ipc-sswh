@@ -4310,12 +4310,26 @@
             const yr = riskYearForExport();
             const { aoa } = officialAOA(false);
             if (!aoa.length) { st.textContent = '⚠️ ยังไม่มีรายการที่เลือก (ติ๊กช่อง "รายงาน" ที่ทะเบียนก่อน)'; st.className = 'text-xs mt-2 text-rose-600'; return; }
-            st.textContent = 'กำลังกรอกลงแท็บ ปีงบ ' + yr + ' (' + aoa.length + ' แถว)...'; st.className = 'text-xs mt-2 text-slate-500';
+            st.textContent = 'กำลังตรวจสอบการเชื่อมต่อ...'; st.className = 'text-xs mt-2 text-slate-500';
             try {
+                // 1) ตรวจว่า Deploy เวอร์ชันใหม่แล้ว + มีแท็บปลายทางจริง
+                let ping = null; try { ping = await jsonpGet('action=ping'); } catch (e) { }
+                if (!ping || ping.version !== 'fillYear-v2') {
+                    st.innerHTML = '⚠️ Apps Script ยังเป็นเวอร์ชันเก่า — ต้องวางโค้ด .gs ใหม่แล้ว <b>Deploy → Manage deployments → New version</b> ก่อน (ยังไม่ได้กรอกข้อมูล)';
+                    st.className = 'text-xs mt-2 text-rose-600'; return;
+                }
+                const target = 'ปีงบ ' + yr;
+                if (Array.isArray(ping.sheets) && ping.sheets.indexOf(target) < 0) {
+                    const yb = ping.sheets.filter(s => /ปีงบ/.test(s)).join(', ') || '(ไม่พบแท็บที่ขึ้นต้นด้วย "ปีงบ")';
+                    st.innerHTML = '⚠️ ไม่พบแท็บชื่อ "<b>' + target + '</b>" ในชีต · แท็บที่มี: ' + yb + ' — เปลี่ยนตัวกรองปีให้ตรง หรือแก้ชื่อแท็บ';
+                    st.className = 'text-xs mt-2 text-rose-600'; return;
+                }
+                // 2) เขียนข้อมูล
+                st.textContent = 'กำลังกรอกลงแท็บ "' + target + '" (' + aoa.length + ' แถว)...'; st.className = 'text-xs mt-2 text-slate-500';
                 await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'fillYear', year: yr, aoa }) });
-                st.textContent = '✅ กรอกลงแท็บ "ปีงบ ' + yr + '" แล้ว ' + aoa.length + ' แถว · โปรดตรวจสอบในชีต';
+                st.textContent = '✅ กรอกลงแท็บ "' + target + '" แล้ว ' + aoa.length + ' แถว · โปรดตรวจสอบในชีต';
                 st.className = 'text-xs mt-2 text-emerald-600';
-            } catch (err) { st.textContent = '⚠️ กรอกไม่สำเร็จ: ' + err.message + ' (ตรวจสอบว่ามีแท็บ ปีงบ ' + yr + ' และ Deploy Apps Script เวอร์ชันใหม่แล้ว)'; st.className = 'text-xs mt-2 text-rose-600'; }
+            } catch (err) { st.textContent = '⚠️ กรอกไม่สำเร็จ: ' + err.message; st.className = 'text-xs mt-2 text-rose-600'; }
         }
         function riskSaveUrl() { return (document.getElementById('riskSaveUrl').value || '').trim(); }
         async function saveRiskRegister() {

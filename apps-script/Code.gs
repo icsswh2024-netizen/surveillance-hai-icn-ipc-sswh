@@ -75,6 +75,12 @@ function doGet(e) {
   const action = e && e.parameter && e.parameter.action;
   const cb     = e && e.parameter && e.parameter.callback;
 
+  // ตรวจสอบว่า Deploy เวอร์ชันใหม่แล้ว + ดูชื่อแท็บทั้งหมด (เปิด ...exec?action=ping)
+  if (action === 'ping') {
+    const names = SpreadsheetApp.getActiveSpreadsheet().getSheets().map(function (s) { return s.getName(); });
+    return jsonOut_({ ok: true, version: 'fillYear-v2', sheets: names }, cb);
+  }
+
   if (action === 'options') {
     const o = readOptions_();
     o.targets = readTargets_();
