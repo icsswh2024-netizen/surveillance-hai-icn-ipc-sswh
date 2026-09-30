@@ -1217,7 +1217,7 @@
                                 <th class="py-3 px-3 cursor-help" title="ผู้ที่รับผิดชอบ ติดตามอุบัติการณ์">Risk Owner</th>
                                 <th class="py-3 px-3 cursor-help" title="ความถี่ในการติดตามข้อมูล เช่น ทุกไตรมาส ทุกเดือน">Review freq</th>
                                 <th class="py-3 px-3 cursor-help" title="วันที่ติดตามข้อมูลครั้งล่าสุด">Data last review</th>
-                                <th class="py-3 px-3 cursor-help" title="Risk level ที่เหลือหลังปฏิบัติตามมาตรการ (มักเท่ากับ risk level ของไตรมาสถัดไป)">Residual Level</th>
+                                <th class="py-3 px-3 cursor-help" title="Risk level ที่เหลือหลังปฏิบัติตามมาตรการ = Risk level ของไตรมาสถัดไป (คำนวณอัตโนมัติ)">Residual Level</th>
                                 <th class="py-3 px-3 cursor-help" title="Active (Improve): ปัญหายังอยู่ risk ลดลง | Active (Stable): เท่าเดิม | Active (Worsening): สูงขึ้น | Inactive: ไม่เกิดใน 1 ปี (ยังเฝ้าระวัง) | Closed: ไม่เกิดเลย + มีระบบดีแล้ว">Status</th>
                             </tr>
                         </thead>
@@ -4004,9 +4004,13 @@
                         '<td class="py-2 px-3 text-center">' + (qr.l ?? '-') + '</td>';
                     if (j === 0) html += '<td' + RS + ' class="py-2 px-3 text-center font-semibold text-slate-700 align-middle">' + cons + '</td>';
                     html += '<td class="py-2 px-3 text-center font-bold border-r border-slate-100 ' + (bz ? bz.pill.split(' ')[1] : 'text-slate-400') + '">' + rl + '</td>';
+                    // Residual = Risk Level ของไตรมาสถัดไป (Q1→Q2, Q2→Q3, Q3→Q4) · Q4/รายปีไม่มีไตรมาสถัดไป
+                    const resL = (j < 3 && qs[j + 1] && qs[j + 1].l != null) ? qs[j + 1].l * cons : null;
+                    const resZ = resL != null ? riskZone(cons, qs[j + 1].l) : null;
+                    const resCell = '<td class="py-2 px-3 text-center font-bold border-r border-slate-100 ' + (resZ ? resZ.pill.split(' ')[1] : 'text-slate-400') + '" title="เท่ากับ Risk Level ของไตรมาสถัดไป">' + (resL != null ? resL : '-') + '</td>';
                     if (j === 0) html += combo(o, 'prevention') + combo(o, 'monitor') + combo(o, 'mitigation') + combo(o, 'qi') + combo(o, 'owner') +
-                        sel(o, 'reviewFreq') + dtq(o, 'lastReview', qr.q) + selq(o, 'residual', qr.q) + sel(o, 'status');
-                    else html += dtq(o, 'lastReview', qr.q) + selq(o, 'residual', qr.q);
+                        sel(o, 'reviewFreq') + dtq(o, 'lastReview', qr.q) + resCell + sel(o, 'status');
+                    else html += dtq(o, 'lastReview', qr.q) + resCell;
                     html += '</tr>';
                     body.insertAdjacentHTML('beforeend', html);
                 });
@@ -4048,16 +4052,21 @@
                 const d = draft[o.site] || {};
                 if (!(d.include != null ? d.include : (o.year > 0))) return; // ข้ามรายการที่ไม่เลือก
                 const cons = d.consequence != null && d.consequence !== '' ? +d.consequence : o.i;
-                const mk = (quarter, count, l) => ({
+                const mk = (quarter, count, l, residual) => ({
                     riskId: d.riskId || '', source: d.source || '', dataAddedDate: d.dataAdded || today,
                     riskTitle: d.title || o.site, riskDescription: d.desc || '',
                     quarter, count, likelihood: (l ?? ''), consequence: cons, riskLevel: (l != null ? l * cons : ''),
                     prevention: d.prevention || '', monitorControl: d.monitor || '', mitigation: d.mitigation || '', qiPlan: d.qi || '',
                     riskOwner: d.owner || '', reviewFrequency: d.reviewFreq || '',
-                    dataLastReview: d['lastReview_' + quarter] || '', residualLevel: d['residual_' + quarter] || '', riskStatus: d.status || ''
+                    dataLastReview: d['lastReview_' + quarter] || '', residualLevel: (residual != null ? residual : ''), riskStatus: d.status || ''
                 });
-                ['Q1', 'Q2', 'Q3', 'Q4'].forEach(Q => rows.push(mk(Q, o.q[Q] || 0, likelihoodFromCount(o.q[Q] || 0, false))));
-                rows.push(mk('ทั้งปีงบประมาณ', o.year || 0, o.ly));
+                // Residual ของแต่ละไตรมาส = Risk Level ของไตรมาสถัดไป (คำนวณอัตโนมัติ)
+                const ql = ['Q1', 'Q2', 'Q3', 'Q4'].map(Q => ({ Q, count: o.q[Q] || 0, l: likelihoodFromCount(o.q[Q] || 0, false) }));
+                ql.forEach((qq, idx) => {
+                    const nextL = idx < 3 ? ql[idx + 1].l : null;
+                    rows.push(mk(qq.Q, qq.count, qq.l, nextL != null ? nextL * cons : null));
+                });
+                rows.push(mk('ทั้งปีงบประมาณ', o.year || 0, o.ly, null));
             });
             return rows;
         }
