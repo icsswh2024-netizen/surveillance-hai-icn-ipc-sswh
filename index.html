@@ -3804,7 +3804,7 @@
         }
         // ===== Risk Analysis คำนวณอัตโนมัติจากทะเบียน-1 =====
         // ความรุนแรง (Consequence) ตั้งต้นต่อ SITE — ปรับได้ตามบริบท รพ.
-        const STAFF_SITE = 'บุคลากรติดเชื้อจากการปฏิบัติหน้าที่';
+        const STAFF_SITE = 'บุคลากรสัมผัสเลือดและสารคัดหลั่ง';
         const CONSEQUENCE_BY_SITE = { CLABSI: 4, BSI: 4, VAP: 4, HAP: 4, MDRO: 4, CAUTI: 3, SSI: 3, Omphalitis: 3, UTI: 2, Other: 3, [STAFF_SITE]: 3 };
         const RISK_SITES = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'MDRO', STAFF_SITE];
         // ===== ข้อมูลอุบัติเหตุ/สัมผัสเชื้อของบุคลากร (ชีตแยก IC-รายงาน-อุบัติเหตุเจ้าหน้าที่) =====
