@@ -4377,24 +4377,39 @@
             const st = document.getElementById('riskSaveStatus');
             try {
                 const canvas = await officialCanvas();
+                const host = document.getElementById('riskOfficialPreview');
+                const root = host.firstChild, thead = root.querySelector('thead');
+                const s = 2; // = scale ของ officialCanvas
+                // ตำแหน่ง/ความสูงหัวตาราง (px ของ canvas) เพื่อทำหัวซ้ำทุกหน้า
+                const rr = root.getBoundingClientRect(), hr = thead.getBoundingClientRect();
+                const headTop = Math.max(0, Math.round((hr.top - rr.top) * s));
+                const headH = Math.round(hr.height * s);
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
                 const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
-                const m = 6, iw = pw - m * 2, ih = ph - m * 2; // พื้นที่ใช้งาน (mm)
+                const m = 6, iw = pw - m * 2, ih = ph - m * 2;
                 const cw = canvas.width, scale = iw / cw;      // mm ต่อ 1px
-                const pagePx = Math.floor(ih / scale);         // ความสูง 1 หน้า (px ของ canvas)
-                let y = 0, first = true;
+                const pagePx = Math.floor(ih / scale);         // ความสูง 1 หน้า (px)
+                // วาดช่วงภาพ [startPx, startPx+hPx] ที่ตำแหน่ง yMM
+                const drawSlice = (startPx, hPx, yMM) => {
+                    const tmp = document.createElement('canvas'); tmp.width = cw; tmp.height = hPx;
+                    const ctx = tmp.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, hPx);
+                    ctx.drawImage(canvas, 0, startPx, cw, hPx, 0, 0, cw, hPx);
+                    pdf.addImage(tmp.toDataURL('image/jpeg', 0.95), 'JPEG', m, yMM, iw, hPx * scale);
+                };
+                // เตรียมภาพหัวตาราง (หัวเรื่อง+หัวคอลัมน์) ไว้ซ้ำทุกหน้า
+                const headSlicePx = headTop + headH; // ตั้งแต่บนสุด (ชื่อรายงาน) ถึงจบหัวคอลัมน์
+                // หน้าแรก: แสดงตั้งแต่บนสุด
+                let y = 0, firstH = Math.min(pagePx, canvas.height);
+                drawSlice(0, firstH, m); y = firstH;
+                // หน้าถัดไป: หัวตารางซ้ำด้านบน แล้วต่อเนื้อหา
                 while (y < canvas.height) {
-                    const sliceH = Math.min(pagePx, canvas.height - y);
-                    // ตัดภาพเฉพาะช่วงของหน้านี้ลง canvas ชั่วคราว → ไม่เหลื่อม/ไม่ตกขอบ (แนวทาง skill: slice ต่อหน้า)
-                    const tmp = document.createElement('canvas');
-                    tmp.width = cw; tmp.height = sliceH;
-                    const ctx = tmp.getContext('2d');
-                    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cw, sliceH);
-                    ctx.drawImage(canvas, 0, y, cw, sliceH, 0, 0, cw, sliceH);
-                    if (!first) pdf.addPage();
-                    pdf.addImage(tmp.toDataURL('image/jpeg', 0.95), 'JPEG', m, m, iw, sliceH * scale);
-                    first = false; y += sliceH;
+                    pdf.addPage();
+                    drawSlice(0, headSlicePx, m);                  // หัวซ้ำ
+                    const avail = pagePx - headSlicePx;
+                    const sliceH = Math.min(avail, canvas.height - y);
+                    drawSlice(y, sliceH, m + headSlicePx * scale); // เนื้อหาต่อ
+                    y += sliceH;
                 }
                 pdf.save('RiskRegister_ปีงบ' + riskYearForExport() + '.pdf');
             } catch (e) { st.textContent = '⚠️ ส่งออก PDF ไม่สำเร็จ: ' + e.message; st.className = 'text-xs mt-2 text-rose-600'; }
