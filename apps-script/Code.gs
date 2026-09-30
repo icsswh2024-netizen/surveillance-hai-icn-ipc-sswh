@@ -54,7 +54,12 @@ function doPost(e) {
     const START = 4, COLS = 17; // หัวตาราง 3 แถวแรกของ template
     const last = sh2.getLastRow();
     if (last >= START) sh2.getRange(START, 1, last - START + 1, COLS).clearContent();
-    if (aoa.length) sh2.getRange(START, 1, aoa.length, COLS).setValues(aoa);
+    if (aoa.length) {
+      sh2.getRange(START, 1, aoa.length, COLS).setValues(aoa);
+      // บังคับคอลัมน์วันที่เป็นวันที่ล้วน (ไม่ติดเวลา): B=Data Added, O=Data last review
+      sh2.getRange(START, 2, aoa.length, 1).setNumberFormat('yyyy-mm-dd');
+      sh2.getRange(START, 15, aoa.length, 1).setNumberFormat('yyyy-mm-dd');
+    }
     return jsonOut_({ ok: true, filled: aoa.length, sheet: name });
   }
 
@@ -67,6 +72,12 @@ function doPost(e) {
       r.mitigation, r.qiPlan, r.riskOwner, r.reviewFrequency, r.dataLastReview,
       r.residualLevel, r.riskStatus, r.riskId]);
   });
+  // บังคับคอลัมน์วันที่เป็นวันที่ล้วน (ไม่ติดเวลา): B=Data Added Date, O=Data last review
+  var nRows = (body.rows || []).length;
+  if (nRows) {
+    sh.getRange(2, 2, nRows, 1).setNumberFormat('yyyy-mm-dd');
+    sh.getRange(2, 15, nRows, 1).setNumberFormat('yyyy-mm-dd');
+  }
   return jsonOut_({ ok: true, saved: (body.rows || []).length });
 }
 
