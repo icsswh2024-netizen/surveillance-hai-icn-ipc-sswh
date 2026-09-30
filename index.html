@@ -3974,6 +3974,10 @@
                     '<textarea data-site="' + o.site + '" data-f="' + f + '" rows="2" placeholder="พิมพ์เอง หรือเลือก preset ด้านบน" class="riskFin riskGrow w-64 rounded border border-slate-200 px-2 py-1 text-sm overflow-hidden focus:outline-none focus:ring-1 focus:ring-emerald-400" style="white-space:pre-wrap">' + esc(o._d[f]) + '</textarea></td>';
             };
             const dt = (o, f) => '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100"><input type="date" data-site="' + o.site + '" data-f="' + f + '" value="' + esc(o._d[f]) + '" class="riskFin rounded border border-slate-200 px-2 py-1 text-sm"></td>';
+            // แบบรายไตรมาส (ค่าต่างกันได้ทุกแถว) — key = f_ไตรมาส
+            const dtq = (o, f, q) => '<td class="py-2 px-2 align-top border-r border-slate-100"><input type="date" data-site="' + o.site + '" data-f="' + f + '_' + q + '" value="' + esc(o._d[f + '_' + q]) + '" class="riskFin rounded border border-slate-200 px-2 py-1 text-sm"></td>';
+            const selq = (o, f, q) => '<td class="py-2 px-2 align-top border-r border-slate-100"><select data-site="' + o.site + '" data-f="' + f + '_' + q + '" class="riskFin rounded border border-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400">' +
+                RISK_OPTS[f].map(opt => '<option value="' + esc(opt) + '"' + ((o._d[f + '_' + q] || '') === opt ? ' selected' : '') + '>' + (esc(opt) || '—') + '</option>').join('') + '</select></td>';
             const today = new Date().toISOString().slice(0, 10);
             // แสดงเฉพาะรายการที่ติ๊กเลือกไว้ในทะเบียนด้านบน
             const sites = riskFormSites().filter(o => (draft[o.site] || {}).include);
@@ -4001,7 +4005,8 @@
                     if (j === 0) html += '<td' + RS + ' class="py-2 px-3 text-center font-semibold text-slate-700 align-middle">' + cons + '</td>';
                     html += '<td class="py-2 px-3 text-center font-bold border-r border-slate-100 ' + (bz ? bz.pill.split(' ')[1] : 'text-slate-400') + '">' + rl + '</td>';
                     if (j === 0) html += combo(o, 'prevention') + combo(o, 'monitor') + combo(o, 'mitigation') + combo(o, 'qi') + combo(o, 'owner') +
-                        sel(o, 'reviewFreq') + dt(o, 'lastReview') + sel(o, 'residual') + sel(o, 'status');
+                        sel(o, 'reviewFreq') + dtq(o, 'lastReview', qr.q) + selq(o, 'residual', qr.q) + sel(o, 'status');
+                    else html += dtq(o, 'lastReview', qr.q) + selq(o, 'residual', qr.q);
                     html += '</tr>';
                     body.insertAdjacentHTML('beforeend', html);
                 });
@@ -4048,7 +4053,8 @@
                     riskTitle: d.title || o.site, riskDescription: d.desc || '',
                     quarter, count, likelihood: (l ?? ''), consequence: cons, riskLevel: (l != null ? l * cons : ''),
                     prevention: d.prevention || '', monitorControl: d.monitor || '', mitigation: d.mitigation || '', qiPlan: d.qi || '',
-                    riskOwner: d.owner || '', reviewFrequency: d.reviewFreq || '', dataLastReview: d.lastReview || '', residualLevel: d.residual || '', riskStatus: d.status || ''
+                    riskOwner: d.owner || '', reviewFrequency: d.reviewFreq || '',
+                    dataLastReview: d['lastReview_' + quarter] || '', residualLevel: d['residual_' + quarter] || '', riskStatus: d.status || ''
                 });
                 ['Q1', 'Q2', 'Q3', 'Q4'].forEach(Q => rows.push(mk(Q, o.q[Q] || 0, likelihoodFromCount(o.q[Q] || 0, false))));
                 rows.push(mk('ทั้งปีงบประมาณ', o.year || 0, o.ly));
@@ -4085,11 +4091,15 @@
                     const s = (r.riskTitle || '').toString().trim();
                     const key = RISK_SITES.find(x => s.includes(x)) || s;
                     if (!key) return;
-                    draft[key] = {
+                    const rec = draft[key] || (draft[key] = { include: true });
+                    Object.assign(rec, {
                         riskId: r.riskId, source: r.source, dataAdded: r.dataAddedDate, title: r.riskTitle, desc: r.riskDescription, consequence: r.consequence,
                         prevention: r.prevention, monitor: r.monitorControl, mitigation: r.mitigation, qi: r.qiPlan,
-                        owner: r.riskOwner, reviewFreq: r.reviewFrequency, lastReview: r.dataLastReview, residual: r.residualLevel, status: r.riskStatus, include: true
-                    };
+                        owner: r.riskOwner, reviewFreq: r.reviewFrequency, status: r.riskStatus, include: true
+                    });
+                    // Data last review / Residual แยกตามไตรมาส
+                    const q = (r.quarter || '').toString().trim();
+                    if (q) { rec['lastReview_' + q] = r.dataLastReview || ''; rec['residual_' + q] = r.residualLevel || ''; }
                 });
                 riskFormSaveDraft(draft);
                 renderRiskForm();
