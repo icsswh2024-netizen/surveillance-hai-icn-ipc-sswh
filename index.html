@@ -4063,9 +4063,23 @@
             if (active.length >= 2 && lastRL > firstRL) return { label: 'Active (Worsening)', cls: 'text-rose-700', desc: 'ปัญหายังคงอยู่ และ risk level สูงขึ้น' };
             return { label: 'Active (Stable)', cls: 'text-amber-700', desc: 'ปัญหายังคงอยู่ และ risk level เท่าเดิม' };
         }
+        // ล้างค่าวันที่ใน draft ให้เป็น YYYY-MM-DD (แก้ค่า ISO เก่าที่ค้างอยู่) แล้วบันทึกกลับ
+        function sanitizeDraftDates() {
+            const d = riskFormDraft(); let dirty = false;
+            Object.keys(d).forEach(site => {
+                const rec = d[site]; if (!rec || typeof rec !== 'object') return;
+                Object.keys(rec).forEach(k => {
+                    if (k === 'dataAdded' || k.indexOf('lastReview_') === 0) {
+                        const c = dOnly(rec[k]); if (c !== rec[k]) { rec[k] = c; dirty = true; }
+                    }
+                });
+            });
+            if (dirty) riskFormSaveDraft(d);
+            return d;
+        }
         function renderRiskForm() {
             const body = document.getElementById('riskFormBody'); if (!body) return;
-            const draft = riskFormDraft();
+            const draft = sanitizeDraftDates();
             const esc = s => (s || '').toString().replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
             body.innerHTML = '';
             const RS = ' rowspan="5"'; // คอลัมน์ระดับ site รวมช่อง 5 แถว (Q1-Q4 + ทั้งปี)
