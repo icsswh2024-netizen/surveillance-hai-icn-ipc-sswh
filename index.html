@@ -3960,7 +3960,10 @@
                 if (f === 'monitor') {
                     const r = siteCurrentRate(o.site), ch = chosenTarget(o.site);
                     const rt = r.rate != null ? r.rate + ' ' + r.unit : r.count + ' ครั้ง';
-                    info = '<div class="text-[11px] text-blue-700 bg-blue-50 rounded px-2 py-1 mb-1 w-64">อัตราปัจจุบัน: <b>' + rt + '</b>' + (ch.value ? ' · เป้าหมาย ' + (ch.year ? ch.year + ' ' : '') + '<b class="text-emerald-700">' + esc(ch.value) + '</b>' : '') + '</div>';
+                    info = '<div class="text-[11px] bg-blue-50 rounded px-2 py-1 mb-1 w-64 leading-relaxed">' +
+                        (ch.value ? '<div class="text-emerald-700">เป้าหมาย' + (ch.year ? ' ' + esc(ch.year) : '') + ': <b>' + esc(ch.value) + '</b></div>' : '') +
+                        '<div class="text-blue-700">อัตราปัจจุบัน: <b>' + rt + '</b></div>' +
+                        '</div>';
                 }
                 return '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100">' + info + presetSel +
                     '<textarea data-site="' + o.site + '" data-f="' + f + '" rows="2" placeholder="พิมพ์เอง หรือเลือก preset ด้านบน" class="riskFin riskGrow w-64 rounded border border-slate-200 px-2 py-1 text-sm overflow-hidden focus:outline-none focus:ring-1 focus:ring-emerald-400" style="white-space:pre-wrap">' + esc(o._d[f]) + '</textarea></td>';
