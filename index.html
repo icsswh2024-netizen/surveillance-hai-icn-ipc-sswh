@@ -4204,7 +4204,8 @@
                     quarter, count, likelihood: (l ?? ''), consequence: cons, riskLevel: (l != null ? l * cons : ''),
                     prevention: d.prevention || '', monitorControl: monitorCombined(o.site, d.monitor), mitigation: d.mitigation || '', qiPlan: d.qi || '',
                     riskOwner: d.owner || '', reviewFrequency: d.reviewFreq || '',
-                    dataLastReview: dOnly(d['lastReview_' + quarter]), residualLevel: (residual != null ? residual : ''), riskStatus: stStatus
+                    dataLastReview: dOnly(d['lastReview_' + quarter]), residualLevel: (residual != null ? residual : ''), riskStatus: stStatus,
+                    target: targetText(o.site)
                 });
                 // สถานะอัตโนมัติ (ใช้ค่าเดียวกันทุกแถวของ site)
                 const qsP = ['Q1', 'Q2', 'Q3', 'Q4'].map(Q => ({ q: Q, c: o.q[Q] || 0, l: likelihoodFromCount(o.q[Q] || 0, false) }));
@@ -4658,9 +4659,17 @@
             lines.push('อัตราปัจจุบัน: ' + (r.rate != null ? r.rate + ' ' + r.unit : r.count + ' ครั้ง'));
             return lines.join('\n');
         }
-        // รวมข้อความที่ผู้ใช้พิมพ์ + ข้อมูล Control อัตโนมัติ
+        // รวมข้อความที่ผู้ใช้พิมพ์ + ข้อมูล Control อัตโนมัติ (ตัดบรรทัดอัตโนมัติเดิมออกก่อน กันซ้ำ)
         function monitorCombined(site, typed) {
-            return [(typed || '').trim(), monitorInfoText(site)].filter(x => x && x.trim()).join('\n');
+            const cleaned = (typed || '').split('\n')
+                .filter(l => !/^\s*(เป้าหมาย|ร้อยละของ\s*HAI\s*:|อัตราปัจจุบัน\s*:)/.test(l))
+                .join('\n').trim();
+            return [cleaned, monitorInfoText(site)].filter(x => x && x.trim()).join('\n');
+        }
+        // ค่าเป้าหมายของ site เป็นข้อความ (สำหรับคอลัมน์แยก) เช่น "ประเทศ 2568: <1.21"
+        function targetText(site) {
+            const ch = chosenTarget(site);
+            return ch.value ? ((ch.year ? ch.year + ': ' : '') + ch.value) : '';
         }
         function riskTargets() { try { return JSON.parse(localStorage.getItem('riskTargets') || '{}'); } catch (e) { return {}; } }
         function riskTargetPicks() { try { return JSON.parse(localStorage.getItem('riskTargetPick') || '{}'); } catch (e) { return {}; } }

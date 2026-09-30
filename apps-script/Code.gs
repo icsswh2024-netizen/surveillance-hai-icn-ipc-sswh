@@ -22,7 +22,7 @@ const TARGET_SHEET = 'เกณฑ์';
 const HEADERS = ['Source','Data Added Date','Risk Title','Risk Description','Quarter',
   'Likelihood','Consequence','Risk Level','Risk Transfer & Prevention','Risk Monitor & Control',
   'Risk Mitigation','QI plan','Risk Owner','Review Frequency','Data last review',
-  'Residual risk level','Risk status','Risk ID'];
+  'Residual risk level','Risk status','Risk ID','เป้าหมาย'];
 
 function sheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -76,7 +76,7 @@ function doPost(e) {
     sh.appendRow([r.source, r.dataAddedDate, r.riskTitle, r.riskDescription, r.quarter,
       r.likelihood, r.consequence, r.riskLevel, r.prevention, r.monitorControl,
       r.mitigation, r.qiPlan, r.riskOwner, r.reviewFrequency, r.dataLastReview,
-      r.residualLevel, r.riskStatus, r.riskId]);
+      r.residualLevel, r.riskStatus, r.riskId, r.target]);
   });
   // บังคับคอลัมน์วันที่เป็นวันที่ล้วน (ไม่ติดเวลา): B=Data Added Date, O=Data last review
   var nRows = (body.rows || []).length;
@@ -113,7 +113,7 @@ function doGet(e) {
       quarter: row[4], likelihood: row[5], consequence: row[6], riskLevel: row[7],
       prevention: row[8], monitorControl: row[9], mitigation: row[10], qiPlan: row[11],
       riskOwner: row[12], reviewFrequency: row[13], dataLastReview: dstr_(row[14]),
-      residualLevel: row[15], riskStatus: row[16], riskId: row[17]
+      residualLevel: row[15], riskStatus: row[16], riskId: row[17], target: row[18]
     };
   });
   return jsonOut_({ rows: rows }, cb);
