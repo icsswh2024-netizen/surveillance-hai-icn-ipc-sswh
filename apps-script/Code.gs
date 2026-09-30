@@ -63,8 +63,8 @@ function doPost(e) {
     if (aoa.length) {
       sh2.getRange(START, 1, aoa.length, COLS).setValues(aoa);
       // บังคับคอลัมน์วันที่เป็นวันที่ล้วน (ไม่ติดเวลา): B=Data Added, O=Data last review
-      sh2.getRange(START, 2, aoa.length, 1).setNumberFormat('yyyy-mm-dd');
-      sh2.getRange(START, 15, aoa.length, 1).setNumberFormat('yyyy-mm-dd');
+      sh2.getRange(START, 2, aoa.length, 1).setNumberFormat('dd/mm/yyyy');
+      sh2.getRange(START, 15, aoa.length, 1).setNumberFormat('dd/mm/yyyy');
     }
     return jsonOut_({ ok: true, filled: aoa.length, sheet: name });
   }
@@ -81,8 +81,8 @@ function doPost(e) {
   // บังคับคอลัมน์วันที่เป็นวันที่ล้วน (ไม่ติดเวลา): B=Data Added Date, O=Data last review
   var nRows = (body.rows || []).length;
   if (nRows) {
-    sh.getRange(2, 2, nRows, 1).setNumberFormat('yyyy-mm-dd');
-    sh.getRange(2, 15, nRows, 1).setNumberFormat('yyyy-mm-dd');
+    sh.getRange(2, 2, nRows, 1).setNumberFormat('dd/mm/yyyy');
+    sh.getRange(2, 15, nRows, 1).setNumberFormat('dd/mm/yyyy');
   }
   return jsonOut_({ ok: true, saved: (body.rows || []).length });
 }
