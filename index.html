@@ -16,6 +16,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/th.js"></script>
 
+    <!-- ส่งออก Excel / PDF / JPG -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <!-- Google Fonts: Inter and Noto Sans Thai -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1227,12 +1232,25 @@
                     <h3 class="text-lg font-semibold text-slate-800">แบบฟอร์มรายงาน Risk Register — บันทึกลง Google Sheet</h3>
                     <p class="text-xs text-slate-400 mt-1">เลือกรายการ (Site) ที่ต้องการรายงาน · คอลัมน์ auto มาจากทะเบียน-1 · คอลัมน์สีขาวพิมพ์เติมเอง · กด "บันทึก" เพื่อเก็บลงชีต (แก้ไข/เรียกดูใหม่ได้)</p>
                     <input id="riskSaveUrl" type="hidden" value="https://script.google.com/macros/s/AKfycbxprdf_HZW6VM0QD8ZIAwmZw28_Snu5pP1APlKqNBaQ3r3e3xb8pTBmvg30cAgWukk4Ng/exec">
-                    <div class="flex gap-2 mt-4">
+                    <div class="flex gap-2 mt-4 flex-wrap">
                         <button id="btnRiskLoad" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-3 rounded-lg font-medium">เรียกดูที่บันทึกไว้</button>
                         <button id="btnRiskSave" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg font-medium">บันทึกลงชีต</button>
                     </div>
+                    <div class="mt-3 pt-3 border-t border-slate-100">
+                        <p class="text-xs text-slate-400 mb-2">ออกรายงานตามแบบฟอร์ม RM ทางการ (จัดกลุ่ม 5 หมวด · รวมช่องระดับ Site) สำหรับส่งกรรมการ</p>
+                        <div class="flex gap-2 flex-wrap items-center">
+                            <button id="btnRiskXlsx" class="text-sm bg-green-700 hover:bg-green-800 text-white py-2 px-3 rounded-lg font-medium">⬇ Excel</button>
+                            <button id="btnRiskPdf" class="text-sm bg-rose-600 hover:bg-rose-700 text-white py-2 px-3 rounded-lg font-medium">⬇ PDF</button>
+                            <button id="btnRiskJpg" class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3 rounded-lg font-medium">⬇ JPG</button>
+                            <span class="text-slate-300">|</span>
+                            <button id="btnRiskFillYear" class="text-sm bg-amber-500 hover:bg-amber-600 text-white py-2 px-3 rounded-lg font-medium">📝 กรอกลงแท็บ ปีงบ อัตโนมัติ</button>
+                            <span id="riskYearBadge" class="text-xs text-slate-500"></span>
+                        </div>
+                    </div>
                     <p class="text-xs mt-2" id="riskSaveStatus"></p>
                 </div>
+                <!-- ตัวช่วยเรนเดอร์รูปแบบทางการสำหรับ PDF/JPG (ซ่อนไว้นอกจอ) -->
+                <div id="riskOfficialPreview" style="position:absolute;left:-99999px;top:0;background:#fff;padding:16px;"></div>
                 <div class="overflow-x-auto">
                     <table class="text-left text-sm text-slate-600 whitespace-nowrap">
                         <thead class="bg-slate-50 text-slate-700 font-semibold">
@@ -4096,6 +4114,8 @@
                 psel.value = '';
             }));
             initRiskDatePickers();
+            const yb = document.getElementById('riskYearBadge');
+            if (yb) yb.textContent = '→ แท็บ "ปีงบ ' + riskYearForExport() + '"';
         }
         // แปลง input วันที่เป็น flatpickr (ปฏิทินพรีเมียม) — เก็บค่าเป็น Y-m-d เหมือนเดิม
         function initRiskDatePickers() {
@@ -4139,6 +4159,151 @@
                 rows.push(mk('ทั้งปีงบประมาณ', o.year || 0, o.ly, null));
             });
             return rows;
+        }
+        // ===================== รายงานตามแบบฟอร์ม RM ทางการ (Excel/PDF/JPG + กรอกลงแท็บปีงบ) =====================
+        // ปีงบสำหรับส่งออก/กรอกลงแท็บ (ใช้ตัวกรอง ถ้า ALL ใช้ปีล่าสุดในแท็บเกณฑ์ มิฉะนั้นปี พ.ศ. ปัจจุบัน)
+        function riskYearForExport() {
+            const fy = riskFilterYear(); if (fy) return fy;
+            const ys = new Set();
+            Object.values(RISK_TARGETS).forEach(o => Object.keys(o || {}).forEach(k => { const m = ('' + k).match(/25\d\d/); if (m) ys.add(m[0]); }));
+            const arr = [...ys].sort(); if (arr.length) return arr[arr.length - 1];
+            return String(new Date().getFullYear() + 543);
+        }
+        // จัดข้อมูลเป็นบล็อกต่อ Site (คอลัมน์ระดับ site + รายไตรมาส Q1-Q4 + ทั้งปี)
+        function officialSiteBlocks() {
+            const draft = riskFormDraft(); const today = new Date().toISOString().slice(0, 10);
+            const blocks = [];
+            riskFormSites().forEach(o => {
+                const d = draft[o.site] || {};
+                if (!(d.include != null ? d.include : (o.year > 0))) return;
+                const cons = d.consequence != null && d.consequence !== '' ? +d.consequence : o.i;
+                const qsP = ['Q1', 'Q2', 'Q3', 'Q4'].map(Q => ({ q: Q, c: o.q[Q] || 0, l: likelihoodFromCount(o.q[Q] || 0, false) }));
+                qsP.push({ q: 'ทั้งปีงบประมาณ', c: o.year || 0, l: o.ly });
+                const status = autoRiskStatus(qsP, cons).label;
+                const qs = qsP.slice(0, 4).map((qq, idx) => {
+                    const nextL = qsP[idx + 1] ? qsP[idx + 1].l : null;
+                    return { quarter: qq.q, l: (qq.l ?? ''), c: cons, rl: (qq.l != null ? qq.l * cons : ''), lastReview: d['lastReview_' + qq.q] || '', residual: (nextL != null ? nextL * cons : '') };
+                });
+                const a = qsP[4];
+                qs.push({ quarter: 'ทั้งปีงบประมาณ', l: (a.l ?? ''), c: cons, rl: (a.l != null ? a.l * cons : ''), lastReview: d['lastReview_ทั้งปีงบประมาณ'] || '', residual: '' });
+                blocks.push({
+                    site: o.site,
+                    sl: { source: d.source || '', dataAdded: d.dataAdded || today, title: d.title || o.site, desc: d.desc || '', prevention: d.prevention || '', monitor: d.monitor || '', mitigation: d.mitigation || '', qi: d.qi || '', owner: d.owner || '', reviewFreq: d.reviewFreq || '', status },
+                    qs
+                });
+            });
+            return blocks;
+        }
+        // สร้าง AOA (2 มิติ) ตามเลย์เอาต์ทางการ (17 คอลัมน์) · withHeaders = ใส่หัวตาราง 2 แถว
+        function officialAOA(withHeaders) {
+            const blocks = officialSiteBlocks(); const aoa = [], merges = [];
+            if (withHeaders) {
+                aoa.push(['Risk Identification', '', '', '', 'Risk Analysis', '', '', '', 'Risk Treatment', '', '', '', 'Risk Monitoring & Review', '', '', '', '']);
+                aoa.push(['Source', 'Data Added Date', 'Risk Title', 'Risk Description', 'Quarter', 'Likelihood (frequency)', 'Consequence (Impact)', 'Risk Level (freq × Impact)', 'Risk Transfer & Prevention', 'Risk Monitor & Control', 'Risk Mitigation', 'QI plan', 'Risk Owner', 'Review frequency', 'Data last review', 'Residual Risk Level', 'Risk status']);
+                merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, { s: { r: 0, c: 4 }, e: { r: 0, c: 7 } }, { s: { r: 0, c: 8 }, e: { r: 0, c: 11 } }, { s: { r: 0, c: 12 }, e: { r: 0, c: 16 } });
+            }
+            blocks.forEach(b => {
+                const start = aoa.length;
+                b.qs.forEach((q, i) => {
+                    const sl = i === 0 ? b.sl : null;
+                    aoa.push([
+                        sl ? sl.source : '', sl ? sl.dataAdded : '', sl ? sl.title : '', sl ? sl.desc : '',
+                        q.quarter, q.l, q.c, q.rl,
+                        sl ? sl.prevention : '', sl ? sl.monitor : '', sl ? sl.mitigation : '', sl ? sl.qi : '',
+                        sl ? sl.owner : '', sl ? sl.reviewFreq : '', q.lastReview, q.residual,
+                        sl ? sl.status : ''
+                    ]);
+                });
+                const end = aoa.length - 1;
+                if (end > start)[0, 1, 2, 3, 8, 9, 10, 11, 12, 13, 16].forEach(c => merges.push({ s: { r: start, c }, e: { r: end, c } }));
+            });
+            return { aoa, merges };
+        }
+        // ตาราง HTML รูปแบบทางการ (ใช้เรนเดอร์เป็น PDF/JPG)
+        function officialTableHTML() {
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])).replace(/\n/g, '<br>');
+            const blocks = officialSiteBlocks();
+            const subs = ['Source', 'Data Added Date', 'Risk Title', 'Risk Description', 'Quarter', 'Likelihood', 'Consequence', 'Risk Level', 'Risk Transfer & Prevention', 'Risk Monitor & Control', 'Risk Mitigation', 'QI plan', 'Risk Owner', 'Review frequency', 'Data last review', 'Residual Risk Level', 'Risk status'];
+            let h = '<div style="font-family:\'Kanit\',\'Noto Sans Thai\',sans-serif;color:#0f172a;">' +
+                '<div style="font-size:18px;font-weight:700;margin-bottom:2px;">ทะเบียนความเสี่ยง (Risk Register) — ปีงบ ' + riskYearForExport() + '</div>' +
+                '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">โรงพยาบาลศรีสังวรสุโขทัย · กลุ่มงานการพยาบาลด้านการควบคุมและป้องกันการติดเชื้อ (IC)</div>' +
+                '<table style="border-collapse:collapse;font-size:11px;table-layout:fixed;">';
+            const gh = (t, n, bg) => '<th colspan="' + n + '" style="border:1px solid #94a3b8;background:' + bg + ';color:#fff;padding:6px 8px;">' + t + '</th>';
+            h += '<thead><tr>' + gh('Risk Identification', 4, '#0d9488') + gh('Risk Analysis', 4, '#2563eb') + gh('Risk Treatment', 4, '#7c3aed') + gh('Risk Monitoring &amp; Review', 5, '#0f766e') + '</tr><tr>' +
+                subs.map(s => '<th style="border:1px solid #94a3b8;background:#f1f5f9;padding:5px 6px;font-weight:600;">' + s + '</th>').join('') + '</tr></thead><tbody>';
+            const td = (v, rs, extra) => '<td' + (rs > 1 ? ' rowspan="' + rs + '"' : '') + ' style="border:1px solid #cbd5e1;padding:4px 6px;vertical-align:top;' + (extra || '') + '">' + esc(v) + '</td>';
+            blocks.forEach(b => {
+                b.qs.forEach((q, i) => {
+                    const n = b.qs.length;
+                    h += '<tr>';
+                    if (i === 0) h += td(b.sl.source, n) + td(b.sl.dataAdded, n) + td(b.sl.title, n) + td(b.sl.desc, n);
+                    h += td(q.quarter, 1, q.quarter === 'ทั้งปีงบประมาณ' ? 'font-weight:600;background:#f8fafc;' : '') + td(q.l, 1, 'text-align:center;') + td(q.c, 1, 'text-align:center;') + td(q.rl, 1, 'text-align:center;font-weight:700;');
+                    if (i === 0) h += td(b.sl.prevention, n) + td(b.sl.monitor, n) + td(b.sl.mitigation, n) + td(b.sl.qi, n) + td(b.sl.owner, n) + td(b.sl.reviewFreq, n);
+                    h += td(q.lastReview, 1, 'text-align:center;') + td(q.residual, 1, 'text-align:center;font-weight:600;');
+                    if (i === 0) h += td(b.sl.status, n, 'text-align:center;');
+                    h += '</tr>';
+                });
+            });
+            return h + '</tbody></table></div>';
+        }
+        function exportOfficialExcel() {
+            if (typeof XLSX === 'undefined') { alert('ยังโหลดไลบรารี Excel ไม่เสร็จ ลองใหม่อีกครั้ง'); return; }
+            const { aoa, merges } = officialAOA(true);
+            const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!merges'] = merges;
+            ws['!cols'] = [18, 12, 14, 32, 8, 11, 11, 10, 28, 28, 24, 24, 16, 12, 13, 11, 16].map(w => ({ wch: w }));
+            const wb = XLSX.utils.book_new();
+            const yr = riskYearForExport();
+            XLSX.utils.book_append_sheet(wb, ws, ('ปีงบ ' + yr).slice(0, 31));
+            XLSX.writeFile(wb, 'RiskRegister_ปีงบ' + yr + '.xlsx');
+        }
+        async function officialCanvas() {
+            const host = document.getElementById('riskOfficialPreview');
+            host.innerHTML = officialTableHTML();
+            await new Promise(r => setTimeout(r, 60)); // ให้ฟอนต์/เลย์เอาต์เรนเดอร์ก่อน
+            return html2canvas(host.firstChild, { scale: 2, backgroundColor: '#ffffff' });
+        }
+        async function exportOfficialJPG() {
+            const st = document.getElementById('riskSaveStatus');
+            try {
+                const canvas = await officialCanvas();
+                const a = document.createElement('a');
+                a.href = canvas.toDataURL('image/jpeg', 0.95);
+                a.download = 'RiskRegister_ปีงบ' + riskYearForExport() + '.jpg'; a.click();
+            } catch (e) { st.textContent = '⚠️ ส่งออก JPG ไม่สำเร็จ: ' + e.message; st.className = 'text-xs mt-2 text-rose-600'; }
+        }
+        async function exportOfficialPDF() {
+            const st = document.getElementById('riskSaveStatus');
+            try {
+                const canvas = await officialCanvas();
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
+                const m = 6, iw = pw - m * 2;
+                const ih = canvas.height * iw / canvas.width;
+                const img = canvas.toDataURL('image/jpeg', 0.95);
+                if (ih <= ph - m * 2) { pdf.addImage(img, 'JPEG', m, m, iw, ih); }
+                else { // แบ่งหลายหน้าตามความสูง
+                    let remain = ih, pos = m;
+                    const pageH = ph - m * 2;
+                    while (remain > 0) { pdf.addImage(img, 'JPEG', m, pos, iw, ih); remain -= pageH; if (remain > 0) { pdf.addPage(); pos = pos - pageH; } }
+                }
+                pdf.save('RiskRegister_ปีงบ' + riskYearForExport() + '.pdf');
+            } catch (e) { st.textContent = '⚠️ ส่งออก PDF ไม่สำเร็จ: ' + e.message; st.className = 'text-xs mt-2 text-rose-600'; }
+        }
+        // กรอกข้อมูลลงแท็บ "ปีงบ 25xx" อัตโนมัติ (เขียนที่ A4 เป็นต้นไป · เก็บหัวตารางเดิมไว้)
+        async function fillYearSheet() {
+            const st = document.getElementById('riskSaveStatus');
+            const url = riskSaveUrl();
+            if (!url) { st.textContent = '⚠️ กรุณาวาง URL ก่อน'; st.className = 'text-xs mt-2 text-rose-600'; return; }
+            const yr = riskYearForExport();
+            const { aoa } = officialAOA(false);
+            if (!aoa.length) { st.textContent = '⚠️ ยังไม่มีรายการที่เลือก (ติ๊กช่อง "รายงาน" ที่ทะเบียนก่อน)'; st.className = 'text-xs mt-2 text-rose-600'; return; }
+            st.textContent = 'กำลังกรอกลงแท็บ ปีงบ ' + yr + ' (' + aoa.length + ' แถว)...'; st.className = 'text-xs mt-2 text-slate-500';
+            try {
+                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'fillYear', year: yr, aoa }) });
+                st.textContent = '✅ กรอกลงแท็บ "ปีงบ ' + yr + '" แล้ว ' + aoa.length + ' แถว · โปรดตรวจสอบในชีต';
+                st.className = 'text-xs mt-2 text-emerald-600';
+            } catch (err) { st.textContent = '⚠️ กรอกไม่สำเร็จ: ' + err.message + ' (ตรวจสอบว่ามีแท็บ ปีงบ ' + yr + ' และ Deploy Apps Script เวอร์ชันใหม่แล้ว)'; st.className = 'text-xs mt-2 text-rose-600'; }
         }
         function riskSaveUrl() { return (document.getElementById('riskSaveUrl').value || '').trim(); }
         async function saveRiskRegister() {
@@ -4489,6 +4654,10 @@
         document.getElementById('riskSource').addEventListener('change', refreshRisk);
         document.getElementById('btnRiskSave').addEventListener('click', saveRiskRegister);
         document.getElementById('btnRiskLoad').addEventListener('click', loadRiskRegister);
+        document.getElementById('btnRiskXlsx').addEventListener('click', exportOfficialExcel);
+        document.getElementById('btnRiskPdf').addEventListener('click', exportOfficialPDF);
+        document.getElementById('btnRiskJpg').addEventListener('click', exportOfficialJPG);
+        document.getElementById('btnRiskFillYear').addEventListener('click', fillYearSheet);
         try { const u = localStorage.getItem('riskSaveUrl'); if (u) document.getElementById('riskSaveUrl').value = u; } catch (e) { }
         document.getElementById('ctrlSite').addEventListener('change', () => updateControlView());
         document.getElementById('ctrlType').addEventListener('change', () => updateControlView());

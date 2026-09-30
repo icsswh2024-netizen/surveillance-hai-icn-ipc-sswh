@@ -43,6 +43,21 @@ function jsonOut_(obj, cb) {
 function doPost(e) {
   if (!e || !e.postData) return jsonOut_({ ok: false, note: 'เรียกผ่าน Web app POST เท่านั้น' });
   const body = JSON.parse(e.postData.contents);
+
+  // กรอกลงแท็บ "ปีงบ 25xx" ตามแบบฟอร์ม RM ทางการ (เขียนที่ A4 · เก็บหัวตารางเดิม)
+  if (body.action === 'fillYear') {
+    const name = 'ปีงบ ' + body.year;
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sh2 = ss.getSheetByName(name);
+    if (!sh2) return jsonOut_({ ok: false, note: 'ไม่พบแท็บ "' + name + '"' });
+    const aoa = body.aoa || [];
+    const START = 4, COLS = 17; // หัวตาราง 3 แถวแรกของ template
+    const last = sh2.getLastRow();
+    if (last >= START) sh2.getRange(START, 1, last - START + 1, COLS).clearContent();
+    if (aoa.length) sh2.getRange(START, 1, aoa.length, COLS).setValues(aoa);
+    return jsonOut_({ ok: true, filled: aoa.length, sheet: name });
+  }
+
   const sh = sheet_();
   sh.clear();
   sh.appendRow(HEADERS);
