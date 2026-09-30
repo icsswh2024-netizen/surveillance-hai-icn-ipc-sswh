@@ -4137,7 +4137,7 @@
             const rows = [];
             riskFormSites().forEach(o => {
                 const d = draft[o.site] || {};
-                if (!(d.include != null ? d.include : (o.year > 0))) return; // ข้ามรายการที่ไม่เลือก
+                if (!d.include) return; // เฉพาะรายการที่ติ๊ก "รายงาน"
                 const cons = d.consequence != null && d.consequence !== '' ? +d.consequence : o.i;
                 const mk = (quarter, count, l, residual) => ({
                     riskId: d.riskId || '', source: d.source || '', dataAddedDate: d.dataAdded || today,
@@ -4175,7 +4175,7 @@
             const blocks = [];
             riskFormSites().forEach(o => {
                 const d = draft[o.site] || {};
-                if (!(d.include != null ? d.include : (o.year > 0))) return;
+                if (!d.include) return; // เฉพาะรายการที่ติ๊ก "รายงาน" (ตรงกับที่แสดงในฟอร์ม)
                 const cons = d.consequence != null && d.consequence !== '' ? +d.consequence : o.i;
                 const qsP = ['Q1', 'Q2', 'Q3', 'Q4'].map(Q => ({ q: Q, c: o.q[Q] || 0, l: likelihoodFromCount(o.q[Q] || 0, false) }));
                 qsP.push({ q: 'ทั้งปีงบประมาณ', c: o.year || 0, l: o.ly });
