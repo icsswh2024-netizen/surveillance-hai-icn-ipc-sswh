@@ -3824,6 +3824,8 @@
                 const headers = Object.keys(rows[0]).filter(h => h !== '' && h !== '__norm');
                 const cDate = headers.find(h => /วันที่/.test(h));         // คอลัมน์วันที่แรก = วันที่เกิดเหตุ (G)
                 const cYear = headers.find(h => /ปีงบ|ปี\s*งบ/.test(h));   // ปีงบ (N)
+                const cUnit = headers.find(h => /หน่วยงาน|หน่วยง/.test(h)); // หน่วยงาน (B)
+                const isRpsst = u => /รพ\s*\.?\s*สต|รพสต|สอ\.|ส\.ต\.|สต\./.test((u || '').toString()); // รพ.สต./สอ.
                 STAFF_ROWS = rows.map(r => {
                     const dv = cDate ? (r[cDate] || '').toString().trim() : '';
                     let m = null;
@@ -3832,8 +3834,9 @@
                     const q = m ? staffQuarterOfMonth(m) : null;
                     let year = cYear ? (r[cYear] || '').toString().trim().match(/25\d\d/) : null;
                     year = year ? year[0] : '';
-                    return { year, quarter: q };
-                }).filter(x => x.quarter); // เอาเฉพาะแถวที่มีวันที่/ไตรมาส
+                    const unit = cUnit ? (r[cUnit] || '').toString().trim() : '';
+                    return { year, quarter: q, unit };
+                }).filter(x => x.quarter && !isRpsst(x.unit)); // มีไตรมาส + ไม่ใช่ รพ.สต.
                 STAFF_LOADED = true;
             } catch (e) { console.warn('[staff] load fail', e); }
         }
