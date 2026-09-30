@@ -3748,6 +3748,8 @@
         const RISK_SITES = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'MDRO'];
         // คีย์ site ของเคส: ใช้ชนิดที่จับได้ ถ้าไม่รู้จัก (Other) ใช้ค่า SITE ดิบ → รองรับ site ใหม่อัตโนมัติ
         function riskSiteKeyOf(c) { return c.siteType !== 'Other' ? c.siteType : (((c.rawSITE || '').toString().trim()) || 'Other'); }
+        // จับเคสเข้ากับ site: MDRO = เคส HAI ที่ดื้อยา (เหมือนเมนู เชื้อดื้อยา MDR) · site อื่นเทียบตาม key
+        function riskSiteMatch(c, site) { return site === 'MDRO' ? !!c.isMDR : (riskSiteKeyOf(c) === site); }
         // รายชื่อ site ที่ใช้งานจริง = ชุดหลัก + site ใหม่ที่พบในทะเบียน-1
         function activeRiskSites() {
             const seen = {}, list = [];
@@ -3777,7 +3779,7 @@
                 const i = CONSEQUENCE_BY_SITE[s] || 3;
                 let yearCount = 0;
                 RISK_QUARTERS.forEach(Q => {
-                    const count = cases.filter(c => c.quarter === Q && riskSiteKeyOf(c) === s).length;
+                    const count = cases.filter(c => c.quarter === Q && riskSiteMatch(c, s)).length;
                     yearCount += count;
                     const l = likelihoodFromCount(count, false); // นับรายไตรมาส → ใช้เกณฑ์ความถี่รายไตรมาส
                     const score = (l != null) ? l * i : null;
@@ -4229,7 +4231,7 @@
         }
         // อัตราการติดเชื้อปัจจุบันต่อ site (รวมช่วงที่กรอง)
         function siteCurrentRate(site) {
-            const cases = getFilteredCases().filter(c => riskSiteKeyOf(c) === site).length;
+            const cases = getFilteredCases().filter(c => riskSiteMatch(c, site)).length;
             // site ใหม่ที่ยังไม่มีสูตร → ใช้ /1,000 วันนอน อัตโนมัติ
             const meta = RATE_META[site] || { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' };
             const den = aggregateDenominatorsByMonth(getFilteredRows());
