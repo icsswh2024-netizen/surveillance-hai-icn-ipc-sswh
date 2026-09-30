@@ -4289,18 +4289,26 @@
             const gh = (t, n, bg) => '<th colspan="' + n + '" style="border:1px solid #94a3b8;background:' + bg + ';color:#fff;padding:6px 8px;">' + t + '</th>';
             h += '<thead><tr>' + gh('Risk Identification', 4, '#0d9488') + gh('Risk Analysis', 4, '#2563eb') + gh('Risk Treatment', 4, '#7c3aed') + gh('Risk Monitoring &amp; Review', 5, '#0f766e') + '</tr><tr>' +
                 subs.map(s => '<th style="border:1px solid #94a3b8;background:#f1f5f9;padding:5px 6px;font-weight:600;word-break:break-word;">' + s + '</th>').join('') + '</tr></thead><tbody>';
-            const td = (v, rs, extra) => '<td' + (rs > 1 ? ' rowspan="' + rs + '"' : '') + ' style="border:1px solid #cbd5e1;padding:4px 6px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;white-space:normal;' + (extra || '') + '">' + esc(v) + '</td>';
+            // เซลล์ธรรมดา (ข้อความระดับ site — 1 เซลล์/1 site ไม่ใช้ rowspan)
+            const td = (v, extra) => '<td style="border:1px solid #cbd5e1;padding:4px 6px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;white-space:normal;' + (extra || '') + '">' + esc(v) + '</td>';
+            // เซลล์ซ้อนรายไตรมาส (Q1-Q4 + ทั้งปี วางเป็นบรรทัดในเซลล์เดียว → สูงเท่ากันทุกคอลัมน์)
+            const stackTd = (arr, align, bold) => {
+                const inner = arr.map((v, k) => '<div style="padding:3px 4px;text-align:' + (align || 'left') + ';' + (bold ? 'font-weight:700;' : '') +
+                    (arr[k] && arr[k].annual ? 'background:#f8fafc;font-weight:600;' : '') +
+                    (k < arr.length - 1 ? 'border-bottom:1px solid #e2e8f0;' : '') + '">' + esc(v.v != null ? v.v : v) + '</div>').join('');
+                return '<td style="border:1px solid #cbd5e1;padding:0;vertical-align:top;">' + inner + '</td>';
+            };
             blocks.forEach(b => {
-                b.qs.forEach((q, i) => {
-                    const n = b.qs.length;
-                    h += '<tr>';
-                    if (i === 0) h += td(b.sl.source, n) + td(b.sl.dataAdded, n) + td(b.sl.title, n) + td(b.sl.desc, n);
-                    h += td(q.quarter, 1, q.quarter === 'ทั้งปีงบประมาณ' ? 'font-weight:600;background:#f8fafc;' : '') + td(q.l, 1, 'text-align:center;') + td(q.c, 1, 'text-align:center;') + td(q.rl, 1, 'text-align:center;font-weight:700;');
-                    if (i === 0) h += td(b.sl.prevention, n) + td(b.sl.monitor, n) + td(b.sl.mitigation, n) + td(b.sl.qi, n) + td(b.sl.owner, n) + td(b.sl.reviewFreq, n);
-                    h += td(q.lastReview, 1, 'text-align:center;') + td(q.residual, 1, 'text-align:center;font-weight:600;');
-                    if (i === 0) h += td(b.sl.status, n, 'text-align:center;');
-                    h += '</tr>';
-                });
+                const qs = b.qs;
+                const col = f => qs.map(q => ({ v: q[f], annual: q.quarter === 'ทั้งปีงบประมาณ' }));
+                const qCol = qs.map(q => ({ v: q.quarter, annual: q.quarter === 'ทั้งปีงบประมาณ' }));
+                h += '<tr>' +
+                    td(b.sl.source) + td(b.sl.dataAdded) + td(b.sl.title) + td(b.sl.desc) +
+                    stackTd(qCol, 'left') + stackTd(col('l'), 'center') + stackTd(col('c'), 'center') + stackTd(col('rl'), 'center', true) +
+                    td(b.sl.prevention) + td(b.sl.monitor) + td(b.sl.mitigation) + td(b.sl.qi) +
+                    td(b.sl.owner) + td(b.sl.reviewFreq) + stackTd(col('lastReview'), 'center') + stackTd(col('residual'), 'center') +
+                    td(b.sl.status, 'text-align:center;') +
+                    '</tr>';
             });
             return h + '</tbody></table></div>';
         }
