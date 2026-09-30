@@ -3744,8 +3744,8 @@
         }
         // ===== Risk Analysis คำนวณอัตโนมัติจากทะเบียน-1 =====
         // ความรุนแรง (Consequence) ตั้งต้นต่อ SITE — ปรับได้ตามบริบท รพ.
-        const CONSEQUENCE_BY_SITE = { CLABSI: 4, BSI: 4, VAP: 4, HAP: 4, CAUTI: 3, SSI: 3, Omphalitis: 3, UTI: 2, Other: 3 };
-        const RISK_SITES = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis'];
+        const CONSEQUENCE_BY_SITE = { CLABSI: 4, BSI: 4, VAP: 4, HAP: 4, MDRO: 4, CAUTI: 3, SSI: 3, Omphalitis: 3, UTI: 2, Other: 3 };
+        const RISK_SITES = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'MDRO'];
         // คีย์ site ของเคส: ใช้ชนิดที่จับได้ ถ้าไม่รู้จัก (Other) ใช้ค่า SITE ดิบ → รองรับ site ใหม่อัตโนมัติ
         function riskSiteKeyOf(c) { return c.siteType !== 'Other' ? c.siteType : (((c.rawSITE || '').toString().trim()) || 'Other'); }
         // รายชื่อ site ที่ใช้งานจริง = ชุดหลัก + site ใหม่ที่พบในทะเบียน-1
