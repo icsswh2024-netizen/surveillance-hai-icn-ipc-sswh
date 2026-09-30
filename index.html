@@ -4727,7 +4727,12 @@
         document.getElementById('btnRiskXlsx').addEventListener('click', exportOfficialExcel);
         document.getElementById('btnRiskPdf').addEventListener('click', exportOfficialPDF);
         document.getElementById('btnRiskJpg').addEventListener('click', exportOfficialJPG);
-        document.getElementById('btnRiskPreview').addEventListener('click', () => renderOfficialPreview(true));
+        document.getElementById('btnRiskPreview').addEventListener('click', () => {
+            const wrap = document.getElementById('riskOfficialPreviewWrap');
+            const btn = document.getElementById('btnRiskPreview');
+            if (wrap.classList.contains('hidden')) { renderOfficialPreview(true); btn.textContent = '🙈 ปิดพรีวิว'; }
+            else { wrap.classList.add('hidden'); btn.textContent = '👁 พรีวิวแบบฟอร์ม'; }
+        });
         document.getElementById('btnRiskFillYear').addEventListener('click', fillYearSheet);
         try { const u = localStorage.getItem('riskSaveUrl'); if (u) document.getElementById('riskSaveUrl').value = u; } catch (e) { }
         document.getElementById('ctrlSite').addEventListener('change', () => updateControlView());
