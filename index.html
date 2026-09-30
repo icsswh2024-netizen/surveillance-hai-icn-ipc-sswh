@@ -4385,18 +4385,19 @@
             wrap.classList.remove('hidden');
             if (scroll) wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
-        async function officialCanvas() {
+        const EXPORT_SCALE = 3; // 3× → กว้าง ~4500px (เกิน 4K UHD) ภาพคมชัด
+        async function officialCanvas(scale) {
             renderOfficialPreview(false); // ต้องแสดงจริงก่อน html2canvas จึงจับภาพได้
             const host = document.getElementById('riskOfficialPreview');
             await new Promise(r => setTimeout(r, 80)); // ให้ฟอนต์/เลย์เอาต์เรนเดอร์ก่อน
-            return html2canvas(host.firstChild, { scale: 2, backgroundColor: '#ffffff' });
+            return html2canvas(host.firstChild, { scale: scale || EXPORT_SCALE, backgroundColor: '#ffffff' });
         }
         async function exportOfficialJPG() {
             const st = document.getElementById('riskSaveStatus');
             try {
                 const canvas = await officialCanvas();
                 const a = document.createElement('a');
-                a.href = canvas.toDataURL('image/jpeg', 0.95);
+                a.href = canvas.toDataURL('image/jpeg', 0.98);
                 a.download = 'RiskRegister_ปีงบ' + riskYearForExport() + '.jpg'; a.click();
             } catch (e) { st.textContent = '⚠️ ส่งออก JPG ไม่สำเร็จ: ' + e.message; st.className = 'text-xs mt-2 text-rose-600'; }
         }
@@ -4406,7 +4407,7 @@
                 const canvas = await officialCanvas();
                 const host = document.getElementById('riskOfficialPreview');
                 const root = host.firstChild, thead = root.querySelector('thead');
-                const s = 2; // = scale ของ officialCanvas
+                const s = EXPORT_SCALE; // = scale ของ officialCanvas
                 // ตำแหน่ง/ความสูงหัวตาราง (px ของ canvas) เพื่อทำหัวซ้ำทุกหน้า
                 const rr = root.getBoundingClientRect(), hr = thead.getBoundingClientRect();
                 const headTop = Math.max(0, Math.round((hr.top - rr.top) * s));
@@ -4422,7 +4423,7 @@
                     const tmp = document.createElement('canvas'); tmp.width = cw; tmp.height = hPx;
                     const ctx = tmp.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, hPx);
                     ctx.drawImage(canvas, 0, startPx, cw, hPx, 0, 0, cw, hPx);
-                    pdf.addImage(tmp.toDataURL('image/jpeg', 0.95), 'JPEG', m, yMM, iw, hPx * scale);
+                    pdf.addImage(tmp.toDataURL('image/jpeg', 0.98), 'JPEG', m, yMM, iw, hPx * scale);
                 };
                 // เตรียมภาพหัวตาราง (หัวเรื่อง+หัวคอลัมน์) ไว้ซ้ำทุกหน้า
                 const headSlicePx = headTop + headH; // ตั้งแต่บนสุด (ชื่อรายงาน) ถึงจบหัวคอลัมน์
