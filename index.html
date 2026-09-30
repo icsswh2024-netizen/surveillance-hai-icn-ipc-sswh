@@ -4143,7 +4143,7 @@
                     riskId: d.riskId || '', source: d.source || '', dataAddedDate: d.dataAdded || today,
                     riskTitle: d.title || o.site, riskDescription: d.desc || '',
                     quarter, count, likelihood: (l ?? ''), consequence: cons, riskLevel: (l != null ? l * cons : ''),
-                    prevention: d.prevention || '', monitorControl: d.monitor || '', mitigation: d.mitigation || '', qiPlan: d.qi || '',
+                    prevention: d.prevention || '', monitorControl: monitorCombined(o.site, d.monitor), mitigation: d.mitigation || '', qiPlan: d.qi || '',
                     riskOwner: d.owner || '', reviewFrequency: d.reviewFreq || '',
                     dataLastReview: d['lastReview_' + quarter] || '', residualLevel: (residual != null ? residual : ''), riskStatus: stStatus
                 });
@@ -4188,7 +4188,7 @@
                 qs.push({ quarter: 'ทั้งปีงบประมาณ', l: (a.l ?? ''), c: cons, rl: (a.l != null ? a.l * cons : ''), lastReview: d['lastReview_ทั้งปีงบประมาณ'] || '', residual: '' });
                 blocks.push({
                     site: o.site,
-                    sl: { source: d.source || '', dataAdded: d.dataAdded || today, title: d.title || o.site, desc: d.desc || '', prevention: d.prevention || '', monitor: d.monitor || '', mitigation: d.mitigation || '', qi: d.qi || '', owner: d.owner || '', reviewFreq: d.reviewFreq || '', status },
+                    sl: { source: d.source || '', dataAdded: d.dataAdded || today, title: d.title || o.site, desc: d.desc || '', prevention: d.prevention || '', monitor: monitorCombined(o.site, d.monitor), mitigation: d.mitigation || '', qi: d.qi || '', owner: d.owner || '', reviewFreq: d.reviewFreq || '', status },
                     qs
                 });
             });
@@ -4501,6 +4501,19 @@
             const total = getFilteredCases().length;
             const mdr = getFilteredCases().filter(c => c.isMDR).length;
             return { mdr, total, pct: total ? +((mdr / total) * 100).toFixed(1) : 0 };
+        }
+        // ข้อความ Monitor & Control อัตโนมัติ (เป้าหมาย / ร้อยละของ HAI[MDRO] / อัตราปัจจุบัน) สำหรับต่อท้ายเนื้อหา
+        function monitorInfoText(site) {
+            const r = siteCurrentRate(site), ch = chosenTarget(site);
+            const lines = [];
+            if (ch.value) lines.push('เป้าหมาย' + (ch.year ? ' ' + ch.year : '') + ': ' + ch.value);
+            if (site === 'MDRO') { const m = mdroPctOfHai(); lines.push('ร้อยละของ HAI: ' + m.pct + '% (' + m.mdr + '/' + m.total + ')'); }
+            lines.push('อัตราปัจจุบัน: ' + (r.rate != null ? r.rate + ' ' + r.unit : r.count + ' ครั้ง'));
+            return lines.join('\n');
+        }
+        // รวมข้อความที่ผู้ใช้พิมพ์ + ข้อมูล Control อัตโนมัติ
+        function monitorCombined(site, typed) {
+            return [(typed || '').trim(), monitorInfoText(site)].filter(x => x && x.trim()).join('\n');
         }
         function riskTargets() { try { return JSON.parse(localStorage.getItem('riskTargets') || '{}'); } catch (e) { return {}; } }
         function riskTargetPicks() { try { return JSON.parse(localStorage.getItem('riskTargetPick') || '{}'); } catch (e) { return {}; } }
