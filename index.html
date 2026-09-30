@@ -3804,8 +3804,45 @@
         }
         // ===== Risk Analysis คำนวณอัตโนมัติจากทะเบียน-1 =====
         // ความรุนแรง (Consequence) ตั้งต้นต่อ SITE — ปรับได้ตามบริบท รพ.
-        const CONSEQUENCE_BY_SITE = { CLABSI: 4, BSI: 4, VAP: 4, HAP: 4, MDRO: 4, CAUTI: 3, SSI: 3, Omphalitis: 3, UTI: 2, Other: 3 };
-        const RISK_SITES = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'MDRO'];
+        const STAFF_SITE = 'บุคลากรติดเชื้อจากการปฏิบัติหน้าที่';
+        const CONSEQUENCE_BY_SITE = { CLABSI: 4, BSI: 4, VAP: 4, HAP: 4, MDRO: 4, CAUTI: 3, SSI: 3, Omphalitis: 3, UTI: 2, Other: 3, [STAFF_SITE]: 3 };
+        const RISK_SITES = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'MDRO', STAFF_SITE];
+        // ===== ข้อมูลอุบัติเหตุ/สัมผัสเชื้อของบุคลากร (ชีตแยก IC-รายงาน-อุบัติเหตุเจ้าหน้าที่) =====
+        const STAFF_CSV_URL = 'https://docs.google.com/spreadsheets/d/1MREAXB4CB5LMKc5LliTep45iUahomoYnid3JABh-bxM/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent('01-บันชีรายชื่อ');
+        let STAFF_ROWS = [];      // [{ year:'2568', quarter:'Q1' }, ...] · 1 แถว = 1 เหตุการณ์
+        let STAFF_LOADED = false;
+        function staffQuarterOfMonth(m) { // ปีงบประมาณ: ต.ค.=Q1
+            if (m >= 10 && m <= 12) return 'Q1'; if (m >= 1 && m <= 3) return 'Q2';
+            if (m >= 4 && m <= 6) return 'Q3'; if (m >= 7 && m <= 9) return 'Q4'; return null;
+        }
+        async function loadStaffData() {
+            try {
+                const res = await fetch(STAFF_CSV_URL + '&_=' + Date.now());
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const rows = parseCSV(await res.text());
+                if (!rows.length) return;
+                const headers = Object.keys(rows[0]).filter(h => h !== '' && h !== '__norm');
+                const cDate = headers.find(h => /วันที่/.test(h));         // คอลัมน์วันที่แรก = วันที่เกิดเหตุ (G)
+                const cYear = headers.find(h => /ปีงบ|ปี\s*งบ/.test(h));   // ปีงบ (N)
+                STAFF_ROWS = rows.map(r => {
+                    const dv = cDate ? (r[cDate] || '').toString().trim() : '';
+                    let m = null;
+                    const mm = dv.match(/^\s*(\d{1,2})[\/\-](\d{1,2})/); // d/m/yyyy
+                    if (mm) m = parseInt(mm[2], 10);
+                    const q = m ? staffQuarterOfMonth(m) : null;
+                    let year = cYear ? (r[cYear] || '').toString().trim().match(/25\d\d/) : null;
+                    year = year ? year[0] : '';
+                    return { year, quarter: q };
+                }).filter(x => x.quarter); // เอาเฉพาะแถวที่มีวันที่/ไตรมาส
+                STAFF_LOADED = true;
+            } catch (e) { console.warn('[staff] load fail', e); }
+        }
+        // นับเหตุการณ์บุคลากรรายไตรมาส ตามปีงบที่กรอง (ALL = รวมทุกปี)
+        function staffQuarterCounts(filterYear) {
+            const o = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
+            STAFF_ROWS.forEach(r => { if (filterYear === 'ALL' || r.year === filterYear) if (o[r.quarter] != null) o[r.quarter]++; });
+            return o;
+        }
         // คีย์ site ของเคส: ใช้ชนิดที่จับได้ ถ้าไม่รู้จัก (Other) ใช้ค่า SITE ดิบ → รองรับ site ใหม่อัตโนมัติ
         function riskSiteKeyOf(c) { return c.siteType !== 'Other' ? c.siteType : (((c.rawSITE || '').toString().trim()) || 'Other'); }
         // จับเคสเข้ากับ site: MDRO = เคส HAI ที่ดื้อยา (เหมือนเมนู เชื้อดื้อยา MDR) · site อื่นเทียบตาม key
@@ -3834,12 +3871,13 @@
             const p = document.getElementById('filterPCT').value;
             const cases = rawData.filter(d => d.isHAI &&
                 (y === 'ALL' || d.year === y) && (u === 'ALL' || d.unit === u) && (p === 'ALL' || d.pct === p));
+            const staffQ = staffQuarterCounts(y);
             const out = [];
             activeRiskSites().forEach(s => {
                 const i = CONSEQUENCE_BY_SITE[s] || 3;
                 let yearCount = 0;
                 RISK_QUARTERS.forEach(Q => {
-                    const count = cases.filter(c => c.quarter === Q && riskSiteMatch(c, s)).length;
+                    const count = (s === STAFF_SITE) ? (staffQ[Q] || 0) : cases.filter(c => c.quarter === Q && riskSiteMatch(c, s)).length;
                     yearCount += count;
                     const l = likelihoodFromCount(count, false); // นับรายไตรมาส → ใช้เกณฑ์ความถี่รายไตรมาส
                     const score = (l != null) ? l * i : null;
@@ -3938,6 +3976,8 @@
             }
             renderRiskForm();
             loadRiskOptions(); // ดึงตัวเลือกจากชีตใหม่ทุกครั้งที่เปิด/รีเฟรชหน้า Risk
+            // โหลดข้อมูลอุบัติเหตุบุคลากร (ครั้งแรก) แล้วคำนวณ site บุคลากรใหม่
+            if (!STAFF_LOADED) loadStaffData().then(() => { if (STAFF_LOADED && (document.getElementById('riskSource') || {}).value !== 'sheet') { RISK_DATA = computeRiskAnalysis(); applyRiskConsOverrides(); renderRisk(); renderRiskForm(); } });
         }
 
         // ===== แบบฟอร์มรายงาน Risk Register (บันทึกลง Google Sheet) =====
@@ -4545,6 +4585,11 @@
         }
         // อัตราการติดเชื้อปัจจุบันต่อ site (รวมช่วงที่กรอง)
         function siteCurrentRate(site) {
+            if (site === STAFF_SITE) { // บุคลากร: นับจากชีตอุบัติเหตุ (แสดงเป็นจำนวนครั้ง ไม่มีตัวหาร)
+                const y = document.getElementById('filterYear').value;
+                const q = staffQuarterCounts(y); const n = q.Q1 + q.Q2 + q.Q3 + q.Q4;
+                return { count: n, rate: null, unit: 'ครั้ง/ปี' };
+            }
             const cases = getFilteredCases().filter(c => riskSiteMatch(c, site)).length;
             // site ใหม่ที่ยังไม่มีสูตร → ใช้ /1,000 วันนอน อัตโนมัติ
             const meta = RATE_META[site] || { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' };
