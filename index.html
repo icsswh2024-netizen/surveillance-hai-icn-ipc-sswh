@@ -11,6 +11,11 @@
     <!-- Load Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- Flatpickr: ปฏิทินเลือกวันที่แบบพรีเมียม (ขอบมน + ดรอปดาวน์เดือน/ปี) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/th.js"></script>
+
     <!-- Google Fonts: Inter and Noto Sans Thai -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,6 +54,39 @@
         .kpi .kpi-icon { position: absolute; top: 50%; right: 1.35rem; transform: translateY(-50%);
             width: 3rem; height: 3rem; border-radius: 9999px; background: rgba(255,255,255,.22);
             display: flex; align-items: center; justify-content: center; color: #fff; z-index: 5; }
+
+        /* ===== Flatpickr: ธีมพรีเมียม (ขอบมน + เงานุ่ม + โทนเขียวมิ้นต์) ===== */
+        .flatpickr-calendar {
+            border-radius: 18px !important; border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 20px 45px -15px rgba(16,24,40,.28), 0 4px 12px rgba(16,24,40,.06) !important;
+            padding: 6px !important; font-family: 'Kanit','Noto Sans Thai',sans-serif !important;
+            overflow: hidden; }
+        .flatpickr-months { padding: 6px 4px 2px; }
+        .flatpickr-month { border-radius: 12px; }
+        .flatpickr-current-month { font-size: 1rem !important; }
+        /* เดือน/ปี เป็นดรอปดาวน์/กล่องขอบมน */
+        .flatpickr-current-month .flatpickr-monthDropdown-months {
+            border-radius: 10px !important; padding: 4px 8px !important; font-weight: 600; color: #0f766e;
+            background: #f0fdfa !important; transition: background .15s; -webkit-appearance: menulist; appearance: menulist; }
+        .flatpickr-current-month .flatpickr-monthDropdown-months:hover { background: #ccfbf1 !important; }
+        .numInputWrapper { border-radius: 10px; background: #f0fdfa; padding: 2px 4px; }
+        .numInputWrapper:hover { background: #ccfbf1; }
+        .flatpickr-current-month input.cur-year { font-weight: 600; color: #0f766e; }
+        /* ปุ่มลูกศรเดือน ทรงกลมมน */
+        .flatpickr-prev-month, .flatpickr-next-month {
+            border-radius: 10px !important; padding: 6px !important; top: 6px !important; transition: background .15s; }
+        .flatpickr-prev-month:hover, .flatpickr-next-month:hover { background: #f1f5f9; }
+        .flatpickr-prev-month svg, .flatpickr-next-month svg { fill: #0f766e; }
+        /* วันในปฏิทิน */
+        .flatpickr-day { border-radius: 10px !important; font-weight: 500; max-width: 38px; height: 38px; line-height: 38px; }
+        .flatpickr-day:hover { background: #ccfbf1 !important; border-color: #ccfbf1 !important; }
+        .flatpickr-day.today { border-color: #14b8a6 !important; color: #0f766e; font-weight: 700; }
+        .flatpickr-day.selected, .flatpickr-day.selected:hover {
+            background: linear-gradient(135deg,#10b981,#0d9488) !important; border-color: transparent !important;
+            color: #fff !important; box-shadow: 0 4px 10px -3px rgba(13,148,136,.6); }
+        .flatpickr-weekday { color: #94a3b8 !important; font-weight: 600; }
+        /* อินพุตวันที่ให้ดูมนขึ้นเมื่อเป็น flatpickr */
+        input.flatpickr-input { cursor: pointer; background: #fff; }
     </style>
 </head>
 <body class="text-slate-800 bg-slate-50">
@@ -4057,6 +4095,20 @@
                 }
                 psel.value = '';
             }));
+            initRiskDatePickers();
+        }
+        // แปลง input วันที่เป็น flatpickr (ปฏิทินพรีเมียม) — เก็บค่าเป็น Y-m-d เหมือนเดิม
+        function initRiskDatePickers() {
+            if (typeof flatpickr === 'undefined') return;
+            document.querySelectorAll('#riskFormBody input[type="date"], #riskFormBody input.riskFin[data-f^="lastReview"], #riskFormBody input[data-f="dataAdded"]').forEach(el => {
+                if (el._flatpickr) return;
+                flatpickr(el, {
+                    locale: (flatpickr.l10ns && flatpickr.l10ns.th) ? 'th' : 'default',
+                    dateFormat: 'Y-m-d', altInput: true, altFormat: 'j M Y',
+                    monthSelectorType: 'dropdown', disableMobile: true,
+                    onChange: function () { el.dispatchEvent(new Event('change', { bubbles: true })); }
+                });
+            });
         }
         // สร้าง payload ตามคอลัมน์ฟอร์มทางการ (ขยายเป็นรายไตรมาส + ทั้งปี)
         function riskFormPayload() {
