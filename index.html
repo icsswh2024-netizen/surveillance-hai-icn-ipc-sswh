@@ -1208,6 +1208,7 @@
                                 <th class="py-3 px-3 text-left bg-slate-100">ไตรมาส</th>
                                 <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="จำนวนครั้งการเกิด HAI (นับจากทะเบียน-1)">จำนวนครั้ง</th>
                                 <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="ความถี่ที่เกิดขึ้น — คำนวณจากจำนวนครั้ง (ดูตารางคำอธิบาย risk matrix)">Likelihood</th>
+                                <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="ความรุนแรง/ผลกระทบต่อ site (แก้ที่ทะเบียนด้านบน)">Consequence</th>
                                 <th class="py-3 px-3 text-center bg-slate-100 cursor-help" title="Likelihood × Consequence (Consequence แก้ที่ทะเบียนด้านบน)">Risk Level</th>
                                 <th class="py-3 px-3 cursor-help" title="มาตรการป้องกันความเสี่ยง ที่มีอยู่เดิม">Prevention</th>
                                 <th class="py-3 px-3 cursor-help" title="ติดตามอุบัติการณ์จากช่องทางใด เช่น จำนวน Incident report จาก HRMS หรือจากข้อมูลที่เก็บมือ">Monitor &amp; Control</th>
@@ -3988,8 +3989,9 @@
                     }
                     html += '<td class="py-2 px-3 text-left whitespace-nowrap ' + (qr.annual ? 'text-slate-800' : 'text-slate-500') + '">' + qr.q + '</td>' +
                         '<td class="py-2 px-3 text-center">' + qr.c + '</td>' +
-                        '<td class="py-2 px-3 text-center">' + (qr.l ?? '-') + '</td>' +
-                        '<td class="py-2 px-3 text-center font-bold border-r border-slate-100 ' + (bz ? bz.pill.split(' ')[1] : 'text-slate-400') + '">' + rl + '</td>';
+                        '<td class="py-2 px-3 text-center">' + (qr.l ?? '-') + '</td>';
+                    if (j === 0) html += '<td' + RS + ' class="py-2 px-3 text-center font-semibold text-slate-700 align-middle">' + cons + '</td>';
+                    html += '<td class="py-2 px-3 text-center font-bold border-r border-slate-100 ' + (bz ? bz.pill.split(' ')[1] : 'text-slate-400') + '">' + rl + '</td>';
                     if (j === 0) html += combo(o, 'prevention') + combo(o, 'monitor') + combo(o, 'mitigation') + combo(o, 'qi') + combo(o, 'owner') +
                         sel(o, 'reviewFreq') + dt(o, 'lastReview') + sel(o, 'residual') + sel(o, 'status');
                     html += '</tr>';
