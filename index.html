@@ -4313,17 +4313,23 @@
                 subs.map(s => '<th style="border:1px solid #94a3b8;background:#ffffff;color:#111827;padding:5px 6px;font-weight:600;word-break:break-word;">' + s + '</th>').join('') + '</tr></thead><tbody>';
             // เซลล์ธรรมดา (ข้อความระดับ site — 1 เซลล์/1 site ไม่ใช้ rowspan)
             const td = (v, extra) => '<td style="border:1px solid #cbd5e1;padding:4px 6px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;white-space:normal;' + (extra || '') + '">' + esc(v) + '</td>';
-            // เซลล์ซ้อนรายไตรมาส (Q1-Q4 + ทั้งปี วางเป็นบรรทัดในเซลล์เดียว → สูงเท่ากันทุกคอลัมน์)
+            // เซลล์ซ้อนรายไตรมาส (Q1-Q4 + ทั้งปี) — แต่ละบรรทัดสูงเท่ากันทุกคอลัมน์ → ตรงแถวเสมอ
+            const LH = 34; // ความสูงต่อบรรทัด (px)
             const stackTd = (arr, align, bold) => {
-                const inner = arr.map((v, k) => '<div style="padding:3px 4px;text-align:' + (align || 'left') + ';' + (bold ? 'font-weight:700;' : '') +
-                    (arr[k] && arr[k].annual ? 'background:#f8fafc;font-weight:600;' : '') +
-                    (k < arr.length - 1 ? 'border-bottom:1px solid #e2e8f0;' : '') + '">' + esc(v.v != null ? v.v : v) + '</div>').join('');
+                const inner = arr.map((it, k) => {
+                    const v = it.v != null ? it.v : it;
+                    return '<div style="height:' + LH + 'px;display:flex;align-items:center;justify-content:' + (align === 'center' ? 'center' : 'flex-start') +
+                        ';padding:0 4px;overflow:hidden;white-space:nowrap;' + (bold ? 'font-weight:700;' : '') +
+                        (it.annual ? 'background:#f8fafc;font-weight:600;' : '') +
+                        (k < arr.length - 1 ? 'border-bottom:1px solid #e2e8f0;' : '') + '">' + esc(v) + '</div>';
+                }).join('');
                 return '<td style="border:1px solid #cbd5e1;padding:0;vertical-align:top;">' + inner + '</td>';
             };
             blocks.forEach(b => {
                 const qs = b.qs;
-                const col = f => qs.map(q => ({ v: q[f], annual: q.quarter === 'ทั้งปีงบประมาณ' }));
-                const qCol = qs.map(q => ({ v: q.quarter, annual: q.quarter === 'ทั้งปีงบประมาณ' }));
+                const isA = q => q.quarter === 'ทั้งปีงบประมาณ';
+                const col = f => qs.map(q => ({ v: q[f], annual: isA(q) }));
+                const qCol = qs.map(q => ({ v: isA(q) ? 'ทั้งปี' : q.quarter, annual: isA(q) }));
                 h += '<tr>' +
                     td(b.sl.source) + td(b.sl.dataAdded) + td(b.sl.title) + td(b.sl.desc) +
                     stackTd(qCol, 'left') + stackTd(col('l'), 'center') + stackTd(col('c'), 'center') + stackTd(col('rl'), 'center', true) +
