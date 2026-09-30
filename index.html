@@ -3962,8 +3962,11 @@
                 if (f === 'monitor') {
                     const r = siteCurrentRate(o.site), ch = chosenTarget(o.site);
                     const rt = r.rate != null ? r.rate + ' ' + r.unit : r.count + ' ครั้ง';
+                    let pctLine = '';
+                    if (o.site === 'MDRO') { const m = mdroPctOfHai(); pctLine = '<div class="text-fuchsia-700">ร้อยละของ HAI: <b>' + m.pct + '%</b> (' + m.mdr + '/' + m.total + ')</div>'; }
                     info = '<div class="text-[11px] bg-blue-50 rounded px-2 py-1 mb-1 w-64 leading-relaxed">' +
                         (ch.value ? '<div class="text-emerald-700">เป้าหมาย' + (ch.year ? ' ' + esc(ch.year) : '') + ': <b>' + esc(ch.value) + '</b></div>' : '') +
+                        pctLine +
                         '<div class="text-blue-700">อัตราปัจจุบัน: <b>' + rt + '</b></div>' +
                         '</div>';
                 }
@@ -4239,6 +4242,12 @@
             const rate = D ? +((cases / D) * meta.factor).toFixed(2) : null;
             return { count: cases, rate, unit: meta.unit };
         }
+        // ร้อยละของ HAI สำหรับ MDRO (MDR ÷ HAI ทั้งหมด ตามตัวกรอง)
+        function mdroPctOfHai() {
+            const total = getFilteredCases().length;
+            const mdr = getFilteredCases().filter(c => c.isMDR).length;
+            return { mdr, total, pct: total ? +((mdr / total) * 100).toFixed(1) : 0 };
+        }
         function riskTargets() { try { return JSON.parse(localStorage.getItem('riskTargets') || '{}'); } catch (e) { return {}; } }
         function riskTargetPicks() { try { return JSON.parse(localStorage.getItem('riskTargetPick') || '{}'); } catch (e) { return {}; } }
         // เป้าหมายที่เลือกของ site — key คือหัวคอลัมน์เต็ม เช่น "ประเทศ 2568", "เขต2 2568"
@@ -4271,9 +4280,8 @@
                 // MDRO: แสดง %ของ HAI (เหมือนเมนู เชื้อดื้อยา)
                 let pctHtml = '';
                 if (s === 'MDRO') {
-                    const totHai = getFilteredCases().length;
-                    const pct = totHai ? +((r.count / totHai) * 100).toFixed(1) : 0;
-                    pctHtml = '<div class="text-xs text-fuchsia-700 mt-0.5">ร้อยละของ HAI: <b>' + pct + '%</b> <span class="text-[11px] text-slate-400">(' + r.count + '/' + totHai + ')</span></div>';
+                    const m = mdroPctOfHai();
+                    pctHtml = '<div class="text-xs text-fuchsia-700 mt-0.5">ร้อยละของ HAI: <b>' + m.pct + '%</b> <span class="text-[11px] text-slate-400">(' + m.mdr + '/' + m.total + ')</span></div>';
                 }
                 const t = RISK_TARGETS[s] || {};
                 const years = Object.keys(t).filter(y => (t[y] || '').toString().trim() !== '');
