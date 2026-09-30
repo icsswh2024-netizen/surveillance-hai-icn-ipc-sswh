@@ -4033,6 +4033,13 @@
             } catch (e) { /* ใช้ค่าตั้งต้นถ้าอ่านชีตไม่ได้ */ }
         }
         function riskFormDraft() { try { return JSON.parse(localStorage.getItem('riskFormDraft') || '{}'); } catch (e) { return {}; } }
+        // แปลงค่าวันที่ให้เป็น YYYY-MM-DD (ตัดเวลาออก · ISO แปลงตามเวลาท้องถิ่น กันวันเพี้ยน)
+        function dOnly(v) {
+            if (v == null) return '';
+            const s = v.toString().trim(); if (!s) return '';
+            if (/T\d{2}:\d{2}/.test(s)) { const dt = new Date(s); if (!isNaN(dt)) return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0'); }
+            const m = s.match(/^(\d{4}-\d{2}-\d{2})/); return m ? m[1] : s;
+        }
         function riskFormSaveDraft(d) { try { localStorage.setItem('riskFormDraft', JSON.stringify(d)); } catch (e) { } }
         // รวมผลวิเคราะห์เป็นรายบรรทัดต่อ site (Q1-4 + ทั้งปี)
         function riskFormSites() {
@@ -4192,12 +4199,12 @@
                 const def = CONSEQUENCE_BY_SITE[o.site] || o.i;
                 const consFor = q => consqOf(d, q, def);
                 const mk = (quarter, count, l, cons, residual) => ({
-                    riskId: d.riskId || '', source: d.source || '', dataAddedDate: d.dataAdded || today,
+                    riskId: d.riskId || '', source: d.source || '', dataAddedDate: dOnly(d.dataAdded) || today,
                     riskTitle: d.title || o.site, riskDescription: d.desc || '',
                     quarter, count, likelihood: (l ?? ''), consequence: cons, riskLevel: (l != null ? l * cons : ''),
                     prevention: d.prevention || '', monitorControl: monitorCombined(o.site, d.monitor), mitigation: d.mitigation || '', qiPlan: d.qi || '',
                     riskOwner: d.owner || '', reviewFrequency: d.reviewFreq || '',
-                    dataLastReview: d['lastReview_' + quarter] || '', residualLevel: (residual != null ? residual : ''), riskStatus: stStatus
+                    dataLastReview: dOnly(d['lastReview_' + quarter]), residualLevel: (residual != null ? residual : ''), riskStatus: stStatus
                 });
                 // สถานะอัตโนมัติ (ใช้ค่าเดียวกันทุกแถวของ site)
                 const qsP = ['Q1', 'Q2', 'Q3', 'Q4'].map(Q => ({ q: Q, c: o.q[Q] || 0, l: likelihoodFromCount(o.q[Q] || 0, false) }));
@@ -4237,13 +4244,13 @@
                 const qs = qsP.slice(0, 4).map((qq, idx) => {
                     const cq = consFor(qq.q), nx = qsP[idx + 1];
                     const nextRL = (nx && nx.l != null) ? nx.l * consFor(nx.q) : null;
-                    return { quarter: qq.q, l: (qq.l ?? ''), c: cq, rl: (qq.l != null ? qq.l * cq : ''), lastReview: d['lastReview_' + qq.q] || '', residual: (nextRL != null ? nextRL : '') };
+                    return { quarter: qq.q, l: (qq.l ?? ''), c: cq, rl: (qq.l != null ? qq.l * cq : ''), lastReview: dOnly(d['lastReview_' + qq.q]), residual: (nextRL != null ? nextRL : '') };
                 });
                 const a = qsP[4], ca = consFor('ทั้งปีงบประมาณ');
-                qs.push({ quarter: 'ทั้งปีงบประมาณ', l: (a.l ?? ''), c: ca, rl: (a.l != null ? a.l * ca : ''), lastReview: d['lastReview_ทั้งปีงบประมาณ'] || '', residual: '' });
+                qs.push({ quarter: 'ทั้งปีงบประมาณ', l: (a.l ?? ''), c: ca, rl: (a.l != null ? a.l * ca : ''), lastReview: dOnly(d['lastReview_ทั้งปีงบประมาณ']), residual: '' });
                 blocks.push({
                     site: o.site,
-                    sl: { source: d.source || '', dataAdded: d.dataAdded || today, title: d.title || o.site, desc: d.desc || '', prevention: d.prevention || '', monitor: monitorCombined(o.site, d.monitor), mitigation: d.mitigation || '', qi: d.qi || '', owner: d.owner || '', reviewFreq: d.reviewFreq || '', status },
+                    sl: { source: d.source || '', dataAdded: dOnly(d.dataAdded) || today, title: d.title || o.site, desc: d.desc || '', prevention: d.prevention || '', monitor: monitorCombined(o.site, d.monitor), mitigation: d.mitigation || '', qi: d.qi || '', owner: d.owner || '', reviewFreq: d.reviewFreq || '', status },
                     qs
                 });
             });
@@ -4474,13 +4481,13 @@
                     if (!key) return;
                     const rec = draft[key] || (draft[key] = { include: true });
                     Object.assign(rec, {
-                        riskId: r.riskId, source: r.source, dataAdded: r.dataAddedDate, title: r.riskTitle, desc: r.riskDescription, consequence: r.consequence,
+                        riskId: r.riskId, source: r.source, dataAdded: dOnly(r.dataAddedDate), title: r.riskTitle, desc: r.riskDescription, consequence: r.consequence,
                         prevention: r.prevention, monitor: r.monitorControl, mitigation: r.mitigation, qi: r.qiPlan,
                         owner: r.riskOwner, reviewFreq: r.reviewFrequency, status: r.riskStatus, include: true
                     });
                     // Data last review / Residual แยกตามไตรมาส
                     const q = (r.quarter || '').toString().trim();
-                    if (q) { rec['lastReview_' + q] = r.dataLastReview || ''; rec['residual_' + q] = r.residualLevel || ''; }
+                    if (q) { rec['lastReview_' + q] = dOnly(r.dataLastReview); rec['residual_' + q] = r.residualLevel || ''; }
                 });
                 riskFormSaveDraft(draft);
                 renderRiskForm();

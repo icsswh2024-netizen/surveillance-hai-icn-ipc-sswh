@@ -31,6 +31,12 @@ function sheet_() {
   return sh;
 }
 
+// วันที่ → สตริง yyyy-MM-dd (ตัดเวลา) ตามเขตเวลาของสคริปต์
+function dstr_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return v;
+}
+
 function jsonOut_(obj, cb) {
   const out = JSON.stringify(obj);
   if (cb) return ContentService.createTextOutput(cb + '(' + out + ')')
@@ -103,10 +109,10 @@ function doGet(e) {
   data.shift();
   const rows = data.map(function (row) {
     return {
-      source: row[0], dataAddedDate: row[1], riskTitle: row[2], riskDescription: row[3],
+      source: row[0], dataAddedDate: dstr_(row[1]), riskTitle: row[2], riskDescription: row[3],
       quarter: row[4], likelihood: row[5], consequence: row[6], riskLevel: row[7],
       prevention: row[8], monitorControl: row[9], mitigation: row[10], qiPlan: row[11],
-      riskOwner: row[12], reviewFrequency: row[13], dataLastReview: row[14],
+      riskOwner: row[12], reviewFrequency: row[13], dataLastReview: dstr_(row[14]),
       residualLevel: row[15], riskStatus: row[16], riskId: row[17]
     };
   });
