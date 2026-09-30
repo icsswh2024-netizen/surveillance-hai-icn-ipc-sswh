@@ -4380,14 +4380,21 @@
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
                 const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
-                const m = 6, iw = pw - m * 2;
-                const ih = canvas.height * iw / canvas.width;
-                const img = canvas.toDataURL('image/jpeg', 0.95);
-                if (ih <= ph - m * 2) { pdf.addImage(img, 'JPEG', m, m, iw, ih); }
-                else { // แบ่งหลายหน้าตามความสูง
-                    let remain = ih, pos = m;
-                    const pageH = ph - m * 2;
-                    while (remain > 0) { pdf.addImage(img, 'JPEG', m, pos, iw, ih); remain -= pageH; if (remain > 0) { pdf.addPage(); pos = pos - pageH; } }
+                const m = 6, iw = pw - m * 2, ih = ph - m * 2; // พื้นที่ใช้งาน (mm)
+                const cw = canvas.width, scale = iw / cw;      // mm ต่อ 1px
+                const pagePx = Math.floor(ih / scale);         // ความสูง 1 หน้า (px ของ canvas)
+                let y = 0, first = true;
+                while (y < canvas.height) {
+                    const sliceH = Math.min(pagePx, canvas.height - y);
+                    // ตัดภาพเฉพาะช่วงของหน้านี้ลง canvas ชั่วคราว → ไม่เหลื่อม/ไม่ตกขอบ (แนวทาง skill: slice ต่อหน้า)
+                    const tmp = document.createElement('canvas');
+                    tmp.width = cw; tmp.height = sliceH;
+                    const ctx = tmp.getContext('2d');
+                    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cw, sliceH);
+                    ctx.drawImage(canvas, 0, y, cw, sliceH, 0, 0, cw, sliceH);
+                    if (!first) pdf.addPage();
+                    pdf.addImage(tmp.toDataURL('image/jpeg', 0.95), 'JPEG', m, m, iw, sliceH * scale);
+                    first = false; y += sliceH;
                 }
                 pdf.save('RiskRegister_ปีงบ' + riskYearForExport() + '.pdf');
             } catch (e) { st.textContent = '⚠️ ส่งออก PDF ไม่สำเร็จ: ' + e.message; st.className = 'text-xs mt-2 text-rose-600'; }
