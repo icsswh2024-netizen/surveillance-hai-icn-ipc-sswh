@@ -122,16 +122,16 @@ function readTargets_() {
   const data = sh.getDataRange().getValues();
   if (!data.length) return out;
   const head = data.shift().map(function (x) { return String(x).trim(); });
-  const yearCols = [];
+  // ทุกคอลัมน์ (นอกจาก A) ที่หัวมีเลขปี 25xx = 1 ตัวเลือกเป้าหมาย (key = หัวคอลัมน์เต็ม เช่น "ประเทศ 2568")
+  const tgtCols = [];
   head.forEach(function (h, ci) {
-    const m = h.match(/(25\d\d)/);
-    if (m && ci > 0) yearCols.push({ ci: ci, year: m[1] });
+    if (ci > 0 && /25\d\d/.test(h)) tgtCols.push({ ci: ci, key: h });
   });
   data.forEach(function (row) {
     const s = String(row[0] || '').trim();
     if (!s) return;
     const o = out[s] = {};
-    yearCols.forEach(function (yc) { o[yc.year] = String(row[yc.ci] || '').trim(); });
+    tgtCols.forEach(function (tc) { o[tc.key] = String(row[tc.ci] || '').trim(); });
   });
   return out;
 }

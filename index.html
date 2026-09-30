@@ -4236,20 +4236,22 @@
         }
         function riskTargets() { try { return JSON.parse(localStorage.getItem('riskTargets') || '{}'); } catch (e) { return {}; } }
         function riskTargetPicks() { try { return JSON.parse(localStorage.getItem('riskTargetPick') || '{}'); } catch (e) { return {}; } }
-        // เป้าหมายที่เลือกของ site (ปี + ค่า) — ใช้ปีที่ผู้ใช้เลือก มิฉะนั้นปีจากตัวกรอง
+        // เป้าหมายที่เลือกของ site — key คือหัวคอลัมน์เต็ม เช่น "ประเทศ 2568", "เขต2 2568"
+        // เลือกตามที่ผู้ใช้เลือก มิฉะนั้นเลือกคอลัมน์ที่ตรงปีตัวกรอง มิฉะนั้นคอลัมน์สุดท้าย
         function chosenTarget(site) {
             const t = RISK_TARGETS[site] || {}, picks = riskTargetPicks();
-            const years = Object.keys(t).filter(y => (t[y] || '').toString().trim() !== '');
-            const yr = (picks[site] && t[picks[site]] != null) ? picks[site] : (years.includes(riskTargetYear()) ? riskTargetYear() : (years[years.length - 1] || ''));
-            return { year: yr, value: (t[yr] || '').toString().trim() };
+            const keys = Object.keys(t).filter(k => (t[k] || '').toString().trim() !== '');
+            if (!keys.length) return { year: '', value: '' };
+            let key = (picks[site] && (t[picks[site]] || '').toString().trim() !== '') ? picks[site] : '';
+            if (!key) { const fy = riskFilterYear(); if (fy) key = keys.find(k => k.indexOf(fy) >= 0) || ''; }
+            if (!key) key = keys[keys.length - 1];
+            return { year: key, value: (t[key] || '').toString().trim() };
         }
-        // การ์ดต่อ Site: เลือกเข้าทะเบียน + เป้าหมาย + อัตราปัจจุบัน
-        // เลือกปีสำหรับเป้าหมาย: ใช้ปีจากตัวกรองบน ถ้า ALL ใช้ปีล่าสุดที่มีในแท็บเกณฑ์
-        function riskTargetYear() {
-            const yv = document.getElementById('filterYear').value;
-            if (yv && yv !== 'ALL') return yv;
-            const years = new Set(); Object.values(RISK_TARGETS).forEach(o => Object.keys(o || {}).forEach(y => years.add(y)));
-            const arr = [...years].sort(); return arr.length ? arr[arr.length - 1] : '';
+        // ปีจากตัวกรองบน (ใช้ช่วยเลือกคอลัมน์เป้าหมายให้ตรงปี)
+        function riskFilterYear() {
+            const el = document.getElementById('filterYear');
+            const yv = el ? el.value : '';
+            return (yv && yv !== 'ALL') ? yv : '';
         }
         function renderRiskSiteCards() {
             const wrap = document.getElementById('riskSiteCards'); if (!wrap) return;
