@@ -17,7 +17,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/th.js"></script>
 
     <!-- ส่งออก Excel / PDF / JPG -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -4231,11 +4231,14 @@
             let h = '<div style="font-family:\'Kanit\',\'Noto Sans Thai\',sans-serif;color:#0f172a;">' +
                 '<div style="font-size:18px;font-weight:700;margin-bottom:2px;">ทะเบียนความเสี่ยง (Risk Register) — ปีงบ ' + riskYearForExport() + '</div>' +
                 '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">โรงพยาบาลศรีสังวรสุโขทัย · กลุ่มงานการพยาบาลด้านการควบคุมและป้องกันการติดเชื้อ (IC)</div>' +
-                '<table style="border-collapse:collapse;font-size:11px;table-layout:fixed;">';
+                '<table style="border-collapse:collapse;font-size:11px;table-layout:fixed;width:1500px;">';
+            // กำหนดความกว้างคอลัมน์ (px) เพื่อบังคับตัดคำในช่อง ไม่ให้ล้น
+            const cw = [70, 60, 55, 150, 55, 45, 45, 42, 150, 150, 130, 130, 75, 60, 62, 55, 70];
+            h += '<colgroup>' + cw.map(w => '<col style="width:' + w + 'px">').join('') + '</colgroup>';
             const gh = (t, n, bg) => '<th colspan="' + n + '" style="border:1px solid #94a3b8;background:' + bg + ';color:#fff;padding:6px 8px;">' + t + '</th>';
             h += '<thead><tr>' + gh('Risk Identification', 4, '#0d9488') + gh('Risk Analysis', 4, '#2563eb') + gh('Risk Treatment', 4, '#7c3aed') + gh('Risk Monitoring &amp; Review', 5, '#0f766e') + '</tr><tr>' +
-                subs.map(s => '<th style="border:1px solid #94a3b8;background:#f1f5f9;padding:5px 6px;font-weight:600;">' + s + '</th>').join('') + '</tr></thead><tbody>';
-            const td = (v, rs, extra) => '<td' + (rs > 1 ? ' rowspan="' + rs + '"' : '') + ' style="border:1px solid #cbd5e1;padding:4px 6px;vertical-align:top;' + (extra || '') + '">' + esc(v) + '</td>';
+                subs.map(s => '<th style="border:1px solid #94a3b8;background:#f1f5f9;padding:5px 6px;font-weight:600;word-break:break-word;">' + s + '</th>').join('') + '</tr></thead><tbody>';
+            const td = (v, rs, extra) => '<td' + (rs > 1 ? ' rowspan="' + rs + '"' : '') + ' style="border:1px solid #cbd5e1;padding:4px 6px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;white-space:normal;' + (extra || '') + '">' + esc(v) + '</td>';
             blocks.forEach(b => {
                 b.qs.forEach((q, i) => {
                     const n = b.qs.length;
@@ -4250,15 +4253,43 @@
             });
             return h + '</tbody></table></div>';
         }
-        function exportOfficialExcel() {
-            if (typeof XLSX === 'undefined') { alert('ยังโหลดไลบรารี Excel ไม่เสร็จ ลองใหม่อีกครั้ง'); return; }
-            const { aoa, merges } = officialAOA(true);
-            const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!merges'] = merges;
-            ws['!cols'] = [18, 12, 14, 32, 8, 11, 11, 10, 28, 28, 24, 24, 16, 12, 13, 11, 16].map(w => ({ wch: w }));
-            const wb = XLSX.utils.book_new();
+        async function exportOfficialExcel() {
+            const st = document.getElementById('riskSaveStatus');
+            if (typeof ExcelJS === 'undefined') { st.textContent = '⚠️ ยังโหลดไลบรารี Excel ไม่เสร็จ ลองใหม่'; st.className = 'text-xs mt-2 text-rose-600'; return; }
             const yr = riskYearForExport();
-            XLSX.utils.book_append_sheet(wb, ws, ('ปีงบ ' + yr).slice(0, 31));
-            XLSX.writeFile(wb, 'RiskRegister_ปีงบ' + yr + '.xlsx');
+            const { aoa, merges } = officialAOA(true);
+            const wb = new ExcelJS.Workbook();
+            const ws = wb.addWorksheet('ปีงบ ' + yr, { views: [{ state: 'frozen', ySplit: 2 }] });
+            const widths = [18, 13, 12, 34, 9, 11, 11, 9, 30, 30, 26, 26, 15, 12, 13, 11, 15];
+            ws.columns = widths.map(w => ({ width: w }));
+            aoa.forEach(r => ws.addRow(r));
+            merges.forEach(m => ws.mergeCells(m.s.r + 1, m.s.c + 1, m.e.r + 1, m.e.c + 1));
+            const border = { top: { style: 'thin', color: { argb: 'FFCBD5E1' } }, left: { style: 'thin', color: { argb: 'FFCBD5E1' } }, bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } }, right: { style: 'thin', color: { argb: 'FFCBD5E1' } } };
+            const centerCols = { 5: 1, 6: 1, 7: 1, 8: 1, 15: 1, 16: 1, 17: 1 };
+            ws.eachRow({ includeEmpty: true }, (row, rn) => {
+                row.eachCell({ includeEmpty: true }, (cell, cn) => {
+                    cell.border = border;
+                    cell.alignment = { wrapText: true, vertical: 'top', horizontal: (rn <= 2 ? 'center' : (centerCols[cn] ? 'center' : 'left')) };
+                    cell.font = { name: 'TH Sarabun New', size: 12 };
+                });
+            });
+            // สีหัวตาราง 2 แถว
+            const groupFill = { 1: 'FF0D9488', 5: 'FF2563EB', 9: 'FF7C3AED', 13: 'FF0F766E' };
+            const colGroup = c => c <= 4 ? 'FF0D9488' : c <= 8 ? 'FF2563EB' : c <= 12 ? 'FF7C3AED' : 'FF0F766E';
+            ws.getRow(1).eachCell({ includeEmpty: true }, (cell, cn) => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colGroup(cn) } };
+                cell.font = { name: 'TH Sarabun New', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
+            });
+            ws.getRow(1).height = 22;
+            ws.getRow(2).eachCell({ includeEmpty: true }, cell => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                cell.font = { name: 'TH Sarabun New', size: 12, bold: true };
+            });
+            ws.getRow(2).height = 32;
+            const buf = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'RiskRegister_ปีงบ' + yr + '.xlsx'; a.click(); URL.revokeObjectURL(a.href);
         }
         // แสดงพรีวิวแบบฟอร์มทางการบนหน้าจอ (ตรวจก่อนบันทึก)
         function renderOfficialPreview(scroll) {
