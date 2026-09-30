@@ -1242,6 +1242,7 @@
                             <button id="btnRiskXlsx" class="text-sm bg-green-700 hover:bg-green-800 text-white py-2 px-3 rounded-lg font-medium">⬇ Excel</button>
                             <button id="btnRiskPdf" class="text-sm bg-rose-600 hover:bg-rose-700 text-white py-2 px-3 rounded-lg font-medium">⬇ PDF</button>
                             <button id="btnRiskJpg" class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3 rounded-lg font-medium">⬇ JPG</button>
+                            <button id="btnRiskPreview" class="text-sm bg-slate-700 hover:bg-slate-800 text-white py-2 px-3 rounded-lg font-medium">👁 พรีวิวแบบฟอร์ม</button>
                             <span class="text-slate-300">|</span>
                             <button id="btnRiskFillYear" class="text-sm bg-amber-500 hover:bg-amber-600 text-white py-2 px-3 rounded-lg font-medium">📝 กรอกลงแท็บ ปีงบ อัตโนมัติ</button>
                             <span id="riskYearBadge" class="text-xs text-slate-500"></span>
@@ -1249,8 +1250,11 @@
                     </div>
                     <p class="text-xs mt-2" id="riskSaveStatus"></p>
                 </div>
-                <!-- ตัวช่วยเรนเดอร์รูปแบบทางการสำหรับ PDF/JPG (ซ่อนไว้นอกจอ) -->
-                <div id="riskOfficialPreview" style="position:absolute;left:-99999px;top:0;background:#fff;padding:16px;"></div>
+                <!-- พรีวิวรูปแบบทางการ (ตรวจก่อนบันทึก/ส่งออก) -->
+                <div id="riskOfficialPreviewWrap" class="hidden mx-4 mb-4 p-3 rounded-xl border border-slate-200 bg-slate-50 overflow-x-auto">
+                    <div class="text-xs text-slate-500 mb-2">ตัวอย่างแบบฟอร์ม RM ทางการ (ตามที่จะส่งออก/กรอกลงแท็บ ปีงบ) — ตรวจความถูกต้องก่อนบันทึก</div>
+                    <div id="riskOfficialPreview" style="background:#fff;padding:16px;display:inline-block;"></div>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="text-left text-sm text-slate-600 whitespace-nowrap">
                         <thead class="bg-slate-50 text-slate-700 font-semibold">
@@ -4256,10 +4260,18 @@
             XLSX.utils.book_append_sheet(wb, ws, ('ปีงบ ' + yr).slice(0, 31));
             XLSX.writeFile(wb, 'RiskRegister_ปีงบ' + yr + '.xlsx');
         }
-        async function officialCanvas() {
+        // แสดงพรีวิวแบบฟอร์มทางการบนหน้าจอ (ตรวจก่อนบันทึก)
+        function renderOfficialPreview(scroll) {
+            const wrap = document.getElementById('riskOfficialPreviewWrap');
             const host = document.getElementById('riskOfficialPreview');
             host.innerHTML = officialTableHTML();
-            await new Promise(r => setTimeout(r, 60)); // ให้ฟอนต์/เลย์เอาต์เรนเดอร์ก่อน
+            wrap.classList.remove('hidden');
+            if (scroll) wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        async function officialCanvas() {
+            renderOfficialPreview(false); // ต้องแสดงจริงก่อน html2canvas จึงจับภาพได้
+            const host = document.getElementById('riskOfficialPreview');
+            await new Promise(r => setTimeout(r, 80)); // ให้ฟอนต์/เลย์เอาต์เรนเดอร์ก่อน
             return html2canvas(host.firstChild, { scale: 2, backgroundColor: '#ffffff' });
         }
         async function exportOfficialJPG() {
@@ -4670,6 +4682,7 @@
         document.getElementById('btnRiskXlsx').addEventListener('click', exportOfficialExcel);
         document.getElementById('btnRiskPdf').addEventListener('click', exportOfficialPDF);
         document.getElementById('btnRiskJpg').addEventListener('click', exportOfficialJPG);
+        document.getElementById('btnRiskPreview').addEventListener('click', () => renderOfficialPreview(true));
         document.getElementById('btnRiskFillYear').addEventListener('click', fillYearSheet);
         try { const u = localStorage.getItem('riskSaveUrl'); if (u) document.getElementById('riskSaveUrl').value = u; } catch (e) { }
         document.getElementById('ctrlSite').addEventListener('change', () => updateControlView());
