@@ -4268,6 +4268,13 @@
                 const r = siteCurrentRate(s);
                 const inc = (draft[s] || {}).include ? 'checked' : '';
                 const rateTxt = r.rate != null ? '<b class="text-blue-700">' + r.rate + '</b> <span class="text-[11px] text-slate-400">' + r.unit + '</span>' : '<b class="text-slate-500">' + r.count + '</b> ครั้ง';
+                // MDRO: แสดง %ของ HAI (เหมือนเมนู เชื้อดื้อยา)
+                let pctHtml = '';
+                if (s === 'MDRO') {
+                    const totHai = getFilteredCases().length;
+                    const pct = totHai ? +((r.count / totHai) * 100).toFixed(1) : 0;
+                    pctHtml = '<div class="text-xs text-fuchsia-700 mt-0.5">ร้อยละของ HAI: <b>' + pct + '%</b> <span class="text-[11px] text-slate-400">(' + r.count + '/' + totHai + ')</span></div>';
+                }
                 const t = RISK_TARGETS[s] || {};
                 const years = Object.keys(t).filter(y => (t[y] || '').toString().trim() !== '');
                 const ch = chosenTarget(s);
@@ -4279,7 +4286,7 @@
                     '<div class="flex items-center justify-between gap-2">' +
                     '<span class="font-semibold text-slate-800 whitespace-nowrap">' + s + '</span>' +
                     '<label class="text-xs flex items-center gap-1 cursor-pointer text-slate-600"><input type="checkbox" class="riskCardInc" data-site="' + s + '" ' + inc + '> เข้าทะเบียน</label></div>' +
-                    '<div class="text-sm text-slate-600 mt-1.5">อัตราปัจจุบัน ' + rateTxt + '</div>' +
+                    '<div class="text-sm text-slate-600 mt-1.5">อัตราปัจจุบัน ' + rateTxt + '</div>' + pctHtml +
                     '<div class="text-[11px] text-slate-400">ณ วันที่ ' + today + ' · เกิด ' + r.count + ' ครั้ง</div>' +
                     '<div class="text-xs text-slate-500 mt-2 flex items-center gap-1">เป้าหมาย: ' + tgtHtml + '</div>' +
                     '</div>';
