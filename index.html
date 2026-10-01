@@ -4348,7 +4348,7 @@
             return h + '</tbody></table></div>';
         }
         async function exportOfficialExcel() {
-            const st = document.getElementById('riskSaveStatus');
+            const st = riskStatusProxy();
             if (typeof ExcelJS === 'undefined') { st.textContent = '⚠️ ยังโหลดไลบรารี Excel ไม่เสร็จ ลองใหม่'; st.className = 'text-xs mt-2 text-rose-600'; return; }
             const yr = riskYearForExport();
             const { aoa, merges } = officialAOA(true);
@@ -4400,7 +4400,7 @@
             return html2canvas(host.firstChild, { scale: scale || EXPORT_SCALE, backgroundColor: '#ffffff' });
         }
         async function exportOfficialJPG() {
-            const st = document.getElementById('riskSaveStatus');
+            const st = riskStatusProxy();
             try {
                 const canvas = await officialCanvas();
                 const a = document.createElement('a');
@@ -4409,7 +4409,7 @@
             } catch (e) { st.textContent = '⚠️ ส่งออก JPG ไม่สำเร็จ: ' + e.message; st.className = 'text-xs mt-2 text-rose-600'; }
         }
         async function exportOfficialPDF() {
-            const st = document.getElementById('riskSaveStatus');
+            const st = riskStatusProxy();
             try {
                 const canvas = await officialCanvas();
                 const host = document.getElementById('riskOfficialPreview');
@@ -4451,7 +4451,7 @@
         }
         // กรอกข้อมูลลงแท็บ "ปีงบ 25xx" อัตโนมัติ (เขียนที่ A4 เป็นต้นไป · เก็บหัวตารางเดิมไว้)
         async function fillYearSheet() {
-            const st = document.getElementById('riskSaveStatus');
+            const st = riskStatusProxy();
             const url = riskSaveUrl();
             if (!url) { st.textContent = '⚠️ กรุณาวาง URL ก่อน'; st.className = 'text-xs mt-2 text-rose-600'; return; }
             const yr = riskYearForExport();
@@ -4480,7 +4480,7 @@
         }
         function riskSaveUrl() { return (document.getElementById('riskSaveUrl').value || '').trim(); }
         async function saveRiskRegister() {
-            const st = document.getElementById('riskSaveStatus');
+            const st = riskStatusProxy();
             const url = riskSaveUrl();
             if (!url) { st.textContent = '⚠️ กรุณาวาง URL ของ Apps Script Web App ก่อน'; st.className = 'text-xs mt-2 text-rose-600'; return; }
             try { localStorage.setItem('riskSaveUrl', url); } catch (e) { }
@@ -4496,7 +4496,7 @@
             }
         }
         async function loadRiskRegister() {
-            const st = document.getElementById('riskSaveStatus');
+            const st = riskStatusProxy();
             const url = riskSaveUrl();
             if (!url) { st.textContent = '⚠️ กรุณาวาง URL ก่อน'; st.className = 'text-xs mt-2 text-rose-600'; return; }
             st.textContent = 'กำลังเรียกดู...'; st.className = 'text-xs mt-2 text-slate-500';
@@ -4928,6 +4928,73 @@
                 statusEl.className = 'font-medium text-rose-600';
             }
         };
+    </script>
+
+    <!-- โมดัลสถานะพรีเมียม (กลางจอ) -->
+    <div id="riskModal" class="fixed inset-0 z-[9999] hidden items-center justify-center p-4" style="background:rgba(15,23,42,.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);">
+        <div id="riskModalCard" class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all"
+             style="box-shadow:0 25px 60px -15px rgba(2,6,23,.45);animation:riskPop .18s ease-out;">
+            <div id="riskModalTop" class="h-1.5"></div>
+            <div class="p-6 text-center">
+                <div id="riskModalIcon" class="mx-auto mb-4 w-16 h-16 rounded-full flex items-center justify-center text-3xl"></div>
+                <p id="riskModalMsg" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line"></p>
+                <button id="riskModalOk" class="mt-5 w-full py-2.5 rounded-xl font-semibold text-white transition hidden">ตกลง</button>
+            </div>
+        </div>
+    </div>
+    <style>
+        @keyframes riskPop { from { opacity:0; transform:scale(.92) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
+        #riskModalSpin { width:40px;height:40px;border:4px solid #e2e8f0;border-top-color:#10b981;border-radius:9999px;animation:riskSpin .8s linear infinite; }
+        @keyframes riskSpin { to { transform:rotate(360deg); } }
+    </style>
+    <script>
+        (function () {
+            const THEME = {
+                loading: { top: 'bg-emerald-400', iconBg: '', btn: '' },
+                success: { top: 'bg-emerald-500', iconBg: 'bg-emerald-100 text-emerald-600', icon: '✓', btn: 'bg-emerald-600 hover:bg-emerald-700' },
+                error: { top: 'bg-rose-500', iconBg: 'bg-rose-100 text-rose-600', icon: '⚠', btn: 'bg-rose-600 hover:bg-rose-700' },
+                info: { top: 'bg-blue-500', iconBg: 'bg-blue-100 text-blue-600', icon: 'ℹ', btn: 'bg-blue-600 hover:bg-blue-700' }
+            };
+            function hide() { document.getElementById('riskModal').classList.add('hidden'); document.getElementById('riskModal').classList.remove('flex'); }
+            function show(msg, type, isHtml) {
+                const m = document.getElementById('riskModal'), t = THEME[type] || THEME.info;
+                document.getElementById('riskModalTop').className = 'h-1.5 ' + t.top;
+                const ic = document.getElementById('riskModalIcon');
+                const ok = document.getElementById('riskModalOk');
+                const msgEl = document.getElementById('riskModalMsg');
+                if (isHtml) msgEl.innerHTML = msg; else msgEl.textContent = msg;
+                if (type === 'loading') {
+                    ic.className = 'mx-auto mb-4 w-16 h-16 rounded-full flex items-center justify-center';
+                    ic.innerHTML = '<div id="riskModalSpin"></div>';
+                    ok.classList.add('hidden');
+                } else {
+                    ic.className = 'mx-auto mb-4 w-16 h-16 rounded-full flex items-center justify-center text-3xl ' + t.iconBg;
+                    ic.textContent = t.icon;
+                    ok.className = 'mt-5 w-full py-2.5 rounded-xl font-semibold text-white transition ' + t.btn;
+                    ok.classList.remove('hidden');
+                }
+                m.classList.remove('hidden'); m.classList.add('flex');
+            }
+            document.getElementById('riskModalOk').addEventListener('click', hide);
+            document.getElementById('riskModal').addEventListener('click', function (e) { if (e.target === this) hide(); });
+            // Proxy ให้โค้ดเดิมที่เขียน st.textContent/innerHTML/className ทำงานกับโมดัลได้ทันที
+            window.riskStatusProxy = function () {
+                const s = { _msg: '', _html: false, _cls: '' };
+                const render = () => {
+                    if (!s._msg) return;
+                    const c = s._cls || '';
+                    const type = /emerald/.test(c) ? 'success' : /rose/.test(c) ? 'error' : /blue/.test(c) ? 'info' : 'loading';
+                    show(s._msg, type, s._html);
+                };
+                Object.defineProperties(s, {
+                    textContent: { set(v) { s._msg = v; s._html = false; render(); } },
+                    innerHTML: { set(v) { s._msg = v; s._html = true; render(); } },
+                    className: { set(v) { s._cls = v; render(); } }
+                });
+                return s;
+            };
+            window.hideRiskModal = hide;
+        })();
     </script>
 </body>
 </html>
