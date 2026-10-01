@@ -4996,5 +4996,109 @@
             window.hideRiskModal = hide;
         })();
     </script>
+
+    <!-- หมายเหตุตัวกรอง + ปุ่มส่งออกต่อการ์ด (กราฟ/ตาราง) อัตโนมัติทุกเมนู -->
+    <script>
+        (function () {
+            const fileSafe = s => (s || 'card').replace(/[\\/:*?"<>|\n]+/g, '_').replace(/\s+/g, ' ').trim().slice(0, 80);
+            function filterNote() {
+                const val = id => { const e = document.getElementById(id); return e ? e.value : 'ALL'; };
+                const dis = id => { const e = document.getElementById(id); return !e || e.disabled; };
+                const p = [];
+                p.push('ปีงบ: ' + (val('filterYear') !== 'ALL' ? val('filterYear') : 'ทั้งหมด'));
+                if (document.getElementById('filterQuarter')) p.push('ไตรมาส: ' + (val('filterQuarter') !== 'ALL' ? val('filterQuarter') : 'ทั้งหมด'));
+                if (!dis('filterUnit')) p.push('หอผู้ป่วย: ' + (val('filterUnit') !== 'ALL' ? val('filterUnit') : 'ทั้งหมด'));
+                if (!dis('filterPCT')) p.push('กลุ่มงาน: ' + (val('filterPCT') !== 'ALL' ? val('filterPCT') : 'ทั้งหมด'));
+                return 'กรองข้อมูล — ' + p.join(' · ') + ' · ณ ' + (window.fmtDMY ? fmtDMY(new Date().toISOString().slice(0, 10)) : new Date().toLocaleDateString('th-TH'));
+            }
+            function cardTitle(card) { const h = card.querySelector('h1,h2,h3,h4,h5,h6'); return h ? h.textContent.trim() : 'รายงาน'; }
+            function tableToAOA(tbl) {
+                const out = [];
+                tbl.querySelectorAll('tr').forEach(tr => {
+                    const row = []; tr.querySelectorAll('th,td').forEach(td => row.push(td.innerText.replace(/\s+/g, ' ').trim()));
+                    if (row.some(c => c !== '')) out.push(row);
+                });
+                return out;
+            }
+            function chartToAOA(cv) {
+                const ch = (window.Chart && Chart.getChart) ? Chart.getChart(cv) : null;
+                if (!ch) return null;
+                const labels = ch.data.labels || [];
+                const ds = (ch.data.datasets || []).filter(d => Array.isArray(d.data));
+                const head = ['รายการ'].concat(ds.map((d, i) => d.label || ('ค่า ' + (i + 1))));
+                const rows = labels.map((l, i) => [l].concat(ds.map(d => (d.data[i] != null && typeof d.data[i] === 'object') ? (d.data[i].y ?? '') : (d.data[i] ?? ''))));
+                return [head].concat(rows);
+            }
+            async function exportImg(card, kind) {
+                if (typeof html2canvas === 'undefined') return;
+                const bar = card.querySelector('.cardTools'), btns = bar ? bar.querySelectorAll('button') : [];
+                btns.forEach(b => b.style.visibility = 'hidden');
+                try {
+                    const canvas = await html2canvas(card, { scale: 3, backgroundColor: '#ffffff' });
+                    const name = fileSafe(cardTitle(card));
+                    if (kind === 'jpg') { const a = document.createElement('a'); a.href = canvas.toDataURL('image/jpeg', 0.98); a.download = name + '.jpg'; a.click(); }
+                    else {
+                        const { jsPDF } = window.jspdf, land = canvas.width >= canvas.height;
+                        const pdf = new jsPDF({ orientation: land ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+                        const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight(), m = 8;
+                        const ratio = Math.min((pw - 2 * m) / canvas.width, (ph - 2 * m) / canvas.height);
+                        pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', m, m, canvas.width * ratio, canvas.height * ratio);
+                        pdf.save(name + '.pdf');
+                    }
+                } finally { btns.forEach(b => b.style.visibility = ''); }
+            }
+            async function exportExcel(card) {
+                if (typeof ExcelJS === 'undefined') return;
+                const title = cardTitle(card), note = filterNote();
+                let aoa = null;
+                const tbl = card.querySelector('table');
+                if (tbl) aoa = tableToAOA(tbl);
+                else { const cv = card.querySelector('canvas'); if (cv) aoa = chartToAOA(cv); }
+                if (!aoa || !aoa.length) { if (window.riskStatusProxy) { const st = riskStatusProxy(); st.textContent = 'การ์ดนี้ยังไม่มีข้อมูลให้ส่งออก'; st.className = 'text-rose-600'; } return; }
+                const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('ข้อมูล');
+                ws.addRow([title]); ws.addRow([note]); ws.addRow([]);
+                aoa.forEach(r => ws.addRow(r));
+                ws.getRow(1).font = { bold: true, size: 14, name: 'TH Sarabun New' };
+                ws.getRow(2).font = { size: 11, color: { argb: 'FF64748B' }, name: 'TH Sarabun New' };
+                const hdrRow = 4;
+                ws.getRow(hdrRow).eachCell(c => { c.font = { bold: true, name: 'TH Sarabun New', size: 12 }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } }; });
+                const cols = Math.max.apply(null, aoa.map(r => r.length));
+                ws.columns = Array.from({ length: cols }, (_, i) => ({ width: i === 0 ? 28 : 16 }));
+                ws.eachRow(r => r.eachCell(c => { if (!c.font) c.font = { name: 'TH Sarabun New', size: 12 }; c.alignment = { wrapText: true, vertical: 'top' }; }));
+                const buf = await wb.xlsx.writeBuffer(), blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileSafe(title) + '.xlsx'; a.click(); URL.revokeObjectURL(a.href);
+            }
+            function initCardTools() {
+                document.querySelectorAll('div.bg-white.rounded-2xl').forEach(card => {
+                    if (card.dataset.cardtools || card.classList.contains('kpi')) return;
+                    if (card.closest('#riskModal') || card.closest('#riskOfficialPreviewWrap')) return;
+                    if (!card.querySelector('canvas') && !card.querySelector('table')) return;
+                    card.dataset.cardtools = '1';
+                    if (getComputedStyle(card).position === 'static') card.style.position = 'relative';
+                    const bar = document.createElement('div');
+                    bar.className = 'cardTools flex items-center justify-end gap-1.5 mt-3 pt-2 border-t border-slate-100 text-[11px] flex-wrap print:hidden';
+                    bar.innerHTML =
+                        '<span class="cardFilterNote text-slate-400 mr-auto italic"></span>' +
+                        '<button type="button" class="cardBtnJpg px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold">⬇ JPG</button>' +
+                        '<button type="button" class="cardBtnPdf px-2 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 font-semibold">⬇ PDF</button>' +
+                        '<button type="button" class="cardBtnXls px-2 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 font-semibold">⬇ Excel</button>';
+                    card.appendChild(bar);
+                    bar.querySelector('.cardBtnJpg').addEventListener('click', () => exportImg(card, 'jpg'));
+                    bar.querySelector('.cardBtnPdf').addEventListener('click', () => exportImg(card, 'pdf'));
+                    bar.querySelector('.cardBtnXls').addEventListener('click', () => exportExcel(card));
+                });
+                refreshNotes();
+            }
+            function refreshNotes() { const n = filterNote(); document.querySelectorAll('.cardFilterNote').forEach(e => e.textContent = n); }
+            function boot() {
+                initCardTools();
+                ['filterYear', 'filterUnit', 'filterPCT', 'filterQuarter'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', () => setTimeout(refreshNotes, 50)); });
+                // เมนู/ตัวกรองเปลี่ยน → อัปเดตหมายเหตุ + ติดการ์ดใหม่ (ถ้ามี)
+                setInterval(() => { initCardTools(); }, 1500);
+            }
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+            window.refreshCardNotes = refreshNotes;
+        })();
+    </script>
 </body>
 </html>
