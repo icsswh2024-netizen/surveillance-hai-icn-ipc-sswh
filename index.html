@@ -4140,7 +4140,7 @@
                 const statusCell = '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100 text-xs font-medium ' + stAuto.cls + '" title="' + stAuto.desc + '">' + stAuto.label + '</td>';
                 qs.forEach((qr, j) => {
                     const cons = consFor(qr.q);
-                    const rl = qr.l != null ? qr.l * cons : '-', bz = qr.l != null ? riskZone(cons, qr.l) : null;
+                    const rl = qr.l != null ? qr.l * cons : 0, bz = qr.l != null ? riskZone(cons, qr.l) : null;
                     let html = '<tr class="' + (qr.annual ? 'bg-slate-50/50 font-semibold' : 'hover:bg-slate-50') + (j === 0 ? ' border-t-2 border-slate-200' : '') + '">';
                     if (j === 0) {
                         html += sel(o, 'riskId') +
@@ -4149,7 +4149,7 @@
                     }
                     html += '<td class="py-2 px-3 text-left whitespace-nowrap ' + (qr.annual ? 'text-slate-800' : 'text-slate-500') + '">' + qr.q + '</td>' +
                         '<td class="py-2 px-3 text-center">' + qr.c + '</td>' +
-                        '<td class="py-2 px-3 text-center">' + (qr.l ?? '-') + '</td>';
+                        '<td class="py-2 px-3 text-center">' + (qr.l ?? 0) + '</td>';
                     html += '<td class="py-2 px-3 text-center font-semibold text-slate-700">' + cons + '</td>';
                     html += '<td class="py-2 px-3 text-center font-bold border-r border-slate-100 ' + (bz ? bz.pill.split(' ')[1] : 'text-slate-400') + '">' + rl + '</td>';
                     // Residual = Risk Level ของไตรมาสถัดไป (Q1→Q2, Q2→Q3, Q3→Q4, Q4→ทั้งปี) · Consequence รายไตรมาส
@@ -4157,7 +4157,7 @@
                     const resL = (nx && nx.l != null) ? nx.l * consFor(nx.q) : null;
                     const resZ = resL != null ? riskZone(consFor(nx.q), nx.l) : null;
                     const resTitle = j === 3 ? 'เท่ากับ Risk Level ทั้งปีงบประมาณ' : 'เท่ากับ Risk Level ของไตรมาสถัดไป';
-                    const resCell = '<td class="py-2 px-3 text-center font-bold border-r border-slate-100 ' + (resZ ? resZ.pill.split(' ')[1] : 'text-slate-400') + '" title="' + resTitle + '">' + (resL != null ? resL : '-') + '</td>';
+                    const resCell = '<td class="py-2 px-3 text-center font-bold border-r border-slate-100 ' + (resZ ? resZ.pill.split(' ')[1] : 'text-slate-400') + '" title="' + resTitle + '">' + (resL != null ? resL : 0) + '</td>';
                     if (j === 0) html += combo(o, 'prevention') + combo(o, 'monitor') + combo(o, 'mitigation') + combo(o, 'qi') + combo(o, 'owner') +
                         sel(o, 'reviewFreq') + dtq(o, 'lastReview', qr.q) + resCell + statusCell;
                     else html += dtq(o, 'lastReview', qr.q) + resCell;
@@ -4222,10 +4222,10 @@
                 const mk = (quarter, count, l, cons, residual) => ({
                     riskId: d.riskId || '', source: d.source || '', dataAddedDate: fmtDMY(d.dataAdded || today),
                     riskTitle: d.title || o.site, riskDescription: d.desc || '',
-                    quarter, count, likelihood: (l ?? ''), consequence: cons, riskLevel: (l != null ? l * cons : ''),
+                    quarter, count, likelihood: (l ?? 0), consequence: cons, riskLevel: (l != null ? l * cons : 0),
                     prevention: d.prevention || '', monitorControl: monitorCombined(o.site, d.monitor), mitigation: d.mitigation || '', qiPlan: d.qi || '',
                     riskOwner: d.owner || '', reviewFrequency: d.reviewFreq || '',
-                    dataLastReview: fmtDMY(d['lastReview_' + quarter]), residualLevel: (residual != null ? residual : ''), riskStatus: stStatus,
+                    dataLastReview: fmtDMY(d['lastReview_' + quarter]), residualLevel: (residual != null ? residual : 0), riskStatus: stStatus,
                     target: targetText(o.site)
                 });
                 // สถานะอัตโนมัติ (ใช้ค่าเดียวกันทุกแถวของ site)
@@ -4266,10 +4266,10 @@
                 const qs = qsP.slice(0, 4).map((qq, idx) => {
                     const cq = consFor(qq.q), nx = qsP[idx + 1];
                     const nextRL = (nx && nx.l != null) ? nx.l * consFor(nx.q) : null;
-                    return { quarter: qq.q, l: (qq.l ?? ''), c: cq, rl: (qq.l != null ? qq.l * cq : ''), lastReview: fmtDMY(d['lastReview_' + qq.q]), residual: (nextRL != null ? nextRL : '') };
+                    return { quarter: qq.q, l: (qq.l ?? 0), c: cq, rl: (qq.l != null ? qq.l * cq : 0), lastReview: fmtDMY(d['lastReview_' + qq.q]), residual: (nextRL != null ? nextRL : 0) };
                 });
                 const a = qsP[4], ca = consFor('ทั้งปีงบประมาณ');
-                qs.push({ quarter: 'ทั้งปีงบประมาณ', l: (a.l ?? ''), c: ca, rl: (a.l != null ? a.l * ca : ''), lastReview: fmtDMY(d['lastReview_ทั้งปีงบประมาณ']), residual: '' });
+                qs.push({ quarter: 'ทั้งปีงบประมาณ', l: (a.l ?? 0), c: ca, rl: (a.l != null ? a.l * ca : 0), lastReview: fmtDMY(d['lastReview_ทั้งปีงบประมาณ']), residual: 0 });
                 blocks.push({
                     site: o.site,
                     sl: { source: d.source || '', dataAdded: fmtDMY(d.dataAdded || today), title: d.title || o.site, desc: d.desc || '', prevention: d.prevention || '', monitor: monitorCombined(o.site, d.monitor), mitigation: d.mitigation || '', qi: d.qi || '', owner: d.owner || '', reviewFreq: d.reviewFreq || '', status },
@@ -4586,6 +4586,7 @@
             const body = document.getElementById('riskBody');
             body.innerHTML = '';
             const dash = v => (v == null || v === '') ? '-' : v;
+            const z0 = v => (v == null || v === '') ? 0 : v; // ไม่มีค่า/นับไม่ได้ → 0
             // นับจำนวนแถวต่อ site (ใช้ทำ rowspan ในโหมดจัดกลุ่ม)
             const siteRows = {}; if (grouped) items.forEach(r => { siteRows[r.site] = (siteRows[r.site] || 0) + 1; });
             let seenSite = {}, siteIdx = 0;
@@ -4619,10 +4620,10 @@
                         '<tr class="' + rowCls + ' align-top">' +
                         commonCells +
                         '<td class="py-3 px-4 text-center whitespace-nowrap ' + (r.annual ? 'text-slate-800' : 'text-slate-600') + '">' + r.quarter + '</td>' +
-                        '<td class="py-3 px-4 text-center font-semibold ' + (r.annual ? 'text-slate-800' : countCls) + '">' + r.count + '</td>' +
-                        '<td class="py-3 px-4 text-center">' + dash(r.l) + '</td>' +
+                        '<td class="py-3 px-4 text-center font-semibold ' + (r.annual ? 'text-slate-800' : countCls) + '">' + z0(r.count) + '</td>' +
+                        '<td class="py-3 px-4 text-center">' + z0(r.l) + '</td>' +
                         consCell +
-                        '<td class="py-3 px-4 text-center font-bold ' + scoreCls + '">' + dash(r.score) + '</td>' +
+                        '<td class="py-3 px-4 text-center font-bold ' + scoreCls + '">' + z0(r.score) + '</td>' +
                         '<td class="py-3 px-4 text-center">' + levelHtml + '</td></tr>');
                     return;
                 }
@@ -4635,10 +4636,10 @@
                     '<td class="py-3 px-4 text-slate-400">' + (idx + 1) + '</td>' +
                     '<td class="py-3 px-4 whitespace-normal min-w-[14rem]">' + nameCell + '</td>' +
                     '<td class="py-3 px-4 text-center whitespace-nowrap text-slate-600">' + esc(dash(r.quarter)) + '</td>' +
-                    '<td class="py-3 px-4 text-center font-semibold text-slate-700">' + (r.count == null ? '-' : r.count) + '</td>' +
-                    '<td class="py-3 px-4 text-center">' + dash(r.l) + '</td>' +
-                    '<td class="py-3 px-4 text-center">' + dash(r.i) + '</td>' +
-                    '<td class="py-3 px-4 text-center font-bold ' + scoreCls + '">' + dash(r.score) + '</td>' +
+                    '<td class="py-3 px-4 text-center font-semibold text-slate-700">' + z0(r.count) + '</td>' +
+                    '<td class="py-3 px-4 text-center">' + z0(r.l) + '</td>' +
+                    '<td class="py-3 px-4 text-center">' + z0(r.i) + '</td>' +
+                    '<td class="py-3 px-4 text-center font-bold ' + scoreCls + '">' + z0(r.score) + '</td>' +
                     '<td class="py-3 px-4 text-center">' + levelHtml + '</td></tr>');
             });
             // เลือกรายการไปแสดงในฟอร์มรายงาน + แก้ Consequence ที่ทะเบียน
