@@ -48,7 +48,7 @@ function setupIndicatorSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sh = ss.getSheetByName(INDICATOR_SHEET);
   if (sh && sh.getLastRow() > 1) {
-    SpreadsheetApp.getUi().alert('มีแท็บ "' + INDICATOR_SHEET + '" และมีข้อมูลอยู่แล้ว — ไม่เขียนทับ');
+    Logger.log('มีแท็บ ' + INDICATOR_SHEET + ' และมีข้อมูลอยู่แล้ว — ไม่เขียนทับ');
     return;
   }
   if (!sh) sh = ss.insertSheet(INDICATOR_SHEET);
@@ -74,5 +74,5 @@ function setupIndicatorSheet() {
   sh.getRange(1, 1, 1, rows[0].length).setFontWeight('bold').setBackground('#ecfdf5');
   sh.setFrozenRows(1);
   sh.autoResizeColumns(1, rows[0].length);
-  SpreadsheetApp.getUi().alert('สร้างแท็บ "' + INDICATOR_SHEET + '" และเติม ' + (rows.length - 1) + ' ตัวชี้วัดเรียบร้อย');
+  Logger.log('สร้างแท็บ ' + INDICATOR_SHEET + ' และเติม ' + (rows.length - 1) + ' ตัวชี้วัดเรียบร้อย');
 }
