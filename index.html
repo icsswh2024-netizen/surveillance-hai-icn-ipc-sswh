@@ -5168,17 +5168,32 @@
                 return [head].concat(rows);
             }
             // ถ่ายการ์ดให้ครบ แม้มีเลื่อนแนวนอน/เนื้อหากว้างเกินจอ (ขยายคอนเทนเนอร์ที่ scroll ชั่วคราว)
+            const HOSP_NAME = 'โรงพยาบาลศรีสังวรสุโขทัย';
+            const HOSP_GROUP = 'กลุ่มงานการพยาบาลด้านการควบคุมและป้องกันการติดเชื้อ (IC)';
             async function captureCard(card) {
+                // หัวรายงานชั่วคราว (โรงพยาบาล + กลุ่มงาน + ชื่อการ์ด + ตัวกรอง) ให้ติดลงภาพเสมอ
+                const hd = document.createElement('div');
+                hd.className = 'cardExportHeader';
+                hd.style.cssText = 'padding:2px 0 10px;margin-bottom:10px;border-bottom:2px solid #0d9488;font-family:Kanit,\'Noto Sans Thai\',sans-serif;';
+                hd.innerHTML =
+                    '<div style="font-size:16px;font-weight:700;color:#0f172a;">' + HOSP_NAME + '</div>' +
+                    '<div style="font-size:12px;font-weight:600;color:#0d9488;">' + HOSP_GROUP + '</div>' +
+                    '<div style="font-size:12px;color:#334155;font-weight:600;margin-top:6px;">' + cardTitle(card) + '</div>' +
+                    '<div style="font-size:11px;color:#64748b;font-style:italic;margin-top:2px;">' + filterNote() + '</div>';
+                card.insertBefore(hd, card.firstChild);
+                // ขยายคอนเทนเนอร์ที่เลื่อนแนวนอน + เปิด overflow ให้ถ่ายครบ
                 const scrollers = Array.from(card.querySelectorAll('.overflow-x-auto, .overflow-auto, .overflow-x-scroll'));
                 const saved = scrollers.map(s => ({ s, of: s.style.overflow, w: s.style.width }));
                 scrollers.forEach(s => { s.style.overflow = 'visible'; s.style.width = 'max-content'; });
                 const cardOF = card.style.overflow; card.style.overflow = 'visible';
-                await new Promise(r => setTimeout(r, 40));
-                const w = Math.ceil(Math.max(card.scrollWidth, card.offsetWidth));
-                const h = Math.ceil(Math.max(card.scrollHeight, card.offsetHeight));
-                const canvas = await html2canvas(card, { scale: 3, backgroundColor: '#ffffff', width: w, height: h, windowWidth: w, scrollX: 0, scrollY: 0, useCORS: true });
+                await new Promise(r => requestAnimationFrame(() => setTimeout(r, 60)));
+                const canvas = await html2canvas(card, {
+                    scale: 2.5, backgroundColor: '#ffffff', scrollX: 0, scrollY: -window.scrollY,
+                    width: Math.ceil(card.scrollWidth), windowWidth: Math.max(document.documentElement.clientWidth, Math.ceil(card.scrollWidth)), useCORS: true
+                });
                 saved.forEach(o => { o.s.style.overflow = o.of; o.s.style.width = o.w; });
                 card.style.overflow = cardOF;
+                hd.remove();
                 return canvas;
             }
             async function exportImg(card, kind) {
