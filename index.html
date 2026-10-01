@@ -4110,7 +4110,7 @@
                     info = '<div class="text-[11px] bg-blue-50 rounded px-2 py-1 mb-1 w-64 leading-relaxed">' +
                         (ch.value ? '<div class="text-emerald-700">เป้าหมาย' + (ch.year ? ' ' + esc(ch.year) : '') + ': <b>' + esc(ch.value) + '</b></div>' : '') +
                         pctLine +
-                        '<div class="text-blue-700">อัตราปัจจุบัน: <b>' + rt + '</b></div>' +
+                        '<div class="text-blue-700">อัตราปัจจุบัน: <b>' + rt + '</b> <span class="text-slate-400">(ณ ' + riskTodayDMY() + ')</span></div>' +
                         '</div>';
                 }
                 return '<td' + RS + ' class="py-2 px-2 align-top border-r border-slate-100">' + info + presetSel +
@@ -4685,9 +4685,11 @@
             const lines = [];
             if (ch.value) lines.push('เป้าหมาย' + (ch.year ? ' ' + ch.year : '') + ': ' + ch.value);
             if (site === 'MDRO') { const m = mdroPctOfHai(); lines.push('ร้อยละของ HAI: ' + m.pct + '% (' + m.mdr + '/' + m.total + ')'); }
-            lines.push('อัตราปัจจุบัน: ' + (r.rate != null ? r.rate + ' ' + r.unit : r.count + ' ครั้ง'));
+            lines.push('อัตราปัจจุบัน: ' + (r.rate != null ? r.rate + ' ' + r.unit : r.count + ' ครั้ง') + ' (ณ ' + riskTodayDMY() + ')');
             return lines.join('\n');
         }
+        // วันที่วันนี้แบบ DD/MM/YYYY (สำหรับกำกับอัตราปัจจุบัน)
+        function riskTodayDMY() { return fmtDMY(new Date().toISOString().slice(0, 10)); }
         // รวมข้อความที่ผู้ใช้พิมพ์ + ข้อมูล Control อัตโนมัติ (ตัดบรรทัดอัตโนมัติเดิมออกก่อน กันซ้ำ)
         function monitorCombined(site, typed) {
             const cleaned = (typed || '').split('\n')
