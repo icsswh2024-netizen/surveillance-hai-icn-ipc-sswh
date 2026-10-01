@@ -498,6 +498,13 @@
                 <div class="relative h-72 w-full"><canvas id="mdrChart"></canvas></div>
             </div>
 
+            <!-- MDR rate chart -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800 mb-1">อัตราการติดเชื้อดื้อยา (MDRO) ต่อ 1,000 วันนอน — รายเดือน</h3>
+                <p class="text-xs text-slate-400 mb-4">อัตรา = จำนวนเคสดื้อยา (MDR) ÷ จำนวนวันนอนผู้ป่วย × 1,000</p>
+                <div class="relative h-72 w-full"><canvas id="mdrRateChart"></canvas></div>
+            </div>
+
             <!-- MDR ward bar chart -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <h3 class="text-lg font-semibold text-slate-800 mb-4">เชื้อดื้อยา (MDR) รายหอผู้ป่วย (จำนวนเคส)</h3>
@@ -1771,6 +1778,7 @@
         let ssiSiteChartInstance = null;
         let wardChartInstance = null;
         let mdrWardChartInstance = null;
+        let mdrRateChartInstance = null;
         let indicatorChartInstance = null;
         let specialChartInstance = null;
         let indicatorLoaded = false;
@@ -2595,6 +2603,47 @@
         function updateMdrDashChart() {
             renderMdrChart('mdrDashChart', () => { if (mdrDashChartInstance) mdrDashChartInstance.destroy(); }, c => mdrDashChartInstance = c);
         }
+        // กราฟเส้น: อัตรา MDRO ต่อ 1,000 วันนอน รายเดือน
+        function renderMdrRateChart() {
+            const cases = getFilteredCases();
+            const den = aggregateDenominatorsByMonth(getFilteredRows());
+            const byMonthMdr = {};
+            FISCAL_MONTHS.forEach(m => { byMonthMdr[m] = 0; });
+            cases.forEach(c => { if (c.isMDR && byMonthMdr[c.month] !== undefined) byMonthMdr[c.month] += 1; });
+            let months = FISCAL_MONTHS.filter(m => (den[m] && den[m].patientDay > 0) || byMonthMdr[m] > 0);
+            if (months.length === 0) months = FISCAL_MONTHS;
+            const labels = months.map(m => MONTH_LABELS[m]);
+            const rates = months.map(m => {
+                const pd = den[m] ? den[m].patientDay : 0;
+                return pd ? +((byMonthMdr[m] / pd) * 1000).toFixed(2) : 0;
+            });
+            const ctx = document.getElementById('mdrRateChart').getContext('2d');
+            const grad = ctx.createLinearGradient(0, 0, 0, 288);
+            grad.addColorStop(0, 'rgba(168,85,247,0.30)');
+            grad.addColorStop(1, 'rgba(168,85,247,0.02)');
+            if (mdrRateChartInstance) mdrRateChartInstance.destroy();
+            mdrRateChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'อัตรา MDRO /1,000 วันนอน', data: rates,
+                        borderColor: CAT.MDR, backgroundColor: grad, fill: true,
+                        tension: 0.4, borderWidth: 2.5, pointRadius: 4, pointHoverRadius: 6,
+                        _badge: true, _badgeColor: darken(CAT.MDR)
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Inter' } } } },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'อัตรา /1,000 วันนอน' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
 
         // รวม MDR รายหอผู้ป่วย (นับเฉพาะ HAI ที่ดื้อยา)
         function aggregateMdrByWard(rows) {
@@ -2623,6 +2672,7 @@
             document.getElementById('mdrHai').textContent = cases.length;
             document.getElementById('mdrPct').textContent = (cases.length ? Math.round(mdr / cases.length * 100) : 0) + '%';
             updateMdrChart();
+            renderMdrRateChart();
 
             // ตารางรายหอ
             const wards = aggregateMdrByWard(getRowsForWards())
