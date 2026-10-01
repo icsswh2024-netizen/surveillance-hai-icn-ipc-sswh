@@ -760,6 +760,9 @@
 
         <!-- ===================== VIEW: ตัวชี้วัด ===================== -->
         <div id="viewIndicator" class="space-y-6" hidden>
+            <!-- การ์ดตัวชี้วัด (สรุปค่าปัจจุบัน + ผ่าน/ไม่ผ่าน) -->
+            <div id="indCardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
             <!-- ตัวชี้วัดตามหมวด (ทะเบียนตัวชี้วัด + คำนวณอัตโนมัติ) -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="p-6 border-b border-slate-100">
@@ -3137,7 +3140,57 @@
             }).join('');
             wrap.querySelectorAll('.indCatBtn').forEach(b => b.addEventListener('click', () => { IND_CAT = b.dataset.cat; renderIndicatorCats(); renderIndicatorRegistry(); }));
         }
+        // การ์ดตัวชี้วัด — สรุปค่าปัจจุบัน/เป้าหมาย/ผ่าน-ไม่ผ่าน (ตามหมวดที่เลือก)
+        function renderIndicatorCards() {
+            const grid = document.getElementById('indCardGrid'); if (!grid) return;
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            const rows = IND_REGISTRY.filter(r => indInCat(r, IND_CAT));
+            if (!rows.length) { grid.innerHTML = '<div class="col-span-full text-center text-slate-400 py-6">— ไม่มีตัวชี้วัดในหมวดนี้ —</div>'; return; }
+            grid.innerHTML = rows.map(r => {
+                const src = (r['source'] || '').toString().trim();
+                const target = (r['เป้าหมาย'] || '').toString().trim();
+                const unitReg = (r['หน่วย'] || '').toString().trim();
+                let valHtml = '<span class="text-slate-400 text-base font-medium">รอบันทึก</span>';
+                let pass = null;
+                if (src === 'auto' || src === 'external') {
+                    const res = indicatorValue(r['metricKey']);
+                    if (res.v != null) {
+                        valHtml = '<span class="text-3xl font-bold text-slate-800">' + res.v + '</span>' +
+                            '<span class="text-xs text-slate-400 ml-1">' + esc(res.unit || unitReg) + '</span>';
+                        pass = indicatorPass(res.v, target);
+                    } else {
+                        valHtml = '<span class="text-3xl font-bold text-slate-400">0</span>' +
+                            '<span class="text-xs text-slate-400 ml-1">' + esc(unitReg) + '</span>';
+                    }
+                }
+                const badge = pass == null
+                    ? '<span class="text-[11px] font-semibold rounded-full px-2.5 py-1 bg-slate-100 text-slate-500">— ประเมินเอง</span>'
+                    : (pass ? '<span class="text-[11px] font-semibold rounded-full px-2.5 py-1 bg-emerald-100 text-emerald-700">✅ ผ่าน</span>'
+                            : '<span class="text-[11px] font-semibold rounded-full px-2.5 py-1 bg-rose-100 text-rose-700">❌ ไม่ผ่าน</span>');
+                const bar = pass == null ? 'from-slate-300 to-slate-400'
+                    : (pass ? 'from-emerald-400 to-emerald-600' : 'from-rose-400 to-rose-600');
+                const srcBadge = src === 'auto' ? 'bg-blue-50 text-blue-700' : src === 'external' ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700';
+                const cats = ['NQA', 'HA6', 'เขต', 'สปสช.'].filter(c => indInCat(r, c));
+                return '<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">' +
+                    '<div class="h-1.5 bg-gradient-to-r ' + bar + '"></div>' +
+                    '<div class="p-5 flex flex-col gap-3 flex-1">' +
+                        '<div class="flex items-start justify-between gap-2">' +
+                            '<span class="text-[11px] font-semibold text-slate-400">' + esc(r['รหัส']) + '</span>' +
+                            '<span class="text-[11px] font-medium rounded-full px-2 py-0.5 ' + srcBadge + '">' + esc(src || '-') + '</span>' +
+                        '</div>' +
+                        '<div class="font-medium text-slate-800 text-sm leading-snug min-h-[2.5rem]">' + esc(r['ชื่อตัวชี้วัด']) + '</div>' +
+                        '<div class="mt-auto">' + valHtml + '</div>' +
+                        '<div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">' +
+                            '<span class="text-xs text-slate-500">เป้า: <b class="text-emerald-700">' + esc(target || '-') + '</b></span>' +
+                            badge +
+                        '</div>' +
+                        (cats.length ? '<div class="text-[11px] text-slate-400">' + cats.join(' · ') + '</div>' : '') +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
         function renderIndicatorRegistry() {
+            renderIndicatorCards();
             const body = document.getElementById('indRegBody'); if (!body) return;
             const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
             const rows = IND_REGISTRY.filter(r => indInCat(r, IND_CAT));
