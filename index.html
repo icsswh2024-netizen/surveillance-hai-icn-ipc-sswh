@@ -5029,12 +5029,26 @@
                 const rows = labels.map((l, i) => [l].concat(ds.map(d => (d.data[i] != null && typeof d.data[i] === 'object') ? (d.data[i].y ?? '') : (d.data[i] ?? ''))));
                 return [head].concat(rows);
             }
+            // ถ่ายการ์ดให้ครบ แม้มีเลื่อนแนวนอน/เนื้อหากว้างเกินจอ (ขยายคอนเทนเนอร์ที่ scroll ชั่วคราว)
+            async function captureCard(card) {
+                const scrollers = Array.from(card.querySelectorAll('.overflow-x-auto, .overflow-auto, .overflow-x-scroll'));
+                const saved = scrollers.map(s => ({ s, of: s.style.overflow, w: s.style.width }));
+                scrollers.forEach(s => { s.style.overflow = 'visible'; s.style.width = 'max-content'; });
+                const cardOF = card.style.overflow; card.style.overflow = 'visible';
+                await new Promise(r => setTimeout(r, 40));
+                const w = Math.ceil(Math.max(card.scrollWidth, card.offsetWidth));
+                const h = Math.ceil(Math.max(card.scrollHeight, card.offsetHeight));
+                const canvas = await html2canvas(card, { scale: 3, backgroundColor: '#ffffff', width: w, height: h, windowWidth: w, scrollX: 0, scrollY: 0, useCORS: true });
+                saved.forEach(o => { o.s.style.overflow = o.of; o.s.style.width = o.w; });
+                card.style.overflow = cardOF;
+                return canvas;
+            }
             async function exportImg(card, kind) {
                 if (typeof html2canvas === 'undefined') return;
                 const bar = card.querySelector('.cardTools'), btns = bar ? bar.querySelectorAll('button') : [];
                 btns.forEach(b => b.style.visibility = 'hidden');
                 try {
-                    const canvas = await html2canvas(card, { scale: 3, backgroundColor: '#ffffff' });
+                    const canvas = await captureCard(card);
                     const name = fileSafe(cardTitle(card));
                     if (kind === 'jpg') { const a = document.createElement('a'); a.href = canvas.toDataURL('image/jpeg', 0.98); a.download = name + '.jpg'; a.click(); }
                     else {
