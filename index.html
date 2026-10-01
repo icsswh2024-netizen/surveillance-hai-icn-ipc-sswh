@@ -847,20 +847,23 @@
                         </div>
                     </div>
                     <div class="border-t border-slate-100 pt-4">
-                        <label class="block text-xs font-medium text-slate-500 mb-1">เป้าหมาย (ค่าเริ่มต้น)</label>
-                        <input id="indf_target" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="เช่น <1.08, ≥85%, 0 คน, ลดลงจากปีก่อน">
-                        <p class="text-[11px] text-slate-400 mt-1">เป้าแยกหมวด (กรอกเฉพาะที่ต่างจากค่าเริ่มต้น):</p>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
-                            <input id="indf_target_NQA" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm" placeholder="NQA">
-                            <input id="indf_target_HA6" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm" placeholder="HA6">
-                            <input id="indf_target_khet" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm" placeholder="เขต">
-                            <input id="indf_target_sss" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm" placeholder="สปสช.">
+                        <label class="block text-xs font-medium text-slate-500 mb-2">เป้าหมาย / คู่เทียบ <span class="font-normal">(กรอกแยกหมวดเฉพาะที่ต่างจากค่าเริ่มต้น · วันที่รูปแบบ DD/MM/YYYY)</span></label>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs border-collapse">
+                                <thead>
+                                    <tr class="text-slate-500">
+                                        <th class="text-left font-medium py-1 pr-2">หมวด</th>
+                                        <th class="text-left font-medium py-1 px-1">เป้าหมาย</th>
+                                        <th class="text-left font-medium py-1 px-1">วันที่อัปเดตเป้า</th>
+                                        <th class="text-left font-medium py-1 px-1">คู่เทียบ</th>
+                                        <th class="text-left font-medium py-1 px-1">วันที่อัปเดตคู่เทียบ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="indf_matrix"></tbody>
+                            </table>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div><label class="block text-xs font-medium text-slate-500 mb-1">วันที่อัปเดตเป้า</label><input id="indf_tdate" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="DD/MM/YYYY"></div>
-                        <div><label class="block text-xs font-medium text-slate-500 mb-1">ผู้รับผิดชอบ</label><input id="indf_owner" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
-                    </div>
+                    <div><label class="block text-xs font-medium text-slate-500 mb-1">ผู้รับผิดชอบ</label><input id="indf_owner" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
                     <div><label class="block text-xs font-medium text-slate-500 mb-1">ข้อมูลเดิมที่ใช้</label><input id="indf_src" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
                     <p id="indf_status" class="text-xs text-slate-400"></p>
                 </div>
@@ -3244,6 +3247,19 @@
             if (!v) v = (r['วันที่อัปเดตเป้า'] || r['วันที่อัปเดต'] || '').toString().trim();
             return v ? fmtDMY(v) : '';
         }
+        // คู่เทียบ (benchmark) ตามหมวด + วันที่อัปเดตคู่เทียบ
+        function indBenchmark(r, cat) {
+            cat = cat || IND_CAT;
+            if (cat && cat !== 'ทั้งหมด') { const t = (r['คู่เทียบ_' + cat] || '').toString().trim(); if (t) return t; }
+            return (r['คู่เทียบ'] || '').toString().trim();
+        }
+        function indBenchmarkDate(r, cat) {
+            cat = cat || IND_CAT;
+            let v = '';
+            if (cat && cat !== 'ทั้งหมด') v = (r['วันที่อัปเดตคู่เทียบ_' + cat] || '').toString().trim();
+            if (!v) v = (r['วันที่อัปเดตคู่เทียบ'] || '').toString().trim();
+            return v ? fmtDMY(v) : '';
+        }
         function renderIndicatorRegistry() {
             renderIndicatorCards();
             const body = document.getElementById('indRegBody'); if (!body) return;
@@ -3269,11 +3285,20 @@
                 let targetCell = '<span class="text-emerald-700 font-medium">' + esc(target || '-') + '</span>';
                 const tDate = indTargetDate(r);
                 if (tDate) targetCell += '<div class="text-[10px] text-slate-400 mt-0.5">อัปเดต ' + esc(tDate) + '</div>';
+                const bench = indBenchmark(r), bDate = indBenchmarkDate(r);
+                if (bench) targetCell += '<div class="text-[11px] text-slate-500 mt-1">คู่เทียบ: <b class="text-slate-700">' + esc(bench) + '</b>' + (bDate ? ' <span class="text-[10px] text-slate-400">(อัปเดต ' + esc(bDate) + ')</span>' : '') + '</div>';
                 if (IND_CAT === 'ทั้งหมด') {
-                    const perCat = cats.map(c => ({ c, t: (r['เป้าหมาย_' + c] || '').toString().trim(), d: indTargetDate(r, c) })).filter(x => x.t && x.t !== target);
+                    const perCat = cats.map(c => ({
+                        c,
+                        t: (r['เป้าหมาย_' + c] || '').toString().trim(), d: indTargetDate(r, c),
+                        b: (r['คู่เทียบ_' + c] || '').toString().trim(), bd: indBenchmarkDate(r, c)
+                    })).filter(x => (x.t && x.t !== target) || (x.b && x.b !== bench));
                     if (perCat.length) {
-                        targetCell += '<div class="text-[11px] text-slate-500 mt-1 space-y-0.5">' +
-                            perCat.map(x => '<div>' + esc(x.c) + ': <b class="text-slate-700">' + esc(x.t) + '</b>' + (x.d ? ' <span class="text-[10px] text-slate-400">(' + esc(x.d) + ')</span>' : '') + '</div>').join('') + '</div>';
+                        targetCell += '<div class="text-[11px] text-slate-500 mt-1 space-y-0.5 border-t border-slate-100 pt-1">' +
+                            perCat.map(x => '<div><span class="text-slate-400">' + esc(x.c) + ':</span> ' +
+                                (x.t && x.t !== target ? 'เป้า <b class="text-slate-700">' + esc(x.t) + '</b>' + (x.d ? ' (' + esc(x.d) + ')' : '') : '') +
+                                (x.b && x.b !== bench ? ' · คู่เทียบ <b class="text-slate-700">' + esc(x.b) + '</b>' + (x.bd ? ' (' + esc(x.bd) + ')' : '') : '') +
+                                '</div>').join('') + '</div>';
                     }
                 }
                 const srcBadge = src === 'auto' ? 'bg-blue-50 text-blue-700' : src === 'external' ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700';
@@ -3296,8 +3321,37 @@
         }
 
         /* ===== จัดการตัวชี้วัด: เพิ่ม / แก้ไข / ลบ (เขียนกลับชีตผ่าน Apps Script) ===== */
-        const INDF_TARGET_IDS = { 'NQA': 'indf_target_NQA', 'HA6': 'indf_target_HA6', 'เขต': 'indf_target_khet', 'สปสช.': 'indf_target_sss' };
+        // แถวในตารางเป้า/คู่เทียบ: ค่าเริ่มต้น + แยกหมวด (suf = ส่วนต่อท้ายชื่อคอลัมน์)
+        const INDF_ROWS = [
+            { k: 'def', label: 'ค่าเริ่มต้น', suf: '' },
+            { k: 'NQA', label: 'NQA', suf: '_NQA' },
+            { k: 'HA6', label: 'HA6', suf: '_HA6' },
+            { k: 'khet', label: 'เขต', suf: '_เขต' },
+            { k: 'sss', label: 'สปสช.', suf: '_สปสช.' }
+        ];
+        const INDF_COLS = [
+            { c: 'tg', col: 'เป้าหมาย', ph: 'เช่น <1.08' },
+            { c: 'tgd', col: 'วันที่อัปเดตเป้า', ph: 'DD/MM/YYYY', date: true },
+            { c: 'bm', col: 'คู่เทียบ', ph: 'เช่น ค่าเฉลี่ยเขต' },
+            { c: 'bmd', col: 'วันที่อัปเดตคู่เทียบ', ph: 'DD/MM/YYYY', date: true }
+        ];
         function indFval(id) { const e = document.getElementById(id); return e ? e.value : ''; }
+        function buildIndMatrix(r) {
+            const tb = document.getElementById('indf_matrix'); if (!tb) return;
+            tb.innerHTML = INDF_ROWS.map(row => {
+                const first = row.k === 'def';
+                const cells = INDF_COLS.map(cd => {
+                    const id = 'indf_' + cd.c + '_' + row.k;
+                    let v = r ? (r[cd.col + row.suf] || '') : '';
+                    if (cd.date && v) v = fmtDMY(v);
+                    else if (cd.date && !v && first && !r) v = riskTodayDMY(); // เพิ่มใหม่ ตั้งวันที่เป้าค่าเริ่มต้นเป็นวันนี้
+                    const ph = first ? cd.ph : (row.label);
+                    return '<td class="py-1 px-1"><input id="' + id + '" value="' + String(v).replace(/"/g, '&quot;') +
+                        '" class="w-full border border-slate-200 rounded px-2 py-1 text-xs" placeholder="' + ph + '"></td>';
+                }).join('');
+                return '<tr><td class="py-1 pr-2 ' + (first ? 'font-semibold text-slate-700' : 'text-slate-500') + '">' + row.label + '</td>' + cells + '</tr>';
+            }).join('');
+        }
         function openIndForm(code) {
             const modal = document.getElementById('indFormModal');
             const r = code ? IND_REGISTRY.find(x => String(x['รหัส'] || '').trim() === String(code).trim()) : null;
@@ -3312,11 +3366,9 @@
             set('indf_unit', r ? r['หน่วย'] : '');
             set('indf_freq', r ? r['ความถี่'] : '');
             set('indf_key', r ? r['metricKey'] : '');
-            set('indf_target', r ? r['เป้าหมาย'] : '');
-            Object.keys(INDF_TARGET_IDS).forEach(c => set(INDF_TARGET_IDS[c], r ? (r['เป้าหมาย_' + c] || '') : ''));
-            set('indf_tdate', r ? fmtDMY(r['วันที่อัปเดตเป้า'] || '') : riskTodayDMY());
             set('indf_owner', r ? r['ผู้รับผิดชอบ'] : '');
             set('indf_src', r ? r['ข้อมูลเดิมที่ใช้'] : '');
+            buildIndMatrix(r);
             document.querySelectorAll('.indf_cat').forEach(cb => { cb.checked = r ? indInCat(r, cb.value) : false; });
             document.getElementById('indf_status').textContent = '';
             modal.classList.remove('hidden'); modal.classList.add('flex');
@@ -3332,12 +3384,15 @@
                 'ความถี่': indFval('indf_freq').trim(),
                 'source': indFval('indf_source').trim(),
                 'metricKey': indFval('indf_key').trim(),
-                'เป้าหมาย': indFval('indf_target').trim(),
-                'วันที่อัปเดตเป้า': dOnly(indFval('indf_tdate').trim()),
                 'ผู้รับผิดชอบ': indFval('indf_owner').trim(),
                 'ข้อมูลเดิมที่ใช้': indFval('indf_src').trim()
             };
-            Object.keys(INDF_TARGET_IDS).forEach(c => { rec['เป้าหมาย_' + c] = indFval(INDF_TARGET_IDS[c]).trim(); });
+            // เป้าหมาย / คู่เทียบ + วันที่อัปเดต (ค่าเริ่มต้น + แยกหมวด)
+            INDF_ROWS.forEach(row => INDF_COLS.forEach(cd => {
+                let v = indFval('indf_' + cd.c + '_' + row.k).trim();
+                if (cd.date) v = v ? dOnly(v) : '';
+                rec[cd.col + row.suf] = v;
+            }));
             const checked = {}; document.querySelectorAll('.indf_cat').forEach(cb => { checked[cb.value] = cb.checked; });
             ['NQA', 'HA6', 'เขต', 'สปสช.'].forEach(c => { rec[c] = checked[c] ? '✓' : ''; });
             return rec;
