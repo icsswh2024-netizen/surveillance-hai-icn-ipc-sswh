@@ -3166,6 +3166,16 @@
                 IND_CAT = b.dataset.cat; renderIndicatorCats(); renderIndicatorRegistry();
             }));
         }
+        // เป้าหมายตามหมวดที่เลือก — รองรับคอลัมน์ เป้าหมาย_NQA / เป้าหมาย_HA6 / เป้าหมาย_เขต / เป้าหมาย_สปสช.
+        // ถ้าไม่มีคอลัมน์แยก หรือเลือก "ทั้งหมด" จะใช้คอลัมน์ "เป้าหมาย" เป็นค่าตั้งต้น
+        function indTarget(r, cat) {
+            cat = cat || IND_CAT;
+            if (cat && cat !== 'ทั้งหมด') {
+                const t = (r['เป้าหมาย_' + cat] || '').toString().trim();
+                if (t) return t;
+            }
+            return (r['เป้าหมาย'] || '').toString().trim();
+        }
         function renderIndicatorRegistry() {
             renderIndicatorCards();
             const body = document.getElementById('indRegBody'); if (!body) return;
@@ -3174,7 +3184,7 @@
             if (!rows.length) { body.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400">— ไม่มีตัวชี้วัดในหมวดนี้ —</td></tr>'; return; }
             body.innerHTML = rows.map(r => {
                 const src = (r['source'] || '').toString().trim();
-                const target = (r['เป้าหมาย'] || '').toString().trim();
+                const target = indTarget(r);
                 let valCell = '<span class="text-slate-400">รอบันทึก</span>', passCell = '<span class="text-slate-300">—</span>';
                 if (src === 'auto' || src === 'external') {
                     const res = indicatorValue(r['metricKey']);
@@ -3187,11 +3197,20 @@
                     } else { valCell = '<span class="text-slate-400">0</span>'; }
                 }
                 const cats = ['NQA', 'HA6', 'เขต', 'สปสช.'].filter(c => indInCat(r, c));
+                // เมื่อดู "ทั้งหมด" และตัวชี้วัดมีเป้าแยกหมวดที่ต่างกัน → แสดงรายละเอียดเป้าแต่ละหมวด
+                let targetCell = '<span class="text-emerald-700 font-medium">' + esc(target || '-') + '</span>';
+                if (IND_CAT === 'ทั้งหมด') {
+                    const perCat = cats.map(c => ({ c, t: (r['เป้าหมาย_' + c] || '').toString().trim() })).filter(x => x.t && x.t !== target);
+                    if (perCat.length) {
+                        targetCell += '<div class="text-[11px] text-slate-500 mt-1 space-y-0.5">' +
+                            perCat.map(x => '<div>' + esc(x.c) + ': <b class="text-slate-700">' + esc(x.t) + '</b></div>').join('') + '</div>';
+                    }
+                }
                 const srcBadge = src === 'auto' ? 'bg-blue-50 text-blue-700' : src === 'external' ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700';
                 return '<tr class="hover:bg-slate-50">' +
                     '<td class="py-3 px-4 text-slate-500 whitespace-nowrap">' + esc(r['รหัส']) + '</td>' +
                     '<td class="py-3 px-4"><div class="font-medium text-slate-800">' + esc(r['ชื่อตัวชี้วัด']) + '</div><div class="text-[11px] text-slate-400">' + esc(r['นิยาม'] || ((r['ตัวตั้ง'] || '') + (r['ตัวหาร'] ? ' ÷ ' + r['ตัวหาร'] : ''))) + '</div></td>' +
-                    '<td class="py-3 px-4 text-center whitespace-nowrap text-emerald-700 font-medium">' + esc(target || '-') + '</td>' +
+                    '<td class="py-3 px-4 text-center whitespace-nowrap">' + targetCell + '</td>' +
                     '<td class="py-3 px-4 text-center whitespace-nowrap">' + valCell + '</td>' +
                     '<td class="py-3 px-4 text-center">' + passCell + '</td>' +
                     '<td class="py-3 px-4 text-center"><span class="text-[11px] font-medium rounded-full px-2 py-0.5 ' + srcBadge + '">' + esc(src || '-') + '</span></td>' +
