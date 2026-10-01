@@ -26,7 +26,7 @@ function doGet(e) {
   const action = e && e.parameter && e.parameter.action;
   if (action === 'ping') {
     const names = SpreadsheetApp.getActiveSpreadsheet().getSheets().map(function (s) { return s.getName(); });
-    return jsonOut_({ ok: true, version: 'indicator-v1', sheets: names }, cb);
+    return jsonOut_({ ok: true, version: 'indicator-v2', write: true, sheets: names }, cb);
   }
   const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(INDICATOR_SHEET);
   if (!sh) return jsonOut_({ ok: false, note: 'ไม่พบแท็บ "' + INDICATOR_SHEET + '"', rows: [] }, cb);
@@ -39,6 +39,54 @@ function doGet(e) {
     return o;
   });
   return jsonOut_({ ok: true, rows: rows }, cb);
+}
+
+/*** ===== เพิ่ม/แก้ไข/ลบ ตัวชี้วัด (เขียนกลับชีต) =====
+ * action = 'upsert'  → body.record = { 'รหัส':..., 'ชื่อตัวชี้วัด':..., ... }
+ *                       (เพิ่มใหม่ถ้ายังไม่มีรหัส / แก้ไขถ้ามีอยู่แล้ว)
+ *          'delete'  → body.code = 'IPC-xx'
+ * คอลัมน์ที่ยังไม่มีในหัวตารางจะถูกสร้างให้อัตโนมัติ
+ ***/
+function doPost(e) {
+  try {
+    const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    const action = body.action;
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sh = ss.getSheetByName(INDICATOR_SHEET);
+    if (!sh) { sh = ss.insertSheet(INDICATOR_SHEET); sh.getRange(1, 1, 1, INDICATOR_HEADERS.length).setValues([INDICATOR_HEADERS]); }
+    let data = sh.getDataRange().getValues();
+    if (!data.length) { sh.getRange(1, 1, 1, INDICATOR_HEADERS.length).setValues([INDICATOR_HEADERS]); data = [INDICATOR_HEADERS.slice()]; }
+    let head = data[0].map(function (x) { return String(x).trim(); });
+    const codeCol = head.indexOf('รหัส') < 0 ? 0 : head.indexOf('รหัส');
+
+    if (action === 'upsert') {
+      const rec = body.record || {};
+      const code = String(rec['รหัส'] || '').trim();
+      if (!code) return jsonOut_({ ok: false, note: 'ไม่มีรหัสตัวชี้วัด' });
+      // สร้างคอลัมน์ใหม่อัตโนมัติถ้ายังไม่มี
+      let headChanged = false;
+      Object.keys(rec).forEach(function (k) { if (head.indexOf(k) < 0) { head.push(k); headChanged = true; } });
+      if (headChanged) sh.getRange(1, 1, 1, head.length).setValues([head]);
+      const arr = head.map(function (h) { return rec[h] != null ? rec[h] : ''; });
+      let foundRow = -1;
+      for (let i = 1; i < data.length; i++) { if (String(data[i][codeCol] || '').trim() === code) { foundRow = i + 1; break; } }
+      if (foundRow > 0) sh.getRange(foundRow, 1, 1, arr.length).setValues([arr]);
+      else sh.appendRow(arr);
+      return jsonOut_({ ok: true, action: 'upsert', code: code, updated: foundRow > 0 });
+    }
+
+    if (action === 'delete') {
+      const code = String(body.code || '').trim();
+      if (!code) return jsonOut_({ ok: false, note: 'ไม่มีรหัสตัวชี้วัด' });
+      let removed = 0;
+      for (let i = data.length - 1; i >= 1; i--) { if (String(data[i][codeCol] || '').trim() === code) { sh.deleteRow(i + 1); removed++; } }
+      return jsonOut_({ ok: true, action: 'delete', code: code, removed: removed });
+    }
+
+    return jsonOut_({ ok: false, note: 'unknown action: ' + action });
+  } catch (err) {
+    return jsonOut_({ ok: false, error: String(err) });
+  }
 }
 
 /*** ===== ติดตั้ง/เติมแท็บ "ทะเบียนตัวชี้วัด" (รันครั้งเดียว) =====

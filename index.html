@@ -766,8 +766,13 @@
             <!-- ตัวชี้วัดตามหมวด (ทะเบียนตัวชี้วัด + คำนวณอัตโนมัติ) -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="p-6 border-b border-slate-100">
-                    <h3 class="text-lg font-semibold text-slate-800">ตัวชี้วัดตามหมวดมาตรฐาน</h3>
-                    <p class="text-xs text-slate-400 mt-1" id="indRegStatus">กำลังโหลดทะเบียนตัวชี้วัด...</p>
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-800">ตัวชี้วัดตามหมวดมาตรฐาน</h3>
+                            <p class="text-xs text-slate-400 mt-1" id="indRegStatus">กำลังโหลดทะเบียนตัวชี้วัด...</p>
+                        </div>
+                        <button id="btnIndAdd" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium self-start whitespace-nowrap">➕ เพิ่มตัวชี้วัด</button>
+                    </div>
                     <div id="indRegCats" class="flex gap-2 mt-3 flex-wrap"></div>
                 </div>
                 <div class="overflow-x-auto">
@@ -781,6 +786,7 @@
                                 <th class="py-3 px-4 text-center">ผ่าน/ไม่ผ่าน</th>
                                 <th class="py-3 px-4 text-center">แหล่งข้อมูล</th>
                                 <th class="py-3 px-4">หมวด</th>
+                                <th class="py-3 px-4 text-center">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody id="indRegBody" class="divide-y divide-slate-100"></tbody>
@@ -810,6 +816,60 @@
             </div>
             <p class="text-xs text-slate-400 text-center">แหล่งข้อมูล: Google Sheet (เผยแพร่เป็น CSV) — แยกจากชีตทะเบียน-1</p>
         </div><!-- /viewIndicator -->
+
+        <!-- Modal: เพิ่ม/แก้ไขตัวชี้วัด -->
+        <div id="indFormModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between p-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl">
+                    <h3 id="indFormTitle" class="text-lg font-semibold text-slate-800">เพิ่มตัวชี้วัด</h3>
+                    <button id="indFormClose" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">&times;</button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div><label class="block text-xs font-medium text-slate-500 mb-1">รหัส *</label><input id="indf_code" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="เช่น IPC-16"></div>
+                        <div><label class="block text-xs font-medium text-slate-500 mb-1">แหล่งข้อมูล (source)</label><select id="indf_source" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="manual">manual (บันทึกเอง)</option><option value="auto">auto (คำนวณอัตโนมัติ)</option><option value="external">external (ข้อมูลภายนอก)</option></select></div>
+                    </div>
+                    <div><label class="block text-xs font-medium text-slate-500 mb-1">ชื่อตัวชี้วัด</label><input id="indf_name" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div><label class="block text-xs font-medium text-slate-500 mb-1">ตัวตั้ง</label><input id="indf_num" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                        <div><label class="block text-xs font-medium text-slate-500 mb-1">ตัวหาร</label><input id="indf_den" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                        <div><label class="block text-xs font-medium text-slate-500 mb-1">หน่วย</label><input id="indf_unit" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="เช่น ร้อยละ, /1000 วันนอน"></div>
+                        <div><label class="block text-xs font-medium text-slate-500 mb-1">ความถี่</label><input id="indf_freq" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="เช่น เดือน/ไตรมาส/ปี"></div>
+                    </div>
+                    <div><label class="block text-xs font-medium text-slate-500 mb-1">metricKey (สำหรับ auto/external — เว้นว่างถ้า manual)</label><input id="indf_key" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="เช่น hai_rate, cauti_rate, mdr_pct"></div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">หมวด</label>
+                        <div class="flex gap-4 flex-wrap text-sm">
+                            <label class="flex items-center gap-1"><input type="checkbox" class="indf_cat" value="NQA"> NQA</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" class="indf_cat" value="HA6"> HA6</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" class="indf_cat" value="เขต"> เขต</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" class="indf_cat" value="สปสช."> สปสช.</label>
+                        </div>
+                    </div>
+                    <div class="border-t border-slate-100 pt-4">
+                        <label class="block text-xs font-medium text-slate-500 mb-1">เป้าหมาย (ค่าเริ่มต้น)</label>
+                        <input id="indf_target" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="เช่น <1.08, ≥85%, 0 คน, ลดลงจากปีก่อน">
+                        <p class="text-[11px] text-slate-400 mt-1">เป้าแยกหมวด (กรอกเฉพาะที่ต่างจากค่าเริ่มต้น):</p>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
+                            <input id="indf_target_NQA" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm" placeholder="NQA">
+                            <input id="indf_target_HA6" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm" placeholder="HA6">
+                            <input id="indf_target_khet" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm" placeholder="เขต">
+                            <input id="indf_target_sss" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm" placeholder="สปสช.">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div><label class="block text-xs font-medium text-slate-500 mb-1">วันที่อัปเดตเป้า</label><input id="indf_tdate" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="DD/MM/YYYY"></div>
+                        <div><label class="block text-xs font-medium text-slate-500 mb-1">ผู้รับผิดชอบ</label><input id="indf_owner" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                    </div>
+                    <div><label class="block text-xs font-medium text-slate-500 mb-1">ข้อมูลเดิมที่ใช้</label><input id="indf_src" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                    <p id="indf_status" class="text-xs text-slate-400"></p>
+                </div>
+                <div class="flex justify-end gap-2 p-5 border-t border-slate-100 sticky bottom-0 bg-white rounded-b-2xl">
+                    <button id="indFormCancel" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-lg font-medium">ยกเลิก</button>
+                    <button id="indFormSave" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg font-medium">บันทึก</button>
+                </div>
+            </div>
+        </div>
 
         <!-- ===================== VIEW: บทวิเคราะห์ ===================== -->
         <div id="viewAnalysis" class="space-y-6" hidden>
@@ -3189,7 +3249,7 @@
             const body = document.getElementById('indRegBody'); if (!body) return;
             const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
             const rows = IND_REGISTRY.filter(r => indInCat(r, IND_CAT));
-            if (!rows.length) { body.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400">— ไม่มีตัวชี้วัดในหมวดนี้ —</td></tr>'; return; }
+            if (!rows.length) { body.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-slate-400">— ไม่มีตัวชี้วัดในหมวดนี้ —</td></tr>'; return; }
             body.innerHTML = rows.map(r => {
                 const src = (r['source'] || '').toString().trim();
                 const target = indTarget(r);
@@ -3225,8 +3285,95 @@
                     '<td class="py-3 px-4 text-center">' + passCell + '</td>' +
                     '<td class="py-3 px-4 text-center"><span class="text-[11px] font-medium rounded-full px-2 py-0.5 ' + srcBadge + '">' + esc(src || '-') + '</span></td>' +
                     '<td class="py-3 px-4 text-[11px] text-slate-500">' + cats.join(' · ') + '</td>' +
+                    '<td class="py-3 px-4 text-center whitespace-nowrap">' +
+                        '<button class="indEditBtn text-xs text-blue-600 hover:text-blue-800 font-medium mr-2" data-code="' + esc(r['รหัส']) + '">แก้ไข</button>' +
+                        '<button class="indDelBtn text-xs text-rose-600 hover:text-rose-800 font-medium" data-code="' + esc(r['รหัส']) + '">ลบ</button>' +
+                    '</td>' +
                     '</tr>';
             }).join('');
+            body.querySelectorAll('.indEditBtn').forEach(b => b.addEventListener('click', () => openIndForm(b.dataset.code)));
+            body.querySelectorAll('.indDelBtn').forEach(b => b.addEventListener('click', () => deleteIndicator(b.dataset.code)));
+        }
+
+        /* ===== จัดการตัวชี้วัด: เพิ่ม / แก้ไข / ลบ (เขียนกลับชีตผ่าน Apps Script) ===== */
+        const INDF_TARGET_IDS = { 'NQA': 'indf_target_NQA', 'HA6': 'indf_target_HA6', 'เขต': 'indf_target_khet', 'สปสช.': 'indf_target_sss' };
+        function indFval(id) { const e = document.getElementById(id); return e ? e.value : ''; }
+        function openIndForm(code) {
+            const modal = document.getElementById('indFormModal');
+            const r = code ? IND_REGISTRY.find(x => String(x['รหัส'] || '').trim() === String(code).trim()) : null;
+            document.getElementById('indFormTitle').textContent = r ? ('แก้ไขตัวชี้วัด ' + code) : 'เพิ่มตัวชี้วัด';
+            const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v == null ? '' : v; };
+            set('indf_code', r ? r['รหัส'] : '');
+            document.getElementById('indf_code').readOnly = !!r; // แก้ไขห้ามเปลี่ยนรหัส (ใช้จับคู่แถว)
+            set('indf_source', (r && r['source']) ? String(r['source']).trim() : 'manual');
+            set('indf_name', r ? r['ชื่อตัวชี้วัด'] : '');
+            set('indf_num', r ? r['ตัวตั้ง'] : '');
+            set('indf_den', r ? r['ตัวหาร'] : '');
+            set('indf_unit', r ? r['หน่วย'] : '');
+            set('indf_freq', r ? r['ความถี่'] : '');
+            set('indf_key', r ? r['metricKey'] : '');
+            set('indf_target', r ? r['เป้าหมาย'] : '');
+            Object.keys(INDF_TARGET_IDS).forEach(c => set(INDF_TARGET_IDS[c], r ? (r['เป้าหมาย_' + c] || '') : ''));
+            set('indf_tdate', r ? fmtDMY(r['วันที่อัปเดตเป้า'] || '') : riskTodayDMY());
+            set('indf_owner', r ? r['ผู้รับผิดชอบ'] : '');
+            set('indf_src', r ? r['ข้อมูลเดิมที่ใช้'] : '');
+            document.querySelectorAll('.indf_cat').forEach(cb => { cb.checked = r ? indInCat(r, cb.value) : false; });
+            document.getElementById('indf_status').textContent = '';
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+        function closeIndForm() { const m = document.getElementById('indFormModal'); m.classList.add('hidden'); m.classList.remove('flex'); }
+        function indRecordFromForm() {
+            const rec = {
+                'รหัส': indFval('indf_code').trim(),
+                'ชื่อตัวชี้วัด': indFval('indf_name').trim(),
+                'ตัวตั้ง': indFval('indf_num').trim(),
+                'ตัวหาร': indFval('indf_den').trim(),
+                'หน่วย': indFval('indf_unit').trim(),
+                'ความถี่': indFval('indf_freq').trim(),
+                'source': indFval('indf_source').trim(),
+                'metricKey': indFval('indf_key').trim(),
+                'เป้าหมาย': indFval('indf_target').trim(),
+                'วันที่อัปเดตเป้า': dOnly(indFval('indf_tdate').trim()),
+                'ผู้รับผิดชอบ': indFval('indf_owner').trim(),
+                'ข้อมูลเดิมที่ใช้': indFval('indf_src').trim()
+            };
+            Object.keys(INDF_TARGET_IDS).forEach(c => { rec['เป้าหมาย_' + c] = indFval(INDF_TARGET_IDS[c]).trim(); });
+            const checked = {}; document.querySelectorAll('.indf_cat').forEach(cb => { checked[cb.value] = cb.checked; });
+            ['NQA', 'HA6', 'เขต', 'สปสช.'].forEach(c => { rec[c] = checked[c] ? '✓' : ''; });
+            return rec;
+        }
+        async function postIndicator(payload) {
+            // ตรวจว่า Deploy รองรับการเขียน (indicator-v2) ก่อน
+            let ping = null; try { ping = await jsonpFrom(INDICATOR_REGISTRY_URL, 'action=ping'); } catch (e) { }
+            if (!ping || !ping.write) throw new Error('Apps Script ยังไม่รองรับการบันทึก — ต้องวางโค้ด IndicatorCode.gs ใหม่แล้ว Deploy → New version ก่อน');
+            await fetch(INDICATOR_REGISTRY_URL, { method: 'POST', body: JSON.stringify(payload) });
+        }
+        async function saveIndicator() {
+            const st = document.getElementById('indf_status');
+            const rec = indRecordFromForm();
+            if (!rec['รหัส']) { st.textContent = '⚠️ กรุณากรอกรหัสตัวชี้วัด'; st.className = 'text-xs text-rose-600'; return; }
+            st.textContent = 'กำลังบันทึก...'; st.className = 'text-xs text-slate-500';
+            try {
+                await postIndicator({ action: 'upsert', record: rec });
+                closeIndForm();
+                const m = riskStatusProxy(); m.textContent = 'กำลังบันทึกลงชีต...'; m.className = 'text-blue-600';
+                setTimeout(async () => {
+                    await loadIndicatorRegistry(true);
+                    const mm = riskStatusProxy(); mm.textContent = '✅ บันทึกตัวชี้วัด ' + rec['รหัส'] + ' แล้ว'; mm.className = 'text-emerald-600';
+                }, 1800);
+            } catch (err) { st.textContent = '⚠️ ' + err.message; st.className = 'text-xs text-rose-600'; }
+        }
+        async function deleteIndicator(code) {
+            if (!code) return;
+            if (!confirm('ลบตัวชี้วัด "' + code + '" ออกจากทะเบียน?')) return;
+            const m = riskStatusProxy(); m.textContent = 'กำลังลบ...'; m.className = 'text-blue-600';
+            try {
+                await postIndicator({ action: 'delete', code: code });
+                setTimeout(async () => {
+                    await loadIndicatorRegistry(true);
+                    const mm = riskStatusProxy(); mm.textContent = '✅ ลบตัวชี้วัด ' + code + ' แล้ว'; mm.className = 'text-emerald-600';
+                }, 1800);
+            } catch (err) { const mm = riskStatusProxy(); mm.textContent = '⚠️ ' + err.message; mm.className = 'text-rose-600'; }
         }
         let postdcRaw = null; // เก็บข้อมูลดิบปีล่าสุดที่โหลด ไว้ re-summarize เมื่อเปลี่ยนไตรมาส
         function loadPostDC(force) {
@@ -5099,6 +5246,11 @@
         document.getElementById('menuService').addEventListener('click', () => switchView('service'));
         document.getElementById('menuIndicator').addEventListener('click', () => switchView('indicator'));
         document.getElementById('btnReloadIndicator').addEventListener('click', () => { loadIndicators(true); loadIndicatorRegistry(true); });
+        document.getElementById('btnIndAdd').addEventListener('click', () => openIndForm(null));
+        document.getElementById('indFormClose').addEventListener('click', closeIndForm);
+        document.getElementById('indFormCancel').addEventListener('click', closeIndForm);
+        document.getElementById('indFormSave').addEventListener('click', saveIndicator);
+        document.getElementById('indFormModal').addEventListener('click', e => { if (e.target.id === 'indFormModal') closeIndForm(); });
         document.getElementById('menuAnalysis').addEventListener('click', () => switchView('analysis'));
         document.getElementById('btnPrintAnalysis').addEventListener('click', () => window.print());
         document.getElementById('menuSpecial').addEventListener('click', () => switchView('special'));
