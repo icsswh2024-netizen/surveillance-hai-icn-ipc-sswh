@@ -12,7 +12,7 @@
  */
 
 const INDICATOR_SHEET = 'ทะเบียนตัวชี้วัด';
-const INDICATOR_HEADERS = ['รหัส', 'ชื่อตัวชี้วัด', 'ตัวตั้ง', 'ตัวหาร', 'หน่วย', 'ความถี่', 'source', 'metricKey', 'NQA', 'HA6', 'เขต', 'สปสช.', 'เป้าหมาย', 'เป้าหมาย_NQA', 'เป้าหมาย_HA6', 'เป้าหมาย_เขต', 'เป้าหมาย_สปสช.', 'ผู้รับผิดชอบ', 'ข้อมูลเดิมที่ใช้'];
+const INDICATOR_HEADERS = ['รหัส', 'ชื่อตัวชี้วัด', 'ตัวตั้ง', 'ตัวหาร', 'หน่วย', 'ความถี่', 'source', 'metricKey', 'NQA', 'HA6', 'เขต', 'สปสช.', 'เป้าหมาย', 'เป้าหมาย_NQA', 'เป้าหมาย_HA6', 'เป้าหมาย_เขต', 'เป้าหมาย_สปสช.', 'วันที่อัปเดตเป้า', 'ผู้รับผิดชอบ', 'ข้อมูลเดิมที่ใช้'];
 
 function jsonOut_(obj, cb) {
   const out = JSON.stringify(obj);
@@ -73,7 +73,7 @@ function setupIndicatorSheet() {
   // แทรก 4 คอลัมน์เป้าแยกหมวด (เว้นว่างให้กรอกภายหลัง) หลังคอลัมน์ "เป้าหมาย" (index 12)
   // ยกเว้นแถวหัวตาราง (index 0) ที่เป็น INDICATOR_HEADERS อยู่แล้ว
   for (var i = 1; i < rows.length; i++) {
-    rows[i].splice(13, 0, '', '', '', '');
+    rows[i].splice(13, 0, '', '', '', '', '');
   }
   sh.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
   sh.getRange(1, 1, 1, rows[0].length).setFontWeight('bold').setBackground('#ecfdf5');

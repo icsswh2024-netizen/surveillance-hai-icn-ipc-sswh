@@ -3176,6 +3176,14 @@
             }
             return (r['เป้าหมาย'] || '').toString().trim();
         }
+        // วันที่อัปเดตเป้า (DD/MM/YYYY) — รองรับแยกหมวด: วันที่อัปเดตเป้า_<หมวด> แล้วค่อย fallback
+        function indTargetDate(r, cat) {
+            cat = cat || IND_CAT;
+            let v = '';
+            if (cat && cat !== 'ทั้งหมด') v = (r['วันที่อัปเดตเป้า_' + cat] || '').toString().trim();
+            if (!v) v = (r['วันที่อัปเดตเป้า'] || r['วันที่อัปเดต'] || '').toString().trim();
+            return v ? fmtDMY(v) : '';
+        }
         function renderIndicatorRegistry() {
             renderIndicatorCards();
             const body = document.getElementById('indRegBody'); if (!body) return;
@@ -3199,11 +3207,13 @@
                 const cats = ['NQA', 'HA6', 'เขต', 'สปสช.'].filter(c => indInCat(r, c));
                 // เมื่อดู "ทั้งหมด" และตัวชี้วัดมีเป้าแยกหมวดที่ต่างกัน → แสดงรายละเอียดเป้าแต่ละหมวด
                 let targetCell = '<span class="text-emerald-700 font-medium">' + esc(target || '-') + '</span>';
+                const tDate = indTargetDate(r);
+                if (tDate) targetCell += '<div class="text-[10px] text-slate-400 mt-0.5">อัปเดต ' + esc(tDate) + '</div>';
                 if (IND_CAT === 'ทั้งหมด') {
-                    const perCat = cats.map(c => ({ c, t: (r['เป้าหมาย_' + c] || '').toString().trim() })).filter(x => x.t && x.t !== target);
+                    const perCat = cats.map(c => ({ c, t: (r['เป้าหมาย_' + c] || '').toString().trim(), d: indTargetDate(r, c) })).filter(x => x.t && x.t !== target);
                     if (perCat.length) {
                         targetCell += '<div class="text-[11px] text-slate-500 mt-1 space-y-0.5">' +
-                            perCat.map(x => '<div>' + esc(x.c) + ': <b class="text-slate-700">' + esc(x.t) + '</b></div>').join('') + '</div>';
+                            perCat.map(x => '<div>' + esc(x.c) + ': <b class="text-slate-700">' + esc(x.t) + '</b>' + (x.d ? ' <span class="text-[10px] text-slate-400">(' + esc(x.d) + ')</span>' : '') + '</div>').join('') + '</div>';
                     }
                 }
                 const srcBadge = src === 'auto' ? 'bg-blue-50 text-blue-700' : src === 'external' ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700';
