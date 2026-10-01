@@ -753,6 +753,32 @@
 
         <!-- ===================== VIEW: ตัวชี้วัด ===================== -->
         <div id="viewIndicator" class="space-y-6" hidden>
+            <!-- ตัวชี้วัดตามหมวด (ทะเบียนตัวชี้วัด + คำนวณอัตโนมัติ) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h3 class="text-lg font-semibold text-slate-800">ตัวชี้วัดตามหมวดมาตรฐาน</h3>
+                    <p class="text-xs text-slate-400 mt-1" id="indRegStatus">กำลังโหลดทะเบียนตัวชี้วัด...</p>
+                    <div id="indRegCats" class="flex gap-2 mt-3 flex-wrap"></div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">รหัส</th>
+                                <th class="py-3 px-4">ตัวชี้วัด</th>
+                                <th class="py-3 px-4 text-center">เป้าหมาย</th>
+                                <th class="py-3 px-4 text-center">ค่าปัจจุบัน</th>
+                                <th class="py-3 px-4 text-center">ผ่าน/ไม่ผ่าน</th>
+                                <th class="py-3 px-4 text-center">แหล่งข้อมูล</th>
+                                <th class="py-3 px-4">หมวด</th>
+                            </tr>
+                        </thead>
+                        <tbody id="indRegBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-slate-400 p-4 border-t border-slate-100">auto/external = คำนวณสดจากข้อมูลเดิม (ตามตัวกรอง ปี/หอ/กลุ่มงาน) · manual = รอบันทึกค่า · ✅/❌ เทียบเป้าหมายที่ตั้งไว้</p>
+            </div>
+
             <div id="indicatorChartCard" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100" hidden>
                 <h3 class="text-lg font-semibold text-slate-800 mb-4">ตัวชี้วัด (กราฟ)</h3>
                 <div class="relative h-80 w-full"><canvas id="indicatorChart"></canvas></div>
@@ -2982,6 +3008,117 @@
             skipAutoChart: true, skipTable: true, onLoaded: (headers, rows) => postdcSummarize(headers, rows)
         };
         function loadIndicators(force) { return loadPubCsv(INDICATOR_CSV_URL, INDICATOR_OPTS, force); }
+
+        // ===================== ตัวชี้วัดตามหมวด (ทะเบียนตัวชี้วัด + คำนวณอัตโนมัติ) =====================
+        const INDICATOR_REGISTRY_URL = 'https://script.google.com/macros/s/AKfycbxokOigz7xMaShSmtSrzKLuYeqLR_nGxkFgwM5wC4igcAbTsjqGugAH3bHbE3Vy9KR0Hg/exec';
+        const IND_CATS = ['ทั้งหมด', 'NQA', 'HA6', 'เขต', 'สปสช.'];
+        let IND_REGISTRY = [], IND_CAT = 'ทั้งหมด', indRegLoaded = false;
+        // โหลด JSONP จาก URL ใดก็ได้
+        function jsonpFrom(url, params) {
+            return new Promise((resolve, reject) => {
+                const cb = 'indCb_' + Math.random().toString(36).slice(2);
+                let s; const cleanup = () => { try { delete window[cb]; } catch (e) { } if (s && s.parentNode) s.remove(); };
+                window[cb] = d => { cleanup(); resolve(d); };
+                s = document.createElement('script');
+                s.src = url + (url.includes('?') ? '&' : '?') + (params ? params + '&' : '') + 'callback=' + cb + '&_=' + Date.now();
+                s.onerror = () => { cleanup(); reject(new Error('โหลดไม่สำเร็จ')); };
+                document.body.appendChild(s);
+                setTimeout(() => { if (window[cb]) { cleanup(); reject(new Error('หมดเวลา')); } }, 15000);
+            });
+        }
+        async function loadIndicatorRegistry(force) {
+            const st = document.getElementById('indRegStatus');
+            if (indRegLoaded && !force) { renderIndicatorCats(); renderIndicatorRegistry(); return; }
+            if (st) st.textContent = 'กำลังโหลดทะเบียนตัวชี้วัด...';
+            try {
+                const data = await jsonpFrom(INDICATOR_REGISTRY_URL);
+                IND_REGISTRY = (data && data.rows) ? data.rows : [];
+                indRegLoaded = true;
+                renderIndicatorCats(); renderIndicatorRegistry();
+                if (st) st.textContent = 'ทะเบียนตัวชี้วัด ' + IND_REGISTRY.length + ' รายการ · เลือกหมวดเพื่อกรอง';
+            } catch (e) {
+                if (st) { st.textContent = '⚠️ โหลดทะเบียนไม่สำเร็จ: ' + e.message + ' (ตรวจสอบ Deploy / การแชร์ชีต)'; st.className = 'text-xs text-rose-600 mt-1'; }
+            }
+        }
+        // ค่าปัจจุบันของตัวชี้วัด auto/external (ตามตัวกรองปัจจุบัน)
+        function indicatorValue(key) {
+            try {
+                switch ((key || '').toString().trim()) {
+                    case 'hai_rate': {
+                        const c = getFilteredCases().length, den = aggregateDenominatorsByMonth(getFilteredRows());
+                        let D = 0; FISCAL_MONTHS.forEach(m => { if (den[m]) D += den[m].patientDay || 0; });
+                        return { v: D ? +((c / D) * 1000).toFixed(2) : null, unit: '/1000 วันนอน' };
+                    }
+                    case 'cauti_rate': { const r = siteCurrentRate('CAUTI'); return { v: r.rate, unit: r.unit }; }
+                    case 'vap_rate': { const r = siteCurrentRate('VAP'); return { v: r.rate, unit: r.unit }; }
+                    case 'clabsi_rate': { const r = siteCurrentRate('CLABSI'); return { v: r.rate, unit: r.unit }; }
+                    case 'ssi_rate': { const r = siteCurrentRate('SSI'); return { v: r.rate, unit: r.unit }; }
+                    case 'mdro_rate': { const r = siteCurrentRate('MDRO'); return { v: r.rate, unit: r.unit }; }
+                    case 'mdr_pct': { const m = mdroPctOfHai(); return { v: m.pct, unit: '%' }; }
+                    case 'staff_sharp': { const y = document.getElementById('filterYear').value; const q = staffQuarterCounts(y); return { v: q.Q1 + q.Q2 + q.Q3 + q.Q4, unit: 'ครั้ง' }; }
+                    default: return { v: null, unit: '' };
+                }
+            } catch (e) { return { v: null, unit: '' }; }
+        }
+        // เทียบเป้าหมาย → ผ่าน/ไม่ผ่าน (null = ตัดสินอัตโนมัติไม่ได้)
+        function indicatorPass(v, target) {
+            if (v == null || target == null) return null;
+            const s = target.toString().trim(); const num = parseFloat(s.replace(/[^0-9.]/g, ''));
+            if (isNaN(num)) return null; // เช่น "ผ่าน", "ลดลงจากปีก่อน"
+            if (/^\s*(≤|<=)/.test(s)) return v <= num;
+            if (/^\s*</.test(s)) return v < num;
+            if (/^\s*(≥|>=)/.test(s)) return v >= num;
+            if (/^\s*>/.test(s)) return v > num;
+            return v <= num; // ตัวเลขล้วน (เช่น "0 คน", "10 ครั้ง") → ยิ่งน้อยยิ่งดี
+        }
+        function indInCat(row, cat) {
+            if (cat === 'ทั้งหมด') return true;
+            const v = (row[cat] || '').toString().trim();
+            return v !== '' && !/^(0|false|no|-)$/i.test(v);
+        }
+        function renderIndicatorCats() {
+            const wrap = document.getElementById('indRegCats'); if (!wrap) return;
+            wrap.innerHTML = IND_CATS.map(c => {
+                const n = c === 'ทั้งหมด' ? IND_REGISTRY.length : IND_REGISTRY.filter(r => indInCat(r, c)).length;
+                const on = c === IND_CAT;
+                return '<button class="indCatBtn text-sm py-1.5 px-3 rounded-lg font-medium ' +
+                    (on ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200') +
+                    '" data-cat="' + c + '">' + c + ' <span class="opacity-70">(' + n + ')</span></button>';
+            }).join('');
+            wrap.querySelectorAll('.indCatBtn').forEach(b => b.addEventListener('click', () => { IND_CAT = b.dataset.cat; renderIndicatorCats(); renderIndicatorRegistry(); }));
+        }
+        function renderIndicatorRegistry() {
+            const body = document.getElementById('indRegBody'); if (!body) return;
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            const rows = IND_REGISTRY.filter(r => indInCat(r, IND_CAT));
+            if (!rows.length) { body.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400">— ไม่มีตัวชี้วัดในหมวดนี้ —</td></tr>'; return; }
+            body.innerHTML = rows.map(r => {
+                const src = (r['source'] || '').toString().trim();
+                const target = (r['เป้าหมาย'] || '').toString().trim();
+                let valCell = '<span class="text-slate-400">รอบันทึก</span>', passCell = '<span class="text-slate-300">—</span>';
+                if (src === 'auto' || src === 'external') {
+                    const res = indicatorValue(r['metricKey']);
+                    if (res.v != null) {
+                        valCell = '<b class="text-slate-800">' + res.v + '</b> <span class="text-[11px] text-slate-400">' + esc(res.unit) + '</span>';
+                        const p = indicatorPass(res.v, target);
+                        passCell = p == null ? '<span class="text-slate-400">—</span>'
+                            : (p ? '<span class="text-xs font-semibold rounded-full px-2.5 py-1 bg-emerald-100 text-emerald-700">✅ ผ่าน</span>'
+                                 : '<span class="text-xs font-semibold rounded-full px-2.5 py-1 bg-rose-100 text-rose-700">❌ ไม่ผ่าน</span>');
+                    } else { valCell = '<span class="text-slate-400">0</span>'; }
+                }
+                const cats = ['NQA', 'HA6', 'เขต', 'สปสช.'].filter(c => indInCat(r, c));
+                const srcBadge = src === 'auto' ? 'bg-blue-50 text-blue-700' : src === 'external' ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700';
+                return '<tr class="hover:bg-slate-50">' +
+                    '<td class="py-3 px-4 text-slate-500 whitespace-nowrap">' + esc(r['รหัส']) + '</td>' +
+                    '<td class="py-3 px-4"><div class="font-medium text-slate-800">' + esc(r['ชื่อตัวชี้วัด']) + '</div><div class="text-[11px] text-slate-400">' + esc(r['นิยาม'] || ((r['ตัวตั้ง'] || '') + (r['ตัวหาร'] ? ' ÷ ' + r['ตัวหาร'] : ''))) + '</div></td>' +
+                    '<td class="py-3 px-4 text-center whitespace-nowrap text-emerald-700 font-medium">' + esc(target || '-') + '</td>' +
+                    '<td class="py-3 px-4 text-center whitespace-nowrap">' + valCell + '</td>' +
+                    '<td class="py-3 px-4 text-center">' + passCell + '</td>' +
+                    '<td class="py-3 px-4 text-center"><span class="text-[11px] font-medium rounded-full px-2 py-0.5 ' + srcBadge + '">' + esc(src || '-') + '</span></td>' +
+                    '<td class="py-3 px-4 text-[11px] text-slate-500">' + cats.join(' · ') + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
         let postdcRaw = null; // เก็บข้อมูลดิบปีล่าสุดที่โหลด ไว้ re-summarize เมื่อเปลี่ยนไตรมาส
         function loadPostDC(force) {
             const years = Object.keys(POSTDC_YEARS);          // ปีที่มีแท็บข้อมูล (ใหม่->เก่า)
@@ -4826,7 +4963,7 @@
             if (view === 'wards') updateWardTable();
             if (view === 'mdr') updateMdrView();
             if (view === 'service') updateServiceView();
-            if (view === 'indicator') loadIndicators();
+            if (view === 'indicator') { loadIndicators(); loadIndicatorRegistry(); }
             if (view === 'analysis') updateAnalysisView();
             if (view === 'special') updateSpecialView();
             if (view === 'postdc') loadPostDC();
@@ -4841,6 +4978,7 @@
                 if (!document.getElementById('viewPostDC').hidden) loadPostDC(); // ให้ Post-discharge ตามปีบน
                 if (!document.getElementById('viewControl').hidden) updateControlView();
                 if (!document.getElementById('viewRisk').hidden) refreshRisk(); // Risk Analysis ตามปี/ไตรมาสบน
+                if (!document.getElementById('viewIndicator').hidden && indRegLoaded) renderIndicatorRegistry(); // ค่าตัวชี้วัด auto ตามตัวกรอง
             }));
         document.getElementById('btnExport').addEventListener('click', exportCSV);
         document.getElementById('btnExportWards').addEventListener('click', exportWardsCSV);
@@ -4851,7 +4989,7 @@
         document.getElementById('menuMdr').addEventListener('click', () => switchView('mdr'));
         document.getElementById('menuService').addEventListener('click', () => switchView('service'));
         document.getElementById('menuIndicator').addEventListener('click', () => switchView('indicator'));
-        document.getElementById('btnReloadIndicator').addEventListener('click', () => loadIndicators(true));
+        document.getElementById('btnReloadIndicator').addEventListener('click', () => { loadIndicators(true); loadIndicatorRegistry(true); });
         document.getElementById('menuAnalysis').addEventListener('click', () => switchView('analysis'));
         document.getElementById('btnPrintAnalysis').addEventListener('click', () => window.print());
         document.getElementById('menuSpecial').addEventListener('click', () => switchView('special'));
