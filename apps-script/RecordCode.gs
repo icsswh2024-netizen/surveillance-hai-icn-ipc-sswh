@@ -1,0 +1,60 @@
+/**
+ * แบบบันทึกผู้ป่วย HAI — Google Apps Script
+ * ผูกกับไฟล์ชีตข้อมูลหลัก: 1KEK2bvXLDAY7awAapTnF32yZz1qvfqfWXje2ccG2pLc
+ * เขียนเพิ่ม 1 แถวต่อ 1 เคส ลงแท็บ "ทะเบียน-1"
+ *
+ * ติดตั้ง:
+ *   1) เปิดไฟล์ชีต → Extensions → Apps Script → วางโค้ดนี้ → บันทึก
+ *   2) Deploy → New deployment → Web app · Execute as = Me · Who has access = Anyone → คัดลอก /exec
+ *   3) วาง /exec ลงช่อง URL ในเมนู "แบบบันทึกผู้ป่วย HAI" ของเว็บ
+ *
+ * วิธีจับคู่คอลัมน์: ใช้ "แถวหัวตาราง" (แถวแรก) ของแท็บ แล้วจับคู่กับคีย์ที่ส่งมา
+ * แบบไม่สนตัวพิมพ์/ช่องว่าง/จุด (เช่น "วันนอน" = "วันนนอน", "op" = "OP")
+ */
+
+const REC_SHEET = 'ทะเบียน-1';
+
+function recJson_(obj, cb) {
+  const out = JSON.stringify(obj);
+  if (cb) return ContentService.createTextOutput(cb + '(' + out + ')').setMimeType(ContentService.MimeType.JAVASCRIPT);
+  return ContentService.createTextOutput(out).setMimeType(ContentService.MimeType.JSON);
+}
+function recNorm_(s) { return String(s == null ? '' : s).toLowerCase().replace(/[\s.]/g, ''); }
+
+function doGet(e) {
+  const cb = e && e.parameter && e.parameter.callback;
+  const action = e && e.parameter && e.parameter.action;
+  if (action === 'ping') {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sh = ss.getSheetByName(REC_SHEET);
+    const headers = sh ? sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function (x) { return String(x).trim(); }) : [];
+    return recJson_({ ok: true, version: 'record-v1', sheet: REC_SHEET, found: !!sh, headers: headers }, cb);
+  }
+  return recJson_({ ok: true, version: 'record-v1' }, cb);
+}
+
+function doPost(e) {
+  try {
+    const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    if (body.action !== 'addCase') return recJson_({ ok: false, note: 'unknown action: ' + body.action });
+    const rec = body.record || {};
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sh = ss.getSheetByName(REC_SHEET);
+    if (!sh) return recJson_({ ok: false, note: 'ไม่พบแท็บ "' + REC_SHEET + '"' });
+    const lastCol = sh.getLastColumn();
+    const headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (x) { return String(x).trim(); });
+    // map: normalize(header) -> colIndex
+    const hmap = {};
+    headers.forEach(function (h, i) { if (h !== '') hmap[recNorm_(h)] = i; });
+    const row = new Array(lastCol).fill('');
+    let matched = 0;
+    Object.keys(rec).forEach(function (k) {
+      const idx = hmap[recNorm_(k)];
+      if (idx !== undefined) { row[idx] = rec[k]; matched++; }
+    });
+    sh.appendRow(row);
+    return recJson_({ ok: true, action: 'addCase', matched: matched, row: sh.getLastRow() });
+  } catch (err) {
+    return recJson_({ ok: false, error: String(err) });
+  }
+}

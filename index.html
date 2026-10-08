@@ -150,6 +150,10 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"></path></svg>
                 Risk register
             </button>
+            <button id="menuRecord" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                แบบบันทึกผู้ป่วย HAI
+            </button>
         </nav>
         <div class="p-4 border-t border-slate-100 text-xs text-slate-400">
             <p>สถานะ: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
@@ -1397,6 +1401,99 @@
                 </div>
             </div>
         </div><!-- /viewRisk -->
+
+        <!-- ===================== VIEW: แบบบันทึกผู้ป่วย HAI ===================== -->
+        <div id="viewRecord" class="space-y-6" hidden>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h3 class="text-lg font-semibold text-slate-800">แบบบันทึกผู้ป่วยติดเชื้อในโรงพยาบาล (HAI Case Record)</h3>
+                    <p class="text-xs text-slate-400 mt-1">บันทึก 1 เคสต่อ 1 แถว เขียนลงชีต “ทะเบียน-1” โดยตรง · ช่องที่มี * จำเป็น</p>
+                </div>
+                <div class="p-6 space-y-5">
+                    <!-- ข้อมูลหลัก -->
+                    <div>
+                        <h4 class="text-sm font-semibold text-slate-600 mb-2">ข้อมูลหลัก</h4>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">ปีงบ (พ.ศ.) *</label><input id="rec_year" type="number" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">เดือน *</label><select id="rec_month" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></select></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">ไตรมาส</label><input id="rec_quarter" class="w-full border border-slate-100 bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-500" readonly></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">หอผู้ป่วย *</label><input id="rec_unit" list="rec_unit_list" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"><datalist id="rec_unit_list"></datalist></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">กลุ่มงาน (PCT)</label><input id="rec_pct" list="rec_pct_list" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"><datalist id="rec_pct_list"></datalist></div>
+                        </div>
+                    </div>
+                    <!-- ผู้ป่วย -->
+                    <div class="border-t border-slate-100 pt-4">
+                        <h4 class="text-sm font-semibold text-slate-600 mb-2">ข้อมูลผู้ป่วย</h4>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">HN</label><input id="rec_hn" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">เพศ</label><select id="rec_sex" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value=""></option><option value="ช">ชาย</option><option value="ญ">หญิง</option></select></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">อายุ (ปี)</label><input id="rec_age" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                        </div>
+                    </div>
+                    <!-- การติดเชื้อ -->
+                    <div class="border-t border-slate-100 pt-4">
+                        <h4 class="text-sm font-semibold text-slate-600 mb-2">การติดเชื้อ</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">สถานะ HAI *</label><select id="rec_hai" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="HAI">HAI (ติดเชื้อในรพ.)</option><option value="no">no (ไม่นับเป็น HAI)</option></select></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">ตำแหน่งติดเชื้อ (SITE)</label><input id="rec_site" list="rec_site_list" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="เช่น CAUTI, VAP, SSI"><datalist id="rec_site_list"><option value="CAUTI"><option value="VAP"><option value="HAP"><option value="CLABSI"><option value="SSI"><option value="UTI"><option value="BSI"><option value="Omphalitis"></datalist></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">ผลเชื้อดื้อยา (AMR)</label><input id="rec_amr" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="เช่น no, MDR-Acinetobacter, ESBL, CRE"></div>
+                        </div>
+                    </div>
+                    <!-- วันที่ -->
+                    <div class="border-t border-slate-100 pt-4">
+                        <h4 class="text-sm font-semibold text-slate-600 mb-2">วันที่</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">วันรับไว้ (Admit)</label><input id="rec_admit" class="flatpickr-rec w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="DD/MM/YYYY"></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">วันเริ่มมีอาการ (Onset)</label><input id="rec_onset" class="flatpickr-rec w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="DD/MM/YYYY"></div>
+                        </div>
+                    </div>
+                    <!-- เพิ่มเติม / ตัวหาร -->
+                    <details class="border-t border-slate-100 pt-4">
+                        <summary class="text-sm font-semibold text-slate-600 cursor-pointer">ตัวหาร / ข้อมูลอุปกรณ์ (ไม่บังคับ)</summary>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">วันนอน</label><input id="rec_patientDay" type="number" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">จำนวนผ่าตัด (op)</label><input id="rec_op" type="number" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">คนคาสายปัสสาวะ (CAUTI1)</label><input id="rec_cauti1" type="number" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">วันคาสายปัสสาวะ (CAUTI2)</label><input id="rec_cauti2" type="number" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">คนใช้เครื่องช่วยหายใจ (VAP1)</label><input id="rec_vap1" type="number" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">วันใช้เครื่องช่วยหายใจ (VAP2)</label><input id="rec_vap2" type="number" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">คนคาสายหลอดเลือด (CLABSI1)</label><input id="rec_clabsi1" type="number" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">วันคาสายหลอดเลือด (CLABSI2)</label><input id="rec_clabsi2" type="number" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></div>
+                        </div>
+                    </details>
+                    <!-- การเชื่อมต่อชีต -->
+                    <div class="border-t border-slate-100 pt-4">
+                        <label class="block text-xs font-medium text-slate-500 mb-1">URL Apps Script Web App (เขียนลงชีต “ทะเบียน-1”)</label>
+                        <input id="rec_url" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="https://script.google.com/macros/s/.../exec">
+                        <p class="text-[11px] text-slate-400 mt-1">ถ้ายังไม่ตั้งค่า URL สามารถใช้ปุ่ม “คัดลอกเป็นแถว” / “ดาวน์โหลด CSV” เพื่อวางลงชีตเองได้</p>
+                    </div>
+                    <p id="rec_status" class="text-xs text-slate-400"></p>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="recSave" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg font-medium">บันทึกเข้า Google Sheet</button>
+                        <button id="recCopy" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-lg font-medium">คัดลอกเป็นแถว</button>
+                        <button id="recCsv" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-lg font-medium">ดาวน์โหลด CSV</button>
+                        <button id="recClear" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-lg font-medium">ล้างฟอร์ม</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- รายการที่บันทึกในเครื่องรอบนี้ -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="text-base font-semibold text-slate-800">รายการที่บันทึกรอบนี้ <span id="recListCount" class="text-slate-400 font-normal text-sm"></span></h3>
+                    <button id="recListClear" class="text-xs text-rose-600 hover:text-rose-800 font-medium">ล้างรายการ</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold"><tr>
+                            <th class="py-2 px-4">เวลา</th><th class="py-2 px-4">ปี/เดือน</th><th class="py-2 px-4">หอ</th>
+                            <th class="py-2 px-4">HN</th><th class="py-2 px-4">HAI</th><th class="py-2 px-4">SITE</th><th class="py-2 px-4">AMR</th>
+                        </tr></thead>
+                        <tbody id="recListBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div><!-- /viewRecord -->
     </div><!-- /max-w container -->
     </main>
   </div><!-- /flex wrapper -->
@@ -5247,10 +5344,148 @@
             URL.revokeObjectURL(url);
         }
 
+        /* ===== แบบบันทึกผู้ป่วย HAI (เขียนลงชีต ทะเบียน-1) ===== */
+        const REC_MAP = [
+            ['rec_year', 'Year'], ['rec_month', 'Month'], ['rec_quarter', 'Quater'],
+            ['rec_unit', 'Unit'], ['rec_pct', 'PCT'], ['rec_hn', 'HN'],
+            ['rec_sex', 'เพศ'], ['rec_age', 'อายุ'], ['rec_hai', 'HAI'],
+            ['rec_site', 'SITE'], ['rec_amr', 'AMR'],
+            ['rec_admit', 'Admit'], ['rec_onset', 'วันที่มีอาการ'],
+            ['rec_patientDay', 'วันนอน'], ['rec_op', 'op'],
+            ['rec_cauti1', 'CAUTI1'], ['rec_cauti2', 'CAUTI2'],
+            ['rec_vap1', 'VAP1'], ['rec_vap2', 'VAP2'],
+            ['rec_clabsi1', 'CLABSI1'], ['rec_clabsi2', 'CLABSI2']
+        ];
+        const REC_URL = 'https://script.google.com/macros/s/PASTE_RECORD_WEBAPP_URL/exec';
+        function recQuarterOfMonth(m) { const i = FISCAL_MONTHS.indexOf(+m); return i < 0 ? '' : String(Math.floor(i / 3) + 1); }
+        let recInited = false;
+        function initRecordView() {
+            const monthSel = document.getElementById('rec_month');
+            if (!recInited) {
+                monthSel.innerHTML = '<option value=""></option>' + FISCAL_MONTHS.map(m => '<option value="' + m + '">' + m + ' — ' + MONTH_LABELS[m] + '</option>').join('');
+                monthSel.addEventListener('change', () => { document.getElementById('rec_quarter').value = recQuarterOfMonth(monthSel.value) ? 'Q' + recQuarterOfMonth(monthSel.value) : ''; });
+                const y = document.getElementById('rec_year'); if (!y.value) y.value = new Date().getFullYear() + 543;
+                try { const u = localStorage.getItem('recordSaveUrl'); if (u) document.getElementById('rec_url').value = u; } catch (e) { }
+                document.getElementById('recSave').addEventListener('click', saveRecord);
+                document.getElementById('recCopy').addEventListener('click', copyRecordRow);
+                document.getElementById('recCsv').addEventListener('click', downloadRecordCsv);
+                document.getElementById('recClear').addEventListener('click', () => { clearRecordForm(); });
+                document.getElementById('recListClear').addEventListener('click', () => { try { localStorage.removeItem('recRecent'); } catch (e) { } renderRecentRecords(); });
+                recInited = true;
+            }
+            // datalist หอผู้ป่วย/กลุ่มงาน จากข้อมูลจริง
+            const units = [...new Set(rawData.map(r => r.unit).filter(Boolean))].sort();
+            const pcts = [...new Set(rawData.map(r => r.pct).filter(Boolean))].sort();
+            document.getElementById('rec_unit_list').innerHTML = units.map(u => '<option value="' + u + '">').join('');
+            document.getElementById('rec_pct_list').innerHTML = pcts.map(p => '<option value="' + p + '">').join('');
+            // flatpickr ปฏิทินพรีเมียม
+            if (typeof flatpickr !== 'undefined') {
+                document.querySelectorAll('.flatpickr-rec').forEach(el => {
+                    if (el._flatpickr) return;
+                    flatpickr(el, {
+                        locale: (flatpickr.l10ns && flatpickr.l10ns.th) ? 'th' : 'default',
+                        dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y',
+                        monthSelectorType: 'dropdown', disableMobile: true
+                    });
+                });
+            }
+            renderRecentRecords();
+        }
+        function recRecord() {
+            const rec = {};
+            REC_MAP.forEach(([id, key]) => { const e = document.getElementById(id); rec[key] = e ? (e.value || '').toString().trim() : ''; });
+            rec['Quater'] = recQuarterOfMonth(rec['Month']); // เก็บเป็นเลข 1-4
+            return rec;
+        }
+        function recValidate(rec) {
+            if (!rec['Year']) return 'กรุณากรอกปีงบ';
+            if (!rec['Month']) return 'กรุณาเลือกเดือน';
+            if (!rec['Unit']) return 'กรุณากรอกหอผู้ป่วย';
+            if (!rec['HAI']) return 'กรุณาเลือกสถานะ HAI';
+            return '';
+        }
+        function recPushRecent(rec) {
+            let arr = []; try { arr = JSON.parse(localStorage.getItem('recRecent') || '[]'); } catch (e) { }
+            arr.unshift({ ts: new Date().toISOString(), Year: rec['Year'], Month: rec['Month'], Unit: rec['Unit'], HN: rec['HN'], HAI: rec['HAI'], SITE: rec['SITE'], AMR: rec['AMR'] });
+            arr = arr.slice(0, 50);
+            try { localStorage.setItem('recRecent', JSON.stringify(arr)); } catch (e) { }
+            renderRecentRecords();
+        }
+        function renderRecentRecords() {
+            const body = document.getElementById('recListBody'); if (!body) return;
+            let arr = []; try { arr = JSON.parse(localStorage.getItem('recRecent') || '[]'); } catch (e) { }
+            document.getElementById('recListCount').textContent = arr.length ? '(' + arr.length + ')' : '';
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            if (!arr.length) { body.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-slate-400">— ยังไม่มีรายการ —</td></tr>'; return; }
+            body.innerHTML = arr.map(r => {
+                const t = new Date(r.ts); const ts = isNaN(t) ? '' : t.toLocaleString('th-TH', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+                return '<tr class="hover:bg-slate-50">' +
+                    '<td class="py-2 px-4 text-slate-500">' + esc(ts) + '</td>' +
+                    '<td class="py-2 px-4">' + esc(r.Year) + '/' + esc(MONTH_LABELS[r.Month] || r.Month) + '</td>' +
+                    '<td class="py-2 px-4">' + esc(r.Unit) + '</td>' +
+                    '<td class="py-2 px-4">' + esc(r.HN) + '</td>' +
+                    '<td class="py-2 px-4">' + esc(r.HAI) + '</td>' +
+                    '<td class="py-2 px-4">' + esc(r.SITE) + '</td>' +
+                    '<td class="py-2 px-4">' + esc(r.AMR) + '</td></tr>';
+            }).join('');
+        }
+        function clearRecordForm() {
+            ['rec_hn', 'rec_sex', 'rec_age', 'rec_site', 'rec_amr', 'rec_patientDay', 'rec_op', 'rec_cauti1', 'rec_cauti2', 'rec_vap1', 'rec_vap2', 'rec_clabsi1', 'rec_clabsi2'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+            ['rec_admit', 'rec_onset'].forEach(id => { const e = document.getElementById(id); if (e && e._flatpickr) e._flatpickr.clear(); else if (e) e.value = ''; });
+            document.getElementById('rec_hai').value = 'HAI';
+            const st = document.getElementById('rec_status'); st.textContent = 'ล้างฟอร์มแล้ว (คงปี/เดือน/หอ ไว้)'; st.className = 'text-xs text-slate-400';
+        }
+        function recSaveUrl() {
+            const u = (document.getElementById('rec_url').value || '').trim();
+            if (u) { try { localStorage.setItem('recordSaveUrl', u); } catch (e) { } return u; }
+            return REC_URL.includes('PASTE_') ? '' : REC_URL;
+        }
+        async function saveRecord() {
+            const st = document.getElementById('rec_status');
+            const rec = recRecord();
+            const err = recValidate(rec);
+            if (err) { st.textContent = '⚠️ ' + err; st.className = 'text-xs text-rose-600'; return; }
+            const url = recSaveUrl();
+            if (!url) { st.textContent = '⚠️ ยังไม่ได้ตั้งค่า URL — ใช้ “คัดลอกเป็นแถว” หรือ “ดาวน์โหลด CSV” แทนได้'; st.className = 'text-xs text-rose-600'; return; }
+            st.textContent = 'กำลังตรวจสอบการเชื่อมต่อ...'; st.className = 'text-xs text-slate-500';
+            try {
+                let ping = null; try { ping = await jsonpFrom(url, 'action=ping'); } catch (e) { }
+                if (!ping || ping.version !== 'record-v1') { st.innerHTML = '⚠️ Apps Script ยังไม่พร้อม — ต้องวางโค้ด RecordCode.gs แล้ว <b>Deploy → New version</b> ก่อน'; st.className = 'text-xs text-rose-600'; return; }
+                st.textContent = 'กำลังบันทึกลงชีต “ทะเบียน-1”...'; st.className = 'text-xs text-slate-500';
+                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'addCase', record: rec }) });
+                recPushRecent(rec);
+                st.textContent = '✅ บันทึกแล้ว · HN ' + (rec['HN'] || '-') + ' · ' + (rec['SITE'] || '-') + ' (ตรวจสอบในชีต และกดรีเฟรชแดชบอร์ดเพื่อเห็นผล)';
+                st.className = 'text-xs text-emerald-600';
+                clearRecordForm();
+            } catch (e2) { st.textContent = '⚠️ บันทึกไม่สำเร็จ: ' + e2.message; st.className = 'text-xs text-rose-600'; }
+        }
+        function copyRecordRow() {
+            const rec = recRecord();
+            const keys = REC_MAP.map(x => x[1]);
+            const tsv = keys.join('\t') + '\n' + keys.map(k => rec[k] || '').join('\t');
+            const st = document.getElementById('rec_status');
+            navigator.clipboard.writeText(tsv).then(
+                () => { st.textContent = '✅ คัดลอกแถวแล้ว — วาง (Ctrl+V) ในชีตได้เลย (บรรทัดหัว + ข้อมูล)'; st.className = 'text-xs text-emerald-600'; recPushRecent(rec); },
+                () => { st.textContent = '⚠️ คัดลอกไม่สำเร็จ ลองใช้ดาวน์โหลด CSV'; st.className = 'text-xs text-rose-600'; }
+            );
+        }
+        function downloadRecordCsv() {
+            const rec = recRecord();
+            const keys = REC_MAP.map(x => x[1]);
+            const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
+            const csv = '﻿' + keys.map(q).join(',') + '\n' + keys.map(k => q(rec[k] || '')).join(',');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'HAI_record_' + (rec['HN'] || 'case') + '.csv'; a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            recPushRecent(rec);
+            const st = document.getElementById('rec_status'); st.textContent = '✅ ดาวน์โหลด CSV แล้ว'; st.className = 'text-xs text-emerald-600';
+        }
+
         function switchView(view) {
-            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk' };
-            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register' };
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
@@ -5280,6 +5515,7 @@
             if (view === 'postdc') loadPostDC();
             if (view === 'control') updateControlView();
             if (view === 'risk') refreshRisk();
+            if (view === 'record') initRecordView();
         }
 
         // Event listeners
@@ -5313,6 +5549,7 @@
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
         document.getElementById('menuControl').addEventListener('click', () => switchView('control'));
         document.getElementById('menuRisk').addEventListener('click', () => switchView('risk'));
+        document.getElementById('menuRecord').addEventListener('click', () => switchView('record'));
         document.getElementById('btnExportRisk').addEventListener('click', exportRiskCSV);
         document.getElementById('riskSource').addEventListener('change', refreshRisk);
         document.getElementById('btnRiskSave').addEventListener('click', saveRiskRegister);
