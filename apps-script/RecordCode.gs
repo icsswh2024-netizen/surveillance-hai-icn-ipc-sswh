@@ -37,23 +37,27 @@ function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (body.action !== 'addCase') return recJson_({ ok: false, note: 'unknown action: ' + body.action });
-    const rec = body.record || {};
+    // รองรับทั้งบรรทัดเดียว (record) และหลายบรรทัด (records = เคส + เชื้อเพิ่มบรรทัดต่อ)
+    const recs = Array.isArray(body.records) ? body.records : [body.record || {}];
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sh = ss.getSheetByName(REC_SHEET);
     if (!sh) return recJson_({ ok: false, note: 'ไม่พบแท็บ "' + REC_SHEET + '"' });
     const lastCol = sh.getLastColumn();
     const headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (x) { return String(x).trim(); });
-    // map: normalize(header) -> colIndex
     const hmap = {};
     headers.forEach(function (h, i) { if (h !== '') hmap[recNorm_(h)] = i; });
-    const row = new Array(lastCol).fill('');
-    let matched = 0;
-    Object.keys(rec).forEach(function (k) {
-      const idx = hmap[recNorm_(k)];
-      if (idx !== undefined) { row[idx] = rec[k]; matched++; }
+    let added = 0, matched = 0;
+    recs.forEach(function (rec) {
+      if (!rec || !Object.keys(rec).length) return;
+      const row = new Array(lastCol).fill('');
+      Object.keys(rec).forEach(function (k) {
+        const idx = hmap[recNorm_(k)];
+        if (idx !== undefined) { row[idx] = rec[k]; matched++; }
+      });
+      sh.appendRow(row);
+      added++;
     });
-    sh.appendRow(row);
-    return recJson_({ ok: true, action: 'addCase', matched: matched, row: sh.getLastRow() });
+    return recJson_({ ok: true, action: 'addCase', added: added, matched: matched, lastRow: sh.getLastRow() });
   } catch (err) {
     return recJson_({ ok: false, error: String(err) });
   }

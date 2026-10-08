@@ -890,6 +890,26 @@
                 </div>
                 <div id="analysisContent" class="p-6 space-y-5 leading-relaxed text-slate-700"></div>
             </div>
+
+            <!-- เชื้อก่อโรคแยกตามตำแหน่งติดเชื้อ (SITE) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">เชื้อก่อโรคแยกตามตำแหน่งติดเชื้อ (SITE)</h3>
+                        <p class="text-xs text-slate-400 mt-1" id="orgBySiteNote">นับทุกเชื้อจากคอลัมน์ เชื้อก่อโรค/2/3 รวมบรรทัดต่อ (หลายเชื้อในไซต์เดียว)</p>
+                    </div>
+                    <button id="btnExportOrg" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="overflow-x-auto max-h-[36rem] overflow-y-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0"><tr>
+                            <th class="py-3 px-4">ตำแหน่ง (SITE)</th><th class="py-3 px-4">เชื้อก่อโรค</th>
+                            <th class="py-3 px-4 text-right">จำนวน</th><th class="py-3 px-4 text-right">% ในไซต์</th>
+                        </tr></thead>
+                        <tbody id="orgBySiteBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
         </div><!-- /viewAnalysis -->
 
         <!-- ===================== VIEW: เฝ้าระวังหน่วยพิเศษ ===================== -->
@@ -1411,6 +1431,15 @@
                 </div>
                 <div class="p-6 space-y-5">
                     <div id="recFormFields" class="space-y-5"></div>
+                    <!-- เชื้อก่อโรคเพิ่ม (บันทึกเป็นบรรทัดต่อในไซต์เดียวกัน) -->
+                    <div class="border-t border-slate-100 pt-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="text-sm font-semibold text-slate-600">เชื้อก่อโรคเพิ่ม (บรรทัดต่อ)</h4>
+                            <button id="recAddOrg" type="button" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1 px-2.5 rounded-lg font-medium">➕ เพิ่มเชื้อ</button>
+                        </div>
+                        <div id="recExtraOrgList" class="space-y-2"></div>
+                        <p class="text-[11px] text-slate-400 mt-1">แต่ละเชื้อที่เพิ่มจะถูกบันทึกเป็นอีก 1 บรรทัด โดยใช้ Unit/HN/SITE เดิม และเว้น HAI/ชื่อ ไว้ จึง<b>ไม่ถูกนับซ้ำเป็นเคส</b> แต่ถูกนับเป็นเชื้อของไซต์นั้น</p>
+                    </div>
                     <!-- การเชื่อมต่อชีต -->
                     <div class="border-t border-slate-100 pt-4">
                         <label class="block text-xs font-medium text-slate-500 mb-1">URL Apps Script Web App (เขียนลงชีต “ทะเบียน-1”)</label>
@@ -1622,6 +1651,9 @@
                     sex: pick(r, ['เพศ', 'sex']).toString().trim(),
                     age: pick(r, ['อายุ', 'age']).toString().trim(),
                     amr: pick(r, ['AMR']).toString().trim(),              // ชนิดผลดื้อยา (แสดงได้ ไม่ใช่ข้อมูลส่วนบุคคล)
+                    // ---- เชื้อก่อโรค (รองรับหลายเชื้อ: คอลัมน์ 1-3 + บรรทัดต่อที่ HAI ว่าง) ----
+                    organisms: [pick(r, ['เชื้อก่อโรค']), pick(r, ['เชื้อก่อโรค2']), pick(r, ['เชื้อก่อโรค3'])]
+                        .map(x => (x || '').toString().trim()).filter(Boolean),
                     // ---- วันที่สำหรับคำนวณ "กี่วันจึงเกิดอาการ" ----
                     dAdmit: parseAnyDate(pick(r, ['Admit', 'admit', 'วันนอน', 'date_admit'])),
                     dOnset: parseAnyDate(pick(r, ['วันที่มีอาการ', 'onset', 'date_onset'])),
@@ -3857,7 +3889,58 @@
         }
 
         // ===================== บทวิเคราะห์ (สร้างอัตโนมัติ) =====================
+        // นับเชื้อก่อโรคแยกตามตำแหน่งติดเชื้อ (SITE) — รวมทุกบรรทัด (บรรทัดต่อที่ HAI ว่างด้วย)
+        function orgBySiteData() {
+            const rows = getFilteredRows();
+            const bySite = {}; // site -> { organism -> count }
+            rows.forEach(r => {
+                if (!r.organisms || !r.organisms.length) return;
+                const site = SITE_LABEL[r.siteType] || r.siteType || (r.rawSITE || '(ไม่ระบุ)');
+                if (!bySite[site]) bySite[site] = {};
+                r.organisms.forEach(o => {
+                    const key = o.toString().trim(); if (!key) return;
+                    bySite[site][key] = (bySite[site][key] || 0) + 1;
+                });
+            });
+            // แปลงเป็นลิสต์เรียงตามไซต์ (จำนวนรวมมาก→น้อย) แล้วเชื้อ (มาก→น้อย)
+            return Object.keys(bySite).map(site => {
+                const orgs = Object.keys(bySite[site]).map(o => ({ org: o, n: bySite[site][o] })).sort((a, b) => b.n - a.n || a.org.localeCompare(b.org));
+                const total = orgs.reduce((a, x) => a + x.n, 0);
+                return { site, orgs, total };
+            }).sort((a, b) => b.total - a.total || a.site.localeCompare(b.site));
+        }
+        function renderOrgBySite() {
+            const body = document.getElementById('orgBySiteBody'); if (!body) return;
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            const data = orgBySiteData();
+            if (!data.length) { body.innerHTML = '<tr><td colspan="4" class="py-8 text-center text-slate-400">— ไม่มีข้อมูลเชื้อก่อโรคตามตัวกรอง —</td></tr>'; return; }
+            let html = '';
+            data.forEach(s => {
+                s.orgs.forEach((o, i) => {
+                    html += '<tr class="hover:bg-slate-50">' +
+                        (i === 0 ? '<td class="py-2.5 px-4 font-semibold text-slate-700 align-top" rowspan="' + s.orgs.length + '">' + esc(s.site) + ' <span class="text-xs text-slate-400">(' + s.total + ')</span></td>' : '') +
+                        '<td class="py-2.5 px-4">' + esc(o.org) + '</td>' +
+                        '<td class="py-2.5 px-4 text-right font-medium">' + o.n + '</td>' +
+                        '<td class="py-2.5 px-4 text-right text-slate-500">' + (s.total ? Math.round(o.n / s.total * 100) : 0) + '%</td>' +
+                        '</tr>';
+                });
+            });
+            body.innerHTML = html;
+        }
+        function exportOrgBySiteCSV() {
+            const data = orgBySiteData();
+            let csv = '﻿' + ['ตำแหน่ง (SITE)', 'เชื้อก่อโรค', 'จำนวน', '% ในไซต์'].join(',') + '\n';
+            const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
+            data.forEach(s => s.orgs.forEach(o => {
+                csv += [q(s.site), q(o.org), o.n, (s.total ? Math.round(o.n / s.total * 100) : 0) + '%'].join(',') + '\n';
+            }));
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'organisms_by_site.csv'; a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }
         function updateAnalysisView() {
+            renderOrgBySite();
             const cases = getFilteredCases();
             const rows = getFilteredRows();
             const den = aggregateDenominatorsByMonth(rows);
@@ -5327,9 +5410,7 @@
                 { col: 'SITE', label: 'ตำแหน่งติดเชื้อ (SITE)', type: 'text', datalist: 'site', ph: 'cauti, vap, hap, ...' },
                 { col: 'AMR', label: 'ผลดื้อยา (AMR)', type: 'select', opts: ['no mdr', 'mdr'] },
                 { col: 'MDR', label: 'ชนิดดื้อยา (MDR)', type: 'text', datalist: 'mdr', ph: 'mdr, cre, esbl, xdr, vre' },
-                { col: 'เชื้อก่อโรค', label: 'เชื้อก่อโรค', type: 'text' },
-                { col: 'เชื้อก่อโรค2', label: 'เชื้อก่อโรค 2', type: 'text' },
-                { col: 'เชื้อก่อโรค3', label: 'เชื้อก่อโรค 3', type: 'text' },
+                { col: 'เชื้อก่อโรค', label: 'เชื้อก่อโรค (หลัก)', type: 'text', datalist: 'org' },
                 { col: 'สิ่งส่ตรวจ1', label: 'สิ่งส่งตรวจ', type: 'text', ph: 'urine, sputum, ...' },
                 { col: 'การมา', label: 'การมา (ที่มา/ส่งต่อ)', type: 'text' }
             ] },
@@ -5370,7 +5451,7 @@
             ] }
         ];
         const REC_COLS = REC_GROUPS.reduce((a, g) => a.concat(g.fields.map(f => f.col)), []);
-        const REC_DATALISTS = { units: [], pcts: [], titles: ['นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.'], site: ['cauti', 'vap', 'hap', 'clabsi', 'ssi', 'uti', 'bsi', 'omphalitis'], mdr: ['mdr', 'cre', 'esbl', 'xdr', 'vre', 'mrsa'] };
+        const REC_DATALISTS = { units: [], pcts: [], org: [], titles: ['นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.'], site: ['cauti', 'vap', 'hap', 'clabsi', 'ssi', 'uti', 'bsi', 'omphalitis'], mdr: ['mdr', 'cre', 'esbl', 'xdr', 'vre', 'mrsa'] };
         // ค่าดรอปดาวน์อ่านสดจากแท็บ "List-ทะเบียน-1" (หัวคอลัมน์ = ชื่อฟิลด์, ค่าในคอลัมน์ = ตัวเลือก)
         const REC_LIST_SHEET = 'List-ทะเบียน-1';
         const REC_LIST_CSV_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(REC_LIST_SHEET);
@@ -5454,18 +5535,50 @@
                 document.getElementById('recCsv').addEventListener('click', downloadRecordCsv);
                 document.getElementById('recClear').addEventListener('click', () => { clearRecordForm(); });
                 document.getElementById('recListClear').addEventListener('click', () => { try { localStorage.removeItem('recRecent'); } catch (e) { } renderRecentRecords(); });
+                document.getElementById('recAddOrg').addEventListener('click', () => recAddOrgRow(''));
                 recInited = true;
             }
             buildRecordForm();
             bindRecordForm();
+            document.getElementById('recExtraOrgList').innerHTML = '';
             renderRecentRecords();
             loadRecordLists();
+        }
+        // แถวอินพุต "เชื้อเพิ่ม" (บรรทัดต่อ)
+        function recAddOrgRow(val) {
+            const list = document.getElementById('recExtraOrgList'); if (!list) return;
+            const key = normKey('เชื้อก่อโรค');
+            const dl = REC_LIST_IDS[key] ? REC_LIST_IDS[key] : 'recdl_org';
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-2';
+            row.innerHTML = '<input class="recExtraOrg flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm" list="' + dl + '" placeholder="ชื่อเชื้อก่อโรคเพิ่ม" value="' + recEsc(val || '') + '">' +
+                '<button type="button" class="recDelOrg text-rose-500 hover:text-rose-700 text-lg leading-none px-2">&times;</button>';
+            row.querySelector('.recDelOrg').addEventListener('click', () => row.remove());
+            list.appendChild(row);
+            row.querySelector('input').focus();
+        }
+        function recExtraOrgs() {
+            return [...document.querySelectorAll('#recExtraOrgList .recExtraOrg')].map(el => (el.value || '').trim()).filter(Boolean);
         }
         function recRecord() {
             const rec = {};
             document.querySelectorAll('#recFormFields [data-col]').forEach(el => { rec[el.dataset.col] = (el.value || '').toString().trim(); });
             rec['Quater'] = recQuarterOfMonth(rec['Month']); // เก็บเป็นเลข 1-4
             return rec;
+        }
+        // บรรทัดต่อสำหรับเชื้อเพิ่ม: ใช้ข้อมูลระบุไซต์เดิม เว้น HAI/ชื่อ → ไม่นับซ้ำเป็นเคส
+        function recContinuationRow(main, organism) {
+            const keep = ['Unit', 'Unit2', 'PCT', 'Year', 'Quater', 'Month', 'HN', 'AN', 'SITE'];
+            const row = {}; keep.forEach(k => { if (main[k]) row[k] = main[k]; });
+            row['เชื้อก่อโรค'] = organism;
+            return row;
+        }
+        // รวมทุกบรรทัดที่จะบันทึก (เคสหลัก + เชื้อเพิ่มเป็นบรรทัดต่อ)
+        function recAllRows() {
+            const main = recRecord();
+            const rows = [main];
+            recExtraOrgs().forEach(org => rows.push(recContinuationRow(main, org)));
+            return rows;
         }
         function recValidate(rec) {
             if (!rec['Year']) return 'กรุณากรอกปีงบ';
@@ -5502,6 +5615,7 @@
         function clearRecordForm() {
             const keep = { 'Year': 1, 'Month': 1, 'Quater': 1, 'Unit': 1, 'PCT': 1 };
             document.querySelectorAll('#recFormFields [data-col]').forEach(el => { if (!keep[el.dataset.col]) el.value = ''; });
+            document.getElementById('recExtraOrgList').innerHTML = '';
             const st = document.getElementById('rec_status'); st.textContent = 'ล้างฟอร์มแล้ว (คงปี/เดือน/ไตรมาส/หอ/กลุ่มงาน ไว้)'; st.className = 'text-xs text-slate-400';
         }
         function recSaveUrl() {
@@ -5511,7 +5625,8 @@
         }
         async function saveRecord() {
             const st = document.getElementById('rec_status');
-            const rec = recRecord();
+            const rows = recAllRows();
+            const rec = rows[0];
             const err = recValidate(rec);
             if (err) { st.textContent = '⚠️ ' + err; st.className = 'text-xs text-rose-600'; return; }
             const url = recSaveUrl();
@@ -5520,18 +5635,20 @@
             try {
                 let ping = null; try { ping = await jsonpFrom(url, 'action=ping'); } catch (e) { }
                 if (!ping || ping.version !== 'record-v1') { st.innerHTML = '⚠️ Apps Script ยังไม่พร้อม — ต้องวางโค้ด RecordCode.gs แล้ว <b>Deploy → New version</b> ก่อน'; st.className = 'text-xs text-rose-600'; return; }
-                st.textContent = 'กำลังบันทึกลงชีต “ทะเบียน-1”...'; st.className = 'text-xs text-slate-500';
-                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'addCase', record: rec }) });
+                const extra = rows.length - 1;
+                st.textContent = 'กำลังบันทึกลงชีต “ทะเบียน-1”' + (extra ? ' (เคส + ' + extra + ' เชื้อเพิ่ม)' : '') + '...'; st.className = 'text-xs text-slate-500';
+                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'addCase', records: rows }) });
                 recPushRecent(rec);
-                st.textContent = '✅ บันทึกแล้ว · HN ' + (rec['HN'] || '-') + ' · ' + (rec['SITE'] || '-') + ' (ตรวจสอบในชีต และกดรีเฟรชแดชบอร์ดเพื่อเห็นผล)';
+                st.textContent = '✅ บันทึกแล้ว ' + rows.length + ' บรรทัด · HN ' + (rec['HN'] || '-') + ' · ' + (rec['SITE'] || '-') +
+                    (extra ? ' · เชื้อเพิ่ม ' + extra + ' รายการ' : '') + ' (ตรวจสอบในชีต และรีเฟรชแดชบอร์ด)';
                 st.className = 'text-xs text-emerald-600';
                 clearRecordForm();
             } catch (e2) { st.textContent = '⚠️ บันทึกไม่สำเร็จ: ' + e2.message; st.className = 'text-xs text-rose-600'; }
         }
         function copyRecordRow() {
-            const rec = recRecord();
+            const rows = recAllRows();
             const keys = REC_COLS;
-            const tsv = keys.join('\t') + '\n' + keys.map(k => rec[k] || '').join('\t');
+            const tsv = keys.join('\t') + '\n' + rows.map(r => keys.map(k => r[k] || '').join('\t')).join('\n');
             const st = document.getElementById('rec_status');
             navigator.clipboard.writeText(tsv).then(
                 () => { st.textContent = '✅ คัดลอกแถวแล้ว — วาง (Ctrl+V) ในชีตได้เลย (บรรทัดหัว + ข้อมูล)'; st.className = 'text-xs text-emerald-600'; recPushRecent(rec); },
@@ -5539,10 +5656,11 @@
             );
         }
         function downloadRecordCsv() {
-            const rec = recRecord();
+            const rows = recAllRows();
+            const rec = rows[0];
             const keys = REC_COLS;
             const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
-            const csv = '﻿' + keys.map(q).join(',') + '\n' + keys.map(k => q(rec[k] || '')).join(',');
+            const csv = '﻿' + keys.map(q).join(',') + '\n' + rows.map(r => keys.map(k => q(r[k] || '')).join(',')).join('\n');
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
             a.download = 'HAI_record_' + (rec['HN'] || 'case') + '.csv'; a.click();
@@ -5613,6 +5731,7 @@
         document.getElementById('indFormModal').addEventListener('click', e => { if (e.target.id === 'indFormModal') closeIndForm(); });
         document.getElementById('menuAnalysis').addEventListener('click', () => switchView('analysis'));
         document.getElementById('btnPrintAnalysis').addEventListener('click', () => window.print());
+        document.getElementById('btnExportOrg').addEventListener('click', exportOrgBySiteCSV);
         document.getElementById('menuSpecial').addEventListener('click', () => switchView('special'));
         document.getElementById('btnExportSpecial').addEventListener('click', exportSpecialCSV);
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
