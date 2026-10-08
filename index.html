@@ -154,10 +154,6 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                 แบบบันทึกผู้ป่วย HAI
             </button>
-            <button id="menuListEdit" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
-                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h10M4 18h10"></path></svg>
-                แก้ไข Dropdown
-            </button>
         </nav>
         <div class="p-4 border-t border-slate-100 text-xs text-slate-400">
             <p>สถานะ: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
@@ -1429,9 +1425,12 @@
         <!-- ===================== VIEW: แบบบันทึกผู้ป่วย HAI ===================== -->
         <div id="viewRecord" class="space-y-6" hidden>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-6 border-b border-slate-100">
-                    <h3 class="text-lg font-semibold text-slate-800">แบบบันทึกผู้ป่วยติดเชื้อในโรงพยาบาล (HAI Case Record)</h3>
-                    <p class="text-xs text-slate-400 mt-1">บันทึก 1 เคสต่อ 1 แถว เขียนลงชีต “ทะเบียน-1” โดยตรง · ช่องที่มี * จำเป็น</p>
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">แบบบันทึกผู้ป่วยติดเชื้อในโรงพยาบาล (HAI Case Record)</h3>
+                        <p class="text-xs text-slate-400 mt-1">บันทึก 1 เคสต่อ 1 แถว เขียนลงชีต “ทะเบียน-1” โดยตรง · ช่องที่มี * จำเป็น</p>
+                    </div>
+                    <button id="recOpenListEdit" type="button" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium self-start whitespace-nowrap">⚙️ แก้ไข Dropdown</button>
                 </div>
                 <div class="p-6 space-y-5">
                     <div id="recFormFields" class="space-y-5"></div>
@@ -1473,9 +1472,12 @@
         <!-- ===================== VIEW: แก้ไข Dropdown (List-ทะเบียน-1) ===================== -->
         <div id="viewListEdit" class="space-y-6" hidden>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-6 border-b border-slate-100">
-                    <h3 class="text-lg font-semibold text-slate-800">แก้ไขรายการ Dropdown (แท็บ “List-ทะเบียน-1”)</h3>
-                    <p class="text-xs text-slate-400 mt-1">เลือกคอลัมน์ → แก้ไขค่าตัวเลือก (บรรทัดละ 1 ค่า) → บันทึกกลับชีตโดยตรง · ฟอร์มบันทึกจะใช้ค่าใหม่เมื่อเปิดครั้งถัดไป</p>
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">แก้ไขรายการ Dropdown (แท็บ “List-ทะเบียน-1”)</h3>
+                        <p class="text-xs text-slate-400 mt-1">เลือกคอลัมน์ → แก้ไขค่าตัวเลือก (บรรทัดละ 1 ค่า) → บันทึกกลับชีตโดยตรง · ฟอร์มบันทึกจะใช้ค่าใหม่เมื่อเปิดครั้งถัดไป</p>
+                    </div>
+                    <button id="leBack" type="button" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium self-start whitespace-nowrap">← กลับแบบบันทึก</button>
                 </div>
                 <div class="p-6 space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -6035,17 +6037,18 @@
 
         function switchView(view) {
             const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord', listedit: 'viewListEdit' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord', listedit: 'menuListEdit' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
             const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI', listedit: 'แก้ไข Dropdown (List)' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
             Object.keys(views).forEach(k => {
                 document.getElementById(views[k]).hidden = (k !== view);
-                const btn = document.getElementById(menus[k]);
-                // เก็บไอคอน (svg) ไว้ แล้วเปลี่ยนเฉพาะคลาสสี
-                btn.className = base + (k === view ? on : off);
+                const btn = menus[k] ? document.getElementById(menus[k]) : null;
+                if (btn) btn.className = base + (k === view ? on : off);
             });
+            // เมนู "แก้ไข Dropdown" ไม่มีปุ่มใน nav → ให้ไฮไลต์ปุ่มแบบบันทึกแทน
+            if (view === 'listedit') { const rb = document.getElementById('menuRecord'); if (rb) rb.className = base + on; }
             const pt = document.getElementById('pageTitle');
             if (pt) pt.textContent = titles[view] || '';
             // หน้า Post discharge ใช้ได้แค่ปี+ไตรมาส → ปิด Unit/PCT (ชีตนี้ไม่มีคอลัมน์นั้น)
@@ -6103,7 +6106,8 @@
         document.getElementById('menuControl').addEventListener('click', () => switchView('control'));
         document.getElementById('menuRisk').addEventListener('click', () => switchView('risk'));
         document.getElementById('menuRecord').addEventListener('click', () => switchView('record'));
-        document.getElementById('menuListEdit').addEventListener('click', () => switchView('listedit'));
+        document.getElementById('recOpenListEdit').addEventListener('click', () => switchView('listedit'));
+        document.getElementById('leBack').addEventListener('click', () => switchView('record'));
         document.getElementById('btnExportRisk').addEventListener('click', exportRiskCSV);
         document.getElementById('riskSource').addEventListener('change', refreshRisk);
         document.getElementById('btnRiskSave').addEventListener('click', saveRiskRegister);
