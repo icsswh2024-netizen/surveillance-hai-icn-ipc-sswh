@@ -1430,15 +1430,6 @@
                     <p class="text-xs text-slate-400 mt-1">บันทึก 1 เคสต่อ 1 แถว เขียนลงชีต “ทะเบียน-1” โดยตรง · ช่องที่มี * จำเป็น</p>
                 </div>
                 <div class="p-6 space-y-5">
-                    <!-- ลากรูปใบ AST มาวาง → OCR กรอกให้อัตโนมัติ (อ่านในเครื่อง ไม่ส่งออก) -->
-                    <div>
-                        <div id="recDrop" class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center text-sm text-slate-500 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors">
-                            📄 ลากรูป <b>ใบผลเพาะเชื้อ/AST</b> มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์<br>
-                            <span class="text-xs text-slate-400">ระบบอ่านรูปในเครื่อง (ไม่ส่งข้อมูลออก) แล้วกรอกผลไวต่อยา/เชื้อ/HN ให้ — โปรดตรวจทานก่อนบันทึก</span>
-                            <input id="recDropInput" type="file" accept="image/*" class="hidden">
-                        </div>
-                        <p id="recOcrStatus" class="text-xs text-slate-400 mt-1"></p>
-                    </div>
                     <div id="recFormFields" class="space-y-5"></div>
                     <!-- เชื้อก่อโรคเพิ่ม (บันทึกเป็นบรรทัดต่อในไซต์เดียวกัน) -->
                     <div class="border-t border-slate-100 pt-4">
@@ -5500,6 +5491,12 @@
             const ro = (col, label) => '<div><label class="block text-[11px] font-medium text-slate-500 mb-0.5">' + label + '</label>' +
                 '<input data-col="' + col + '" readonly class="w-full border border-slate-100 bg-slate-50 rounded-lg px-2 py-1.5 text-xs text-slate-600"></div>';
             return '<div class="col-span-2 sm:col-span-3 lg:col-span-4 rounded-lg border border-slate-200 p-3">' +
+                '<div id="recDrop" class="border-2 border-dashed border-slate-300 rounded-xl p-3 mb-3 text-center text-sm text-slate-500 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors">' +
+                    '📄 ลากรูป <b>ใบผลเพาะเชื้อ/AST</b> มาวาง หรือคลิกเพื่อเลือกไฟล์<br>' +
+                    '<span class="text-xs text-slate-400">อ่านรูปในเครื่อง (ไม่ส่งข้อมูลออก) แล้วกรอกผลไวต่อยา/เชื้อ/HN ให้ — โปรดตรวจทานก่อนบันทึก</span>' +
+                    '<input id="recDropInput" type="file" accept="image/*" class="hidden">' +
+                '</div>' +
+                '<p id="recOcrStatus" class="text-xs text-slate-400 mb-2"></p>' +
                 '<p class="text-xs text-slate-500 mb-2">เลือกผลไวต่อยา (S=ไว · I=ปานกลาง · R=ดื้อ · N=nonsusceptible) — ระบบเติม “ชื่อยา” และ “กลุ่มยา” ให้อัตโนมัติ (N รวมกับ R)</p>' +
                 '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3">' + cells + '</div>' +
                 '<div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 border-t border-slate-100 pt-3">' +
@@ -5649,6 +5646,15 @@
             if (monthSel) monthSel.addEventListener('change', () => { const q = recQuarterOfMonth(monthSel.value); const qe = document.getElementById('rec_quarter'); if (qe) qe.value = q ? 'Q' + q : ''; });
             const y = document.querySelector('#recFormFields [data-col="Year"]'); if (y && !y.value) y.value = new Date().getFullYear() + 543;
             document.querySelectorAll('#recFormFields .astSel').forEach(sel => sel.addEventListener('change', recomputeAst));
+            // ช่องลากรูป OCR (อยู่ในแผง AST — ผูกใหม่ทุกครั้งที่สร้างฟอร์ม)
+            const drop = document.getElementById('recDrop'), dropIn = document.getElementById('recDropInput');
+            if (drop && dropIn) {
+                drop.addEventListener('click', () => dropIn.click());
+                dropIn.addEventListener('change', () => { if (dropIn.files[0]) recOcr(dropIn.files[0]); });
+                ['dragover', 'dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('border-emerald-400', 'bg-emerald-50/40'); }));
+                ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('border-emerald-400', 'bg-emerald-50/40'); }));
+                drop.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) recOcr(f); });
+            }
             if (!recListsLoaded) {
                 const setDl = (id, arr) => { const el = document.getElementById(id); if (el) el.innerHTML = arr.map(v => '<option value="' + recEsc(v) + '">').join(''); };
                 setDl('recdl_units', [...new Set(rawData.map(r => r.unit).filter(Boolean))].sort());
@@ -5684,12 +5690,6 @@
                 document.getElementById('recClear').addEventListener('click', () => { clearRecordForm(); });
                 document.getElementById('recListClear').addEventListener('click', () => { try { localStorage.removeItem('recRecent'); } catch (e) { } renderRecentRecords(); });
                 document.getElementById('recAddOrg').addEventListener('click', () => recAddOrgRow(''));
-                const drop = document.getElementById('recDrop'), dropIn = document.getElementById('recDropInput');
-                drop.addEventListener('click', () => dropIn.click());
-                dropIn.addEventListener('change', () => { if (dropIn.files[0]) recOcr(dropIn.files[0]); });
-                ['dragover', 'dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('border-emerald-400', 'bg-emerald-50/40'); }));
-                ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('border-emerald-400', 'bg-emerald-50/40'); }));
-                drop.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) recOcr(f); });
                 recInited = true;
             }
             buildRecordForm();
