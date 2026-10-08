@@ -20,6 +20,7 @@ function recJson_(obj, cb) {
   return ContentService.createTextOutput(out).setMimeType(ContentService.MimeType.JSON);
 }
 function recNorm_(s) { return String(s == null ? '' : s).toLowerCase().replace(/[\s.]/g, ''); }
+const REC_LIST_SHEET = 'List-ทะเบียน-1';
 
 function doGet(e) {
   const cb = e && e.parameter && e.parameter.callback;
@@ -28,14 +29,39 @@ function doGet(e) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sh = ss.getSheetByName(REC_SHEET);
     const headers = sh ? sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function (x) { return String(x).trim(); }) : [];
-    return recJson_({ ok: true, version: 'record-v1', sheet: REC_SHEET, found: !!sh, headers: headers }, cb);
+    return recJson_({ ok: true, version: 'record-v1', lists: true, sheet: REC_SHEET, found: !!sh, headers: headers }, cb);
   }
-  return recJson_({ ok: true, version: 'record-v1' }, cb);
+  return recJson_({ ok: true, version: 'record-v1', lists: true }, cb);
+}
+
+// เขียนค่าตัวเลือกลงคอลัมน์หนึ่งในแท็บ List-ทะเบียน-1 (สร้างคอลัมน์ใหม่ได้ถ้ายังไม่มี)
+function recSetList_(body) {
+  const header = String(body.header || '').trim();
+  if (!header) return recJson_({ ok: false, note: 'ไม่มีชื่อคอลัมน์' });
+  const values = Array.isArray(body.values) ? body.values.map(function (v) { return [v]; }) : [];
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(REC_LIST_SHEET);
+  if (!sh) sh = ss.insertSheet(REC_LIST_SHEET);
+  const lastCol = Math.max(1, sh.getLastColumn());
+  const headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (x) { return String(x).trim(); });
+  let col = -1;
+  for (var i = 0; i < headers.length; i++) { if (headers[i] === header) { col = i + 1; break; } }
+  if (col < 0) {
+    if (!body.create) return recJson_({ ok: false, note: 'ไม่พบคอลัมน์ "' + header + '"' });
+    col = (headers.join('') === '' ? 1 : lastCol + 1);
+    sh.getRange(1, col, 1, 1).setValue(header);
+  }
+  // ล้างค่าของเดิมใต้หัวตาราง แล้วเขียนค่าใหม่
+  const maxRow = sh.getMaxRows();
+  if (maxRow > 1) sh.getRange(2, col, maxRow - 1, 1).clearContent();
+  if (values.length) sh.getRange(2, col, values.length, 1).setValues(values);
+  return recJson_({ ok: true, action: 'setList', header: header, count: values.length, col: col });
 }
 
 function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    if (body.action === 'setList') return recSetList_(body);
     if (body.action !== 'addCase') return recJson_({ ok: false, note: 'unknown action: ' + body.action });
     // รองรับทั้งบรรทัดเดียว (record) และหลายบรรทัด (records = เคส + เชื้อเพิ่มบรรทัดต่อ)
     const recs = Array.isArray(body.records) ? body.records : [body.record || {}];

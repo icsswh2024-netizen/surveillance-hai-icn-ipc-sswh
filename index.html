@@ -154,6 +154,10 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                 แบบบันทึกผู้ป่วย HAI
             </button>
+            <button id="menuListEdit" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h10M4 18h10"></path></svg>
+                แก้ไข Dropdown
+            </button>
         </nav>
         <div class="p-4 border-t border-slate-100 text-xs text-slate-400">
             <p>สถานะ: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
@@ -1465,6 +1469,41 @@
                 </div>
             </div>
         </div><!-- /viewRecord -->
+
+        <!-- ===================== VIEW: แก้ไข Dropdown (List-ทะเบียน-1) ===================== -->
+        <div id="viewListEdit" class="space-y-6" hidden>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h3 class="text-lg font-semibold text-slate-800">แก้ไขรายการ Dropdown (แท็บ “List-ทะเบียน-1”)</h3>
+                    <p class="text-xs text-slate-400 mt-1">เลือกคอลัมน์ → แก้ไขค่าตัวเลือก (บรรทัดละ 1 ค่า) → บันทึกกลับชีตโดยตรง · ฟอร์มบันทึกจะใช้ค่าใหม่เมื่อเปิดครั้งถัดไป</p>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">คอลัมน์</label>
+                            <div class="flex gap-2">
+                                <select id="le_col" class="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400"></select>
+                                <button id="le_addcol" type="button" class="text-sm bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-2 px-3 rounded-xl font-medium whitespace-nowrap">➕ คอลัมน์ใหม่</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">URL Apps Script (เขียนลงชีต)</label>
+                            <input id="le_url" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400" placeholder="https://script.google.com/macros/s/.../exec">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">ค่าตัวเลือก (บรรทัดละ 1 ค่า) <span id="le_count" class="text-slate-400"></span></label>
+                        <textarea id="le_values" rows="12" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400 font-mono" placeholder="เช่น&#10;icu&#10;mmw&#10;pw2"></textarea>
+                    </div>
+                    <p id="le_status" class="text-xs text-slate-400"></p>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="le_save" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg font-medium">บันทึกคอลัมน์นี้</button>
+                        <button id="le_reload" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-lg font-medium">โหลดใหม่จากชีต</button>
+                    </div>
+                </div>
+            </div>
+            <p class="text-xs text-slate-400 text-center">แก้ไขตัวเลือกที่นี่ = แก้แท็บ List-ทะเบียน-1 โดยตรง (ต้องตั้งค่า URL + Deploy RecordCode.gs เวอร์ชันล่าสุด)</p>
+        </div><!-- /viewListEdit -->
     </div><!-- /max-w container -->
     </main>
   </div><!-- /flex wrapper -->
@@ -5922,10 +5961,82 @@
             const st = document.getElementById('rec_status'); st.textContent = '✅ ดาวน์โหลด CSV แล้ว'; st.className = 'text-xs text-emerald-600';
         }
 
+        /* ===== แก้ไข Dropdown — อ่าน/เขียนแท็บ List-ทะเบียน-1 ===== */
+        let LE_DATA = {}, LE_ORDER = [];
+        function leStatus(msg, cls) { const st = document.getElementById('le_status'); if (st) { st.textContent = msg; st.className = 'text-xs ' + (cls || 'text-slate-400'); } }
+        async function initListEdit() {
+            try { const u = localStorage.getItem('recordSaveUrl'); if (u) document.getElementById('le_url').value = u; } catch (e) { }
+            if (!initListEdit._bound) {
+                document.getElementById('le_col').addEventListener('change', leRenderCol);
+                document.getElementById('le_addcol').addEventListener('click', leAddColumn);
+                document.getElementById('le_save').addEventListener('click', leSave);
+                document.getElementById('le_reload').addEventListener('click', () => leLoad(true));
+                document.getElementById('le_values').addEventListener('input', leUpdateCount);
+                initListEdit._bound = true;
+            }
+            leLoad(false);
+        }
+        async function leLoad(force) {
+            if (!force && LE_ORDER.length) { leRenderCol(); return; }
+            leStatus('กำลังโหลดจากชีต List-ทะเบียน-1...', 'text-slate-500');
+            try {
+                const res = await fetch(REC_LIST_CSV_URL + '&_=' + Date.now());
+                const objs = parseCSV(await res.text());
+                LE_DATA = {}; LE_ORDER = [];
+                if (objs.length) {
+                    Object.keys(objs[0]).filter(h => h && h !== '__norm').forEach(h => {
+                        LE_ORDER.push(h);
+                        LE_DATA[h] = [...new Set(objs.map(o => (o[h] || '').toString().trim()).filter(Boolean))];
+                    });
+                }
+                const sel = document.getElementById('le_col');
+                sel.innerHTML = LE_ORDER.map(h => '<option value="' + recEsc(h) + '">' + recEsc(h) + ' (' + LE_DATA[h].length + ')</option>').join('');
+                leRenderCol();
+                leStatus('โหลดแล้ว ' + LE_ORDER.length + ' คอลัมน์', 'text-emerald-600');
+            } catch (e) { leStatus('⚠️ โหลดไม่สำเร็จ: ' + e.message + ' (ตรวจการแชร์ชีต)', 'text-rose-600'); }
+        }
+        function leRenderCol() {
+            const col = document.getElementById('le_col').value;
+            document.getElementById('le_values').value = (LE_DATA[col] || []).join('\n');
+            leUpdateCount();
+        }
+        function leUpdateCount() {
+            const n = document.getElementById('le_values').value.split('\n').map(s => s.trim()).filter(Boolean).length;
+            document.getElementById('le_count').textContent = '· ' + n + ' ค่า';
+        }
+        function leAddColumn() {
+            const name = (prompt('ชื่อคอลัมน์ใหม่ (ให้ตรงกับหัวใน “ทะเบียน-1” เช่น ชนิดSSI หรือ ห้องผ่าตัด OR):') || '').trim();
+            if (!name) return;
+            if (LE_ORDER.includes(name)) { document.getElementById('le_col').value = name; leRenderCol(); return; }
+            LE_ORDER.push(name); LE_DATA[name] = [];
+            const sel = document.getElementById('le_col');
+            const o = document.createElement('option'); o.value = name; o.textContent = name + ' (ใหม่)'; sel.appendChild(o);
+            sel.value = name; document.getElementById('le_values').value = ''; leUpdateCount();
+            leStatus('คอลัมน์ใหม่ “' + name + '” — ใส่ค่าแล้วกดบันทึก', 'text-slate-500');
+        }
+        async function leSave() {
+            const col = document.getElementById('le_col').value;
+            if (!col) { leStatus('⚠️ ยังไม่ได้เลือกคอลัมน์', 'text-rose-600'); return; }
+            const url = (document.getElementById('le_url').value || '').trim();
+            if (!url) { leStatus('⚠️ กรุณาวาง URL Apps Script', 'text-rose-600'); return; }
+            try { localStorage.setItem('recordSaveUrl', url); } catch (e) { }
+            const values = document.getElementById('le_values').value.split('\n').map(s => s.trim()).filter(Boolean);
+            leStatus('กำลังตรวจสอบการเชื่อมต่อ...', 'text-slate-500');
+            try {
+                let ping = null; try { ping = await jsonpFrom(url, 'action=ping'); } catch (e) { }
+                if (!ping || !ping.lists) { leStatus('⚠️ Apps Script ยังไม่รองรับแก้ Dropdown — ต้องวาง RecordCode.gs ใหม่แล้ว Deploy → New version', 'text-rose-600'); return; }
+                leStatus('กำลังบันทึก “' + col + '” (' + values.length + ' ค่า)...', 'text-slate-500');
+                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'setList', header: col, values: values, create: true }) });
+                LE_DATA[col] = [...new Set(values)];
+                recListsLoaded = false; // ให้ฟอร์มบันทึกโหลด List ใหม่คราวหน้า
+                leStatus('✅ บันทึก “' + col + '” แล้ว ' + values.length + ' ค่า · ฟอร์มจะใช้ค่าใหม่เมื่อเปิดครั้งถัดไป', 'text-emerald-600');
+            } catch (e) { leStatus('⚠️ บันทึกไม่สำเร็จ: ' + e.message, 'text-rose-600'); }
+        }
+
         function switchView(view) {
-            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
-            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI' };
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord', listedit: 'viewListEdit' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord', listedit: 'menuListEdit' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI', listedit: 'แก้ไข Dropdown (List)' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
@@ -5956,6 +6067,7 @@
             if (view === 'control') updateControlView();
             if (view === 'risk') refreshRisk();
             if (view === 'record') initRecordView();
+            if (view === 'listedit') initListEdit();
         }
 
         // Event listeners
@@ -5991,6 +6103,7 @@
         document.getElementById('menuControl').addEventListener('click', () => switchView('control'));
         document.getElementById('menuRisk').addEventListener('click', () => switchView('risk'));
         document.getElementById('menuRecord').addEventListener('click', () => switchView('record'));
+        document.getElementById('menuListEdit').addEventListener('click', () => switchView('listedit'));
         document.getElementById('btnExportRisk').addEventListener('click', exportRiskCSV);
         document.getElementById('riskSource').addEventListener('change', refreshRisk);
         document.getElementById('btnRiskSave').addEventListener('click', saveRiskRegister);
