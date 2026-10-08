@@ -5431,15 +5431,13 @@
                 { col: 'ประเภทการจำหนาย', label: 'ประเภทการจำหน่าย', type: 'text' },
                 { col: 'สาเหตุ Death', label: 'สาเหตุการเสียชีวิต', type: 'text' }
             ] },
-            { group: 'ยาที่เกี่ยวข้อง (ถ้ามี)', optional: 1, fields: [
-                { col: 'ชื่อยา S', label: 'ยาที่ไว (S)', type: 'text' },
-                { col: 'ชื่อยา R', label: 'ยาที่ดื้อ (R)', type: 'text' },
-                { col: 'ชื่อยา I', label: 'ยาที่ intermediate (I)', type: 'text' },
-                { col: 'ATB1', label: 'ยาปฏิชีวนะ 1', type: 'text' },
-                { col: 'ATB2', label: 'ยาปฏิชีวนะ 2', type: 'text' },
-                { col: 'ATB3', label: 'ยาปฏิชีวนะ 3', type: 'text' },
-                { col: 'ATB4', label: 'ยาปฏิชีวนะ 4', type: 'text' },
-                { col: 'ATB5', label: 'ยาปฏิชีวนะ 5', type: 'text' }
+            { group: 'ยา / ผลไวต่อยา (AST) (ถ้ามี)', optional: 1, fields: [
+                { type: 'ast' },
+                { col: 'ATB1', label: 'ยาที่ใช้จริง 1', type: 'text' },
+                { col: 'ATB2', label: 'ยาที่ใช้จริง 2', type: 'text' },
+                { col: 'ATB3', label: 'ยาที่ใช้จริง 3', type: 'text' },
+                { col: 'ATB4', label: 'ยาที่ใช้จริง 4', type: 'text' },
+                { col: 'ATB5', label: 'ยาที่ใช้จริง 5', type: 'text' }
             ] },
             { group: 'ผ่าตัด / SSI (ถ้ามี)', optional: 1, fields: [
                 { col: 'ชนิดSSI', label: 'ชนิด SSI', type: 'text' },
@@ -5461,12 +5459,67 @@
         const REC_URL = 'https://script.google.com/macros/s/PASTE_RECORD_WEBAPP_URL/exec';
         function recQuarterOfMonth(m) { const i = FISCAL_MONTHS.indexOf(+m); return i < 0 ? '' : String(Math.floor(i / 3) + 1); }
         const recEsc = s => (s == null ? '' : s.toString()).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        // รายการยาปฏิชีวนะ (ตามใบ AST ของห้องแล็บ) + กลุ่มยา → ใช้เติม "กลุ่มยา" อัตโนมัติ
+        const ANTIBIOTICS = [
+            { n: 'Amikacin', c: 'Aminoglycosides' }, { n: 'Gentamicin', c: 'Aminoglycosides' },
+            { n: 'Ampicillin', c: 'Penicillins' }, { n: 'Penicillin', c: 'Penicillins' },
+            { n: 'Oxacillin', c: 'Penicillins' }, { n: 'Methicillin', c: 'Penicillins' },
+            { n: 'Amoxicillin/Clavulanic acid', c: 'Betalactam/BLI' }, { n: 'Piperacillin/Tazobactam', c: 'Betalactam/BLI' },
+            { n: 'Cefoperazone/Sulbactam', c: 'Betalactam/BLI' }, { n: 'Ceftazidime/Avibactam', c: 'Betalactam/BLI' },
+            { n: 'Cefazolin', c: 'Cephalosporins' }, { n: 'Cefixime', c: 'Cephalosporins' },
+            { n: 'Cefoxitin', c: 'Cephalosporins' }, { n: 'Cefotaxime', c: 'Cephalosporins' },
+            { n: 'Ceftazidime', c: 'Cephalosporins' }, { n: 'Ceftriaxone', c: 'Cephalosporins' },
+            { n: 'Cefepime', c: 'Cephalosporins' },
+            { n: 'Meropenem', c: 'Carbapenems' }, { n: 'Imipenem', c: 'Carbapenems' }, { n: 'Ertapenem', c: 'Carbapenems' },
+            { n: 'Ciprofloxacin', c: 'Fluoroquinolones' }, { n: 'Levofloxacin', c: 'Fluoroquinolones' },
+            { n: 'Norfloxacin', c: 'Fluoroquinolones' }, { n: 'Ofloxacin', c: 'Fluoroquinolones' },
+            { n: 'Azithromycin', c: 'Macrolides' }, { n: 'Erythromycin', c: 'Macrolides' },
+            { n: 'Doxycycline', c: 'Tetracyclines' }, { n: 'Tetracycline', c: 'Tetracyclines' },
+            { n: 'Tigecycline', c: 'Tigecycline' },
+            { n: 'Vancomycin', c: 'Glycopeptides' }, { n: 'Teicoplanin', c: 'Glycopeptides' },
+            { n: 'Linezolid', c: 'Oxazolidinones' }, { n: 'Clindamycin', c: 'Lincosamides' },
+            { n: 'Colistin', c: 'Polymyxins' }, { n: 'Trimethoprim/Sulfamethoxazole', c: 'Folate inhibitor' },
+            { n: 'Chloramphenicol', c: 'Phenicols' }, { n: 'Fosfomycin', c: 'Fosfomycin' },
+            { n: 'Fusidic acid', c: 'Others' }
+        ];
+        function astPanelHtml() {
+            const cells = ANTIBIOTICS.map((d, i) =>
+                '<label class="flex items-center justify-between gap-1 text-[11px] py-0.5"><span class="truncate">' + recEsc(d.n) + '</span>' +
+                '<select class="astSel border border-slate-200 rounded px-1 py-0.5 text-[11px]" data-drug="' + i + '">' +
+                '<option value=""></option><option value="S">S</option><option value="I">I</option><option value="R">R</option><option value="N">N</option></select></label>'
+            ).join('');
+            const ro = (col, label) => '<div><label class="block text-[11px] font-medium text-slate-500 mb-0.5">' + label + '</label>' +
+                '<input data-col="' + col + '" readonly class="w-full border border-slate-100 bg-slate-50 rounded-lg px-2 py-1.5 text-xs text-slate-600"></div>';
+            return '<div class="col-span-2 sm:col-span-3 lg:col-span-4 rounded-lg border border-slate-200 p-3">' +
+                '<p class="text-xs text-slate-500 mb-2">เลือกผลไวต่อยา (S=ไว · I=ปานกลาง · R=ดื้อ · N=nonsusceptible) — ระบบเติม “ชื่อยา” และ “กลุ่มยา” ให้อัตโนมัติ (N รวมกับ R)</p>' +
+                '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3">' + cells + '</div>' +
+                '<div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 border-t border-slate-100 pt-3">' +
+                    ro('ชื่อยา S', 'ชื่อยาที่ไว (S)') + ro('ชื่อยา I', 'ชื่อยา intermediate (I)') + ro('ชื่อยา R', 'ชื่อยาที่ดื้อ (R)') +
+                    ro('กลุ่มยา S', 'กลุ่มยา S') + ro('กลุ่มยา I', 'กลุ่มยา I') + ro('กลุ่มยา R', 'กลุ่มยา R') +
+                '</div></div>';
+        }
+        function recomputeAst() {
+            const buckets = { S: [], I: [], R: [] };
+            document.querySelectorAll('#recFormFields .astSel').forEach(sel => {
+                const v = sel.value; if (!v) return;
+                const d = ANTIBIOTICS[+sel.dataset.drug]; if (!d) return;
+                const b = v === 'S' ? 'S' : v === 'I' ? 'I' : 'R'; // R และ N → R
+                buckets[b].push(d);
+            });
+            const uniq = a => [...new Set(a)];
+            const setCol = (col, val) => { const e = document.querySelector('#recFormFields [data-col="' + col + '"]'); if (e) e.value = val; };
+            ['S', 'I', 'R'].forEach(b => {
+                setCol('ชื่อยา ' + b, uniq(buckets[b].map(d => d.n)).join(', '));
+                setCol('กลุ่มยา ' + b, uniq(buckets[b].map(d => d.c)).join(', '));
+            });
+        }
         function recFieldHtml(f) {
             const base = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm';
             const lab = '<label class="block text-xs font-medium text-slate-500 mb-1">' + recEsc(f.label) + (f.req ? ' *' : '') + '</label>';
             const key = normKey(f.col);
             const listVals = REC_LISTS[key];          // ค่าจากแท็บ List (ถ้ามี)
             let input;
+            if (f.type === 'ast') { return astPanelHtml(); }
             if (f.type === 'month') {
                 input = '<select data-col="Month" data-req="1" id="rec_month" class="' + base + '"><option value=""></option>' +
                     FISCAL_MONTHS.map(m => '<option value="' + m + '">' + m + ' — ' + MONTH_LABELS[m] + '</option>').join('') + '</select>';
@@ -5501,6 +5554,7 @@
             const monthSel = document.getElementById('rec_month');
             if (monthSel) monthSel.addEventListener('change', () => { const q = recQuarterOfMonth(monthSel.value); const qe = document.getElementById('rec_quarter'); if (qe) qe.value = q ? 'Q' + q : ''; });
             const y = document.querySelector('#recFormFields [data-col="Year"]'); if (y && !y.value) y.value = new Date().getFullYear() + 543;
+            document.querySelectorAll('#recFormFields .astSel').forEach(sel => sel.addEventListener('change', recomputeAst));
             if (!recListsLoaded) {
                 const setDl = (id, arr) => { const el = document.getElementById(id); if (el) el.innerHTML = arr.map(v => '<option value="' + recEsc(v) + '">').join(''); };
                 setDl('recdl_units', [...new Set(rawData.map(r => r.unit).filter(Boolean))].sort());
@@ -5615,6 +5669,7 @@
         function clearRecordForm() {
             const keep = { 'Year': 1, 'Month': 1, 'Quater': 1, 'Unit': 1, 'PCT': 1 };
             document.querySelectorAll('#recFormFields [data-col]').forEach(el => { if (!keep[el.dataset.col]) el.value = ''; });
+            document.querySelectorAll('#recFormFields .astSel').forEach(sel => { sel.value = ''; });
             document.getElementById('recExtraOrgList').innerHTML = '';
             const st = document.getElementById('rec_status'); st.textContent = 'ล้างฟอร์มแล้ว (คงปี/เดือน/ไตรมาส/หอ/กลุ่มงาน ไว้)'; st.className = 'text-xs text-slate-400';
         }
