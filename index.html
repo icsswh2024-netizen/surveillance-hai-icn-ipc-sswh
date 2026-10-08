@@ -5371,12 +5371,20 @@
         ];
         const REC_COLS = REC_GROUPS.reduce((a, g) => a.concat(g.fields.map(f => f.col)), []);
         const REC_DATALISTS = { units: [], pcts: [], titles: ['นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.'], site: ['cauti', 'vap', 'hap', 'clabsi', 'ssi', 'uti', 'bsi', 'omphalitis'], mdr: ['mdr', 'cre', 'esbl', 'xdr', 'vre', 'mrsa'] };
+        // ค่าดรอปดาวน์อ่านสดจากแท็บ "List-ทะเบียน-1" (หัวคอลัมน์ = ชื่อฟิลด์, ค่าในคอลัมน์ = ตัวเลือก)
+        const REC_LIST_SHEET = 'List-ทะเบียน-1';
+        const REC_LIST_CSV_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(REC_LIST_SHEET);
+        let REC_LISTS = {};        // normKey(header) -> [values]
+        let REC_LIST_IDS = {};     // normKey(header) -> datalist dom id
+        let recListsLoaded = false;
         const REC_URL = 'https://script.google.com/macros/s/PASTE_RECORD_WEBAPP_URL/exec';
         function recQuarterOfMonth(m) { const i = FISCAL_MONTHS.indexOf(+m); return i < 0 ? '' : String(Math.floor(i / 3) + 1); }
         const recEsc = s => (s == null ? '' : s.toString()).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         function recFieldHtml(f) {
             const base = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm';
             const lab = '<label class="block text-xs font-medium text-slate-500 mb-1">' + recEsc(f.label) + (f.req ? ' *' : '') + '</label>';
+            const key = normKey(f.col);
+            const listVals = REC_LISTS[key];          // ค่าจากแท็บ List (ถ้ามี)
             let input;
             if (f.type === 'month') {
                 input = '<select data-col="Month" data-req="1" id="rec_month" class="' + base + '"><option value=""></option>' +
@@ -5384,11 +5392,12 @@
             } else if (f.type === 'quarter') {
                 input = '<input data-col="Quater" id="rec_quarter" readonly class="w-full border border-slate-100 bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-500">';
             } else if (f.type === 'select') {
+                const opts = (listVals && listVals.length) ? listVals : f.opts;
                 input = '<select data-col="' + recEsc(f.col) + '"' + (f.req ? ' data-req="1"' : '') + ' class="' + base + '"><option value=""></option>' +
-                    f.opts.map(o => '<option value="' + recEsc(o) + '">' + recEsc(o) + '</option>').join('') + '</select>';
+                    opts.map(o => '<option value="' + recEsc(o) + '">' + recEsc(o) + '</option>').join('') + '</select>';
             } else {
                 const t = f.type === 'number' ? 'number' : 'text';
-                const list = f.datalist ? ' list="recdl_' + f.datalist + '"' : '';
+                const list = (listVals && listVals.length) ? ' list="' + REC_LIST_IDS[key] + '"' : (f.datalist ? ' list="recdl_' + f.datalist + '"' : '');
                 const ph = f.type === 'date' ? ' placeholder="วว/ดด/ปปปป (พ.ศ.)"' : (f.ph ? ' placeholder="' + recEsc(f.ph) + '"' : '');
                 input = '<input type="' + t + '" data-col="' + recEsc(f.col) + '"' + (f.req ? ' data-req="1"' : '') + list + ph + ' class="' + base + '">';
             }
@@ -5397,19 +5406,48 @@
         function buildRecordForm() {
             const wrap = document.getElementById('recFormFields'); if (!wrap) return;
             const dls = Object.keys(REC_DATALISTS).map(k => '<datalist id="recdl_' + k + '">' + REC_DATALISTS[k].map(v => '<option value="' + recEsc(v) + '">').join('') + '</datalist>').join('');
-            wrap.innerHTML = dls + REC_GROUPS.map((g, gi) => {
+            // datalist แบบไดนามิกจากแท็บ List
+            REC_LIST_IDS = {}; let di = 0;
+            const dynDls = Object.keys(REC_LISTS).map(k => { const id = 'recdyn_' + (di++); REC_LIST_IDS[k] = id; return '<datalist id="' + id + '">' + REC_LISTS[k].map(v => '<option value="' + recEsc(v) + '">').join('') + '</datalist>'; }).join('');
+            wrap.innerHTML = dls + dynDls + REC_GROUPS.map((g, gi) => {
                 const grid = '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">' + g.fields.map(recFieldHtml).join('') + '</div>';
                 if (g.optional) return '<details class="border-t border-slate-100 pt-4"><summary class="text-sm font-semibold text-slate-600 cursor-pointer">' + recEsc(g.group) + '</summary><div class="mt-3">' + grid + '</div></details>';
                 return '<div' + (gi > 0 ? ' class="border-t border-slate-100 pt-4"' : '') + '><h4 class="text-sm font-semibold text-slate-600 mb-2">' + recEsc(g.group) + '</h4>' + grid + '</div>';
             }).join('');
         }
+        // ผูก event หลังสร้างฟอร์มใหม่ทุกครั้ง (เดือน→ไตรมาส, ค่าปีตั้งต้น, fallback datalist)
+        function bindRecordForm() {
+            const monthSel = document.getElementById('rec_month');
+            if (monthSel) monthSel.addEventListener('change', () => { const q = recQuarterOfMonth(monthSel.value); const qe = document.getElementById('rec_quarter'); if (qe) qe.value = q ? 'Q' + q : ''; });
+            const y = document.querySelector('#recFormFields [data-col="Year"]'); if (y && !y.value) y.value = new Date().getFullYear() + 543;
+            if (!recListsLoaded) {
+                const setDl = (id, arr) => { const el = document.getElementById(id); if (el) el.innerHTML = arr.map(v => '<option value="' + recEsc(v) + '">').join(''); };
+                setDl('recdl_units', [...new Set(rawData.map(r => r.unit).filter(Boolean))].sort());
+                setDl('recdl_pcts', [...new Set(rawData.map(r => r.pct).filter(Boolean))].sort());
+            }
+        }
+        // อ่านค่าดรอปดาวน์จากแท็บ List-ทะเบียน-1 (ครั้งเดียว) แล้วสร้างฟอร์มใหม่ให้ใช้ค่าจริง
+        async function loadRecordLists() {
+            if (recListsLoaded) return;
+            try {
+                const res = await fetch(REC_LIST_CSV_URL + '&_=' + Date.now());
+                const txt = await res.text();
+                const objs = parseCSV(txt);
+                if (objs.length) {
+                    const headers = Object.keys(objs[0]).filter(h => h !== '__norm');
+                    const lists = {};
+                    headers.forEach(h => {
+                        if (!h) return;
+                        const vals = [...new Set(objs.map(o => (o[h] || '').toString().trim()).filter(Boolean))];
+                        if (vals.length) lists[normKey(h)] = vals;
+                    });
+                    if (Object.keys(lists).length) { REC_LISTS = lists; recListsLoaded = true; buildRecordForm(); bindRecordForm(); }
+                }
+            } catch (e) { /* เงียบ: ถ้าอ่านไม่ได้ ใช้พิมพ์เอง/ค่าตั้งต้น */ }
+        }
         let recInited = false;
         function initRecordView() {
             if (!recInited) {
-                buildRecordForm();
-                const monthSel = document.getElementById('rec_month');
-                monthSel.addEventListener('change', () => { const q = recQuarterOfMonth(monthSel.value); document.getElementById('rec_quarter').value = q ? 'Q' + q : ''; });
-                const y = document.querySelector('#recFormFields [data-col="Year"]'); if (y && !y.value) y.value = new Date().getFullYear() + 543;
                 try { const u = localStorage.getItem('recordSaveUrl'); if (u) document.getElementById('rec_url').value = u; } catch (e) { }
                 document.getElementById('recSave').addEventListener('click', saveRecord);
                 document.getElementById('recCopy').addEventListener('click', copyRecordRow);
@@ -5418,11 +5456,10 @@
                 document.getElementById('recListClear').addEventListener('click', () => { try { localStorage.removeItem('recRecent'); } catch (e) { } renderRecentRecords(); });
                 recInited = true;
             }
-            // datalist หอผู้ป่วย/กลุ่มงาน จากข้อมูลจริง
-            const setDl = (id, arr) => { const el = document.getElementById(id); if (el) el.innerHTML = arr.map(v => '<option value="' + recEsc(v) + '">').join(''); };
-            setDl('recdl_units', [...new Set(rawData.map(r => r.unit).filter(Boolean))].sort());
-            setDl('recdl_pcts', [...new Set(rawData.map(r => r.pct).filter(Boolean))].sort());
+            buildRecordForm();
+            bindRecordForm();
             renderRecentRecords();
+            loadRecordLists();
         }
         function recRecord() {
             const rec = {};
