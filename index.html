@@ -1431,15 +1431,6 @@
                 </div>
                 <div class="p-6 space-y-5">
                     <div id="recFormFields" class="space-y-5"></div>
-                    <!-- เชื้อก่อโรคเพิ่ม (บันทึกเป็นบรรทัดต่อในไซต์เดียวกัน) -->
-                    <div class="border-t border-slate-100 pt-4">
-                        <div class="flex items-center justify-between mb-2">
-                            <h4 class="text-sm font-semibold text-slate-600">เชื้อก่อโรคเพิ่ม (บรรทัดต่อ)</h4>
-                            <button id="recAddOrg" type="button" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1 px-2.5 rounded-lg font-medium">➕ เพิ่มเชื้อ</button>
-                        </div>
-                        <div id="recExtraOrgList" class="space-y-2"></div>
-                        <p class="text-[11px] text-slate-400 mt-1">แต่ละเชื้อที่เพิ่มจะถูกบันทึกเป็นอีก 1 บรรทัด โดยใช้ Unit/HN/SITE เดิม และเว้น HAI/ชื่อ ไว้ จึง<b>ไม่ถูกนับซ้ำเป็นเคส</b> แต่ถูกนับเป็นเชื้อของไซต์นั้น</p>
-                    </div>
                     <!-- การเชื่อมต่อชีต -->
                     <div class="border-t border-slate-100 pt-4">
                         <label class="block text-xs font-medium text-slate-500 mb-1">URL Apps Script Web App (เขียนลงชีต “ทะเบียน-1”)</label>
@@ -5502,7 +5493,17 @@
                 '<div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 border-t border-slate-100 pt-3">' +
                     ro('ชื่อยา S', 'ชื่อยาที่ไว (S)') + ro('ชื่อยา I', 'ชื่อยา intermediate (I)') + ro('ชื่อยา R', 'ชื่อยาที่ดื้อ (R)') +
                     ro('กลุ่มยา S', 'กลุ่มยา S') + ro('กลุ่มยา I', 'กลุ่มยา I') + ro('กลุ่มยา R', 'กลุ่มยา R') +
-                '</div></div>';
+                '</div>' +
+                // เชื้อก่อโรคเพิ่ม (บรรทัดต่อ)
+                '<div class="border-t border-slate-100 mt-3 pt-3">' +
+                    '<div class="flex items-center justify-between mb-2">' +
+                        '<h4 class="text-sm font-semibold text-slate-600">เชื้อก่อโรคเพิ่ม (บรรทัดต่อ)</h4>' +
+                        '<button id="recAddOrg" type="button" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1 px-2.5 rounded-lg font-medium">➕ เพิ่มเชื้อ</button>' +
+                    '</div>' +
+                    '<div id="recExtraOrgList" class="space-y-2"></div>' +
+                    '<p class="text-[11px] text-slate-400 mt-1">แต่ละเชื้อที่เพิ่มจะถูกบันทึกเป็นอีก 1 บรรทัด โดยใช้ Unit/HN/SITE เดิม และเว้น HAI/ชื่อ ไว้ จึง<b>ไม่ถูกนับซ้ำเป็นเคส</b> แต่ถูกนับเป็นเชื้อของไซต์นั้น</p>' +
+                '</div>' +
+                '</div>';
         }
         function recomputeAst() {
             const buckets = { S: [], I: [], R: [] };
@@ -5647,6 +5648,7 @@
             if (monthSel) monthSel.addEventListener('change', () => { const q = recQuarterOfMonth(monthSel.value); const qe = document.getElementById('rec_quarter'); if (qe) qe.value = q ? 'Q' + q : ''; });
             const y = document.querySelector('#recFormFields [data-col="Year"]'); if (y && !y.value) y.value = new Date().getFullYear() + 543;
             document.querySelectorAll('#recFormFields .astSel').forEach(sel => sel.addEventListener('change', recomputeAst));
+            const addOrg = document.getElementById('recAddOrg'); if (addOrg) addOrg.addEventListener('click', () => recAddOrgRow(''));
             // ปฏิทินพรีเมียม (flatpickr) สำหรับช่องวันที่ — เก็บค่าเป็น วว/ดด/ปปปป (พ.ศ.) ตรงกับชีต
             if (typeof flatpickr !== 'undefined') {
                 document.querySelectorAll('#recFormFields .recdate').forEach(el => {
@@ -5712,12 +5714,10 @@
                 document.getElementById('recCsv').addEventListener('click', downloadRecordCsv);
                 document.getElementById('recClear').addEventListener('click', () => { clearRecordForm(); });
                 document.getElementById('recListClear').addEventListener('click', () => { try { localStorage.removeItem('recRecent'); } catch (e) { } renderRecentRecords(); });
-                document.getElementById('recAddOrg').addEventListener('click', () => recAddOrgRow(''));
                 recInited = true;
             }
             buildRecordForm();
             bindRecordForm();
-            document.getElementById('recExtraOrgList').innerHTML = '';
             renderRecentRecords();
             loadRecordLists();
         }
