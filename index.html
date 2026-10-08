@@ -5477,6 +5477,24 @@
         let REC_LISTS = {};        // normKey(header) -> [values]
         let REC_LIST_IDS = {};     // normKey(header) -> datalist dom id
         let recListsLoaded = false;
+        // ชื่อพ้องระหว่างฟิลด์ในฟอร์ม ↔ หัวคอลัมน์ใน List-ทะเบียน-1 (กรณีหัวใช้คำต่างกัน)
+        const REC_LIST_ALIAS = {
+            'การจำหนาย': ['DC status', 'จำหน่าย', 'discharge status'],
+            'ประเภทการจำหนาย': ['DC type', 'discharge type'],
+            'สาเหตุ Death': ['cause death', 'สาเหตุการเสียชีวิต']
+        };
+        // หาคีย์ใน REC_LISTS ที่ตรงกับฟิลด์ (ลองชื่อตรง → ชื่อพ้อง → แต่ละคำของชื่อพ้อง)
+        function recListKey(col) {
+            if (!col) return null;
+            const hit = k => (k && REC_LISTS[k]) ? k : null;
+            let k = hit(normKey(col)); if (k) return k;
+            const al = REC_LIST_ALIAS[col]; if (!al) return null;
+            for (const a of al) {
+                k = hit(normKey(a)); if (k) return k;
+                for (const tok of String(a).split(/[\s/|()]+/)) { k = hit(normKey(tok)); if (k) return k; }
+            }
+            return null;
+        }
         const REC_URL = 'https://script.google.com/macros/s/PASTE_RECORD_WEBAPP_URL/exec';
         function recQuarterOfMonth(m) { const i = FISCAL_MONTHS.indexOf(+m); return i < 0 ? '' : String(Math.floor(i / 3) + 1); }
         const recEsc = s => (s == null ? '' : s.toString()).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -5638,8 +5656,8 @@
         function recFieldHtml(f) {
             const base = 'w-full border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400 transition-colors';
             const lab = '<label class="block text-xs font-medium text-slate-500 mb-1">' + recEsc(f.label) + (f.req ? ' *' : '') + '</label>';
-            const key = normKey(f.col);
-            const listVals = REC_LISTS[key];          // ค่าจากแท็บ List (ถ้ามี)
+            const lkey = recListKey(f.col);           // คีย์ใน REC_LISTS ที่จับคู่ได้ (ตรง/alias)
+            const listVals = lkey ? REC_LISTS[lkey] : null;
             let input;
             if (f.type === 'ast') { return astPanelHtml(); }
             if (f.type === 'month') {
@@ -5653,7 +5671,7 @@
                     opts.map(o => '<option value="' + recEsc(o) + '">' + recEsc(o) + '</option>').join('') + '</select>';
             } else {
                 const t = f.type === 'number' ? 'number' : 'text';
-                const list = (listVals && listVals.length) ? ' list="' + REC_LIST_IDS[key] + '"' : (f.datalist ? ' list="recdl_' + f.datalist + '"' : '');
+                const list = (listVals && listVals.length) ? ' list="' + REC_LIST_IDS[lkey] + '"' : (f.datalist ? ' list="recdl_' + f.datalist + '"' : '');
                 const ph = f.type === 'date' ? ' placeholder="วว/ดด/ปปปป (พ.ศ.)"' : (f.ph ? ' placeholder="' + recEsc(f.ph) + '"' : '');
                 const cls = f.type === 'date' ? (base + ' recdate') : base;
                 input = '<input type="' + t + '" data-col="' + recEsc(f.col) + '"' + (f.req ? ' data-req="1"' : '') + list + ph + ' class="' + cls + '">';
@@ -5762,8 +5780,8 @@
         // แถวอินพุต "เชื้อเพิ่ม" (บรรทัดต่อ)
         function recAddOrgRow(val) {
             const list = document.getElementById('recExtraOrgList'); if (!list) return;
-            const key = normKey('เชื้อก่อโรค');
-            const dl = REC_LIST_IDS[key] ? REC_LIST_IDS[key] : 'recdl_org';
+            const lk = recListKey('เชื้อก่อโรค');
+            const dl = lk ? REC_LIST_IDS[lk] : 'recdl_org';
             const row = document.createElement('div');
             row.className = 'flex items-center gap-2';
             row.innerHTML = '<input class="recExtraOrg flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400" list="' + dl + '" placeholder="ชื่อเชื้อก่อโรคเพิ่ม" value="' + recEsc(val || '') + '">' +
