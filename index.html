@@ -1430,6 +1430,15 @@
                     <p class="text-xs text-slate-400 mt-1">บันทึก 1 เคสต่อ 1 แถว เขียนลงชีต “ทะเบียน-1” โดยตรง · ช่องที่มี * จำเป็น</p>
                 </div>
                 <div class="p-6 space-y-5">
+                    <!-- ลากรูปใบ AST มาวาง → OCR กรอกให้อัตโนมัติ (อ่านในเครื่อง ไม่ส่งออก) -->
+                    <div>
+                        <div id="recDrop" class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center text-sm text-slate-500 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors">
+                            📄 ลากรูป <b>ใบผลเพาะเชื้อ/AST</b> มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์<br>
+                            <span class="text-xs text-slate-400">ระบบอ่านรูปในเครื่อง (ไม่ส่งข้อมูลออก) แล้วกรอกผลไวต่อยา/เชื้อ/HN ให้ — โปรดตรวจทานก่อนบันทึก</span>
+                            <input id="recDropInput" type="file" accept="image/*" class="hidden">
+                        </div>
+                        <p id="recOcrStatus" class="text-xs text-slate-400 mt-1"></p>
+                    </div>
                     <div id="recFormFields" class="space-y-5"></div>
                     <!-- เชื้อก่อโรคเพิ่ม (บันทึกเป็นบรรทัดต่อในไซต์เดียวกัน) -->
                     <div class="border-t border-slate-100 pt-4">
@@ -5513,6 +5522,91 @@
                 setCol('กลุ่มยา ' + b, uniq(buckets[b].map(d => d.c)).join(', '));
             });
         }
+        // ---- OCR ใบ AST (อ่านในเครื่องด้วย Tesseract.js) ----
+        // รูปแบบคำที่พบในใบแล็บ → ดัชนีใน ANTIBIOTICS
+        const REC_AST_ALIASES = [
+            [0, /amikacin/i], [1, /gentamicin/i], [2, /ampicillin/i], [3, /penicillin/i],
+            [4, /oxacillin/i], [5, /methicillin/i], [6, /amoxicil/i], [7, /piperac/i],
+            [8, /cefopera/i], [9, /avibac/i], [10, /cefazolin/i], [11, /cefixime/i],
+            [12, /cefoxitin/i], [13, /cefotaxime/i], [14, /ceftazidime/i], [15, /ceftriaxone/i],
+            [16, /cefepime/i], [17, /meropenem/i], [18, /imipenem/i], [19, /ertapenem/i],
+            [20, /ciprofloxacin/i], [21, /levofloxacin/i], [22, /norfloxacin/i], [23, /\bofloxacin/i],
+            [24, /azithromycin/i], [25, /erythromycin/i], [26, /doxycycline/i], [27, /\btetracycline/i],
+            [28, /tigecycline/i], [29, /vancomycin/i], [30, /teicoplanin/i], [31, /linezolid/i],
+            [32, /clindamycin/i], [33, /colistin/i], [34, /trimetho|sulfa/i], [35, /chloramphenicol/i],
+            [36, /fosfomycin/i], [37, /fusidic/i]
+        ];
+        let tessPromise = null;
+        function ensureTesseract() {
+            if (window.Tesseract) return Promise.resolve();
+            if (tessPromise) return tessPromise;
+            tessPromise = new Promise((res, rej) => {
+                const s = document.createElement('script');
+                s.src = 'https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js';
+                s.onload = res; s.onerror = () => rej(new Error('โหลดตัวอ่าน OCR ไม่สำเร็จ'));
+                document.head.appendChild(s);
+            });
+            return tessPromise;
+        }
+        function recSetAst(i, letter) {
+            const sel = document.querySelector('#recFormFields .astSel[data-drug="' + i + '"]');
+            if (sel) { sel.value = letter; return true; }
+            return false;
+        }
+        function recSetColIfEmpty(col, val) {
+            const e = document.querySelector('#recFormFields [data-col="' + col + '"]');
+            if (e && !e.value && val) {
+                // ถ้าเป็น select ให้ตั้งเฉพาะเมื่อมี option ตรง
+                if (e.tagName === 'SELECT') { if ([...e.options].some(o => o.value === val)) e.value = val; }
+                else e.value = val;
+            }
+        }
+        function parseAstText(text) {
+            const flat = text.replace(/\s+/g, ' ');
+            // 1) ผลไวต่อยา
+            const found = [];
+            REC_AST_ALIASES.forEach(a => { const m = flat.match(a[1]); if (m) found.push({ i: a[0], pos: m.index }); });
+            found.sort((x, y) => x.pos - y.pos);
+            let n = 0;
+            for (let k = 0; k < found.length; k++) {
+                const seg = flat.slice(found[k].pos, k + 1 < found.length ? found[k + 1].pos : flat.length);
+                const res = seg.match(/\b([SIRN])\b/);
+                if (res) { if (recSetAst(found[k].i, res[1].toUpperCase())) n++; }
+            }
+            recomputeAst();
+            // 2) ข้อมูลหัวใบ
+            let m;
+            if ((m = flat.match(/H\.?\s*N\.?\s*[:：]?\s*([0-9]{5,})/i))) recSetColIfEmpty('HN', m[1]);
+            if ((m = flat.match(/SEX\s*[:：]?\s*([MF])/i))) recSetColIfEmpty('เพศ', m[1].toUpperCase() === 'M' ? 'male' : 'female');
+            if ((m = flat.match(/SPECIMEN\s*[:：]?\s*([A-Za-z]+)/i))) recSetColIfEmpty('สิ่งส่ตรวจ1', m[1].toLowerCase());
+            if ((m = flat.match(/WARD\s*[:：]?\s*([A-Za-z0-9 .\-]+?)\s*(?:SPECIMEN|COLLECTED|$)/i))) recSetColIfEmpty('Unit', m[1].trim());
+            // เชื้อก่อโรค: ข้อความหลัง CFU/mL
+            if ((m = flat.match(/CFU\s*\/?\s*mL?\.?\s+([A-Za-z][A-Za-z .,()\/]+)/i))) {
+                recSetColIfEmpty('เชื้อก่อโรค', m[1].replace(/\s*\.*\s*$/, '').trim());
+            }
+            return n;
+        }
+        async function recOcr(file) {
+            const st = document.getElementById('recOcrStatus');
+            if (!file || !/^image\//.test(file.type)) { st.textContent = '⚠️ กรุณาเลือกไฟล์รูปภาพ'; st.className = 'text-xs text-rose-600 mt-1'; return; }
+            st.textContent = 'กำลังเตรียมตัวอ่าน OCR...'; st.className = 'text-xs text-slate-500 mt-1';
+            try {
+                await ensureTesseract();
+                st.textContent = 'กำลังอ่านรูป...';
+                const { data } = await Tesseract.recognize(file, 'eng', {
+                    logger: mm => { if (mm.status === 'recognizing text') st.textContent = 'กำลังอ่านรูป... ' + Math.round(mm.progress * 100) + '%'; }
+                });
+                const n = parseAstText(data.text || '');
+                // เปิดกลุ่มที่มีแผงยา ให้เห็นผล
+                const panel = document.querySelector('#recFormFields .astSel');
+                if (panel) { const det = panel.closest('details'); if (det) det.open = true; }
+                st.innerHTML = '✅ อ่านเสร็จ · กรอกผลไวต่อยาได้ <b>' + n + '</b> ตัว (+ เชื้อ/HN ถ้าพบ) — <b>โปรดตรวจทานก่อนบันทึก</b>';
+                st.className = 'text-xs text-emerald-600 mt-1';
+            } catch (e) {
+                st.textContent = '⚠️ อ่านรูปไม่สำเร็จ: ' + e.message + ' (ลองรูปที่ชัดขึ้น หรือกรอกเอง)';
+                st.className = 'text-xs text-rose-600 mt-1';
+            }
+        }
         function recFieldHtml(f) {
             const base = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm';
             const lab = '<label class="block text-xs font-medium text-slate-500 mb-1">' + recEsc(f.label) + (f.req ? ' *' : '') + '</label>';
@@ -5590,6 +5684,12 @@
                 document.getElementById('recClear').addEventListener('click', () => { clearRecordForm(); });
                 document.getElementById('recListClear').addEventListener('click', () => { try { localStorage.removeItem('recRecent'); } catch (e) { } renderRecentRecords(); });
                 document.getElementById('recAddOrg').addEventListener('click', () => recAddOrgRow(''));
+                const drop = document.getElementById('recDrop'), dropIn = document.getElementById('recDropInput');
+                drop.addEventListener('click', () => dropIn.click());
+                dropIn.addEventListener('change', () => { if (dropIn.files[0]) recOcr(dropIn.files[0]); });
+                ['dragover', 'dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('border-emerald-400', 'bg-emerald-50/40'); }));
+                ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('border-emerald-400', 'bg-emerald-50/40'); }));
+                drop.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) recOcr(f); });
                 recInited = true;
             }
             buildRecordForm();
