@@ -5704,11 +5704,18 @@
             const listVals = lkey ? REC_LISTS[lkey] : null;
             let input;
             if (f.type === 'ast') { return astPanelHtml(); }
-            if (f.type === 'month') {
+            if (f.col === 'Year') {
+                const cur = new Date().getFullYear() + 543;
+                const opts = (listVals && listVals.length) ? listVals : [String(cur + 1), String(cur), String(cur - 1), String(cur - 2)];
+                input = '<select data-col="Year" data-req="1" id="rec_year" class="' + base + '"><option value=""></option>' +
+                    opts.map(o => '<option value="' + recEsc(o) + '">' + recEsc(o) + '</option>').join('') + '</select>';
+            } else if (f.type === 'month') {
                 input = '<select data-col="Month" data-req="1" id="rec_month" class="' + base + '"><option value=""></option>' +
                     FISCAL_MONTHS.map(m => '<option value="' + m + '">' + m + ' — ' + MONTH_LABELS[m] + '</option>').join('') + '</select>';
             } else if (f.type === 'quarter') {
-                input = '<input data-col="Quater" id="rec_quarter" readonly class="w-full border border-slate-100 bg-slate-50 rounded-xl px-3 py-2 text-sm text-slate-500">';
+                const opts = (listVals && listVals.length) ? listVals : ['1', '2', '3', '4'];
+                input = '<select data-col="Quater" id="rec_quarter" class="' + base + '"><option value=""></option>' +
+                    opts.map(o => '<option value="' + recEsc(o) + '">' + recEsc(o) + '</option>').join('') + '</select>';
             } else if (f.type === 'select') {
                 const opts = (listVals && listVals.length) ? listVals : f.opts;
                 input = '<select data-col="' + recEsc(f.col) + '"' + (f.req ? ' data-req="1"' : '') + ' class="' + base + '"><option value=""></option>' +
@@ -5742,8 +5749,8 @@
         // ผูก event หลังสร้างฟอร์มใหม่ทุกครั้ง (เดือน→ไตรมาส, ค่าปีตั้งต้น, fallback datalist)
         function bindRecordForm() {
             const monthSel = document.getElementById('rec_month');
-            if (monthSel) monthSel.addEventListener('change', () => { const q = recQuarterOfMonth(monthSel.value); const qe = document.getElementById('rec_quarter'); if (qe) qe.value = q ? 'Q' + q : ''; });
-            const y = document.querySelector('#recFormFields [data-col="Year"]'); if (y && !y.value) y.value = new Date().getFullYear() + 543;
+            if (monthSel) monthSel.addEventListener('change', () => { const q = recQuarterOfMonth(monthSel.value); const qe = document.getElementById('rec_quarter'); if (qe) qe.value = q || ''; });
+            const y = document.querySelector('#recFormFields [data-col="Year"]'); if (y && !y.value) y.value = String(new Date().getFullYear() + 543);
             document.querySelectorAll('#recFormFields .astSel').forEach(sel => sel.addEventListener('change', recomputeAst));
             const addOrg = document.getElementById('recAddOrg'); if (addOrg) addOrg.addEventListener('click', () => recAddOrgRow(''));
             // ปฏิทินพรีเมียม (flatpickr) สำหรับช่องวันที่ — เก็บค่าเป็น วว/ดด/ปปปป (พ.ศ.) ตรงกับชีต
@@ -5856,7 +5863,7 @@
         function recRecord() {
             const rec = {};
             document.querySelectorAll('#recFormFields [data-col]').forEach(el => { rec[el.dataset.col] = (el.value || '').toString().trim(); });
-            rec['Quater'] = recQuarterOfMonth(rec['Month']); // เก็บเป็นเลข 1-4
+            if (!rec['Quater']) rec['Quater'] = recQuarterOfMonth(rec['Month']); // เว้นว่าง → คำนวณจากเดือน (เลข 1-4)
             return rec;
         }
         // บรรทัดต่อสำหรับเชื้อเพิ่ม: ใช้ข้อมูลระบุไซต์เดิม เว้น HAI/ชื่อ → ไม่นับซ้ำเป็นเคส
