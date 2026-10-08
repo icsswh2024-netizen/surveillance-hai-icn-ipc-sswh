@@ -1431,6 +1431,7 @@
                 </div>
                 <div class="p-6 space-y-5">
                     <div id="recFormFields" class="space-y-5"></div>
+                    <p id="recListInfo" class="text-xs text-slate-400"></p>
                     <!-- การเชื่อมต่อชีต -->
                     <div class="border-t border-slate-100 pt-4">
                         <label class="block text-xs font-medium text-slate-500 mb-1">URL Apps Script Web App (เขียนลงชีต “ทะเบียน-1”)</label>
@@ -5740,6 +5741,22 @@
                 setDl('recdl_units', [...new Set(rawData.map(r => r.unit).filter(Boolean))].sort());
                 setDl('recdl_pcts', [...new Set(rawData.map(r => r.pct).filter(Boolean))].sort());
             }
+            recUpdateListInfo();
+        }
+        // สรุปการจับคู่ดรอปดาวน์กับ List (ให้เห็นว่าช่องไหนยังไม่พบคอลัมน์)
+        function recUpdateListInfo() {
+            const info = document.getElementById('recListInfo'); if (!info) return;
+            if (!recListsLoaded) { info.innerHTML = '<span class="text-slate-400">ℹ️ ดรอปดาวน์จาก List: ยังไม่ได้โหลด (ตรวจสอบว่าแชร์ชีตแบบ “ทุกคนที่มีลิงก์ดูได้”)</span>'; return; }
+            const struct = { Year: 1, Month: 1, Quater: 1 };
+            const skip = { date: 1, month: 1, quarter: 1, ast: 1 };
+            const matched = [], unmatched = [];
+            REC_GROUPS.forEach(g => g.fields.forEach(f => {
+                if (!f.col || struct[f.col] || skip[f.type]) return;
+                (recListKey(f.col) ? matched : unmatched).push(f.col);
+            }));
+            info.innerHTML = '✅ ดรอปดาวน์จาก List: จับคู่แล้ว <b>' + matched.length + '</b>/' + (matched.length + unmatched.length) + ' ช่อง' +
+                (unmatched.length ? ' · <span class="text-amber-600">ยังไม่พบคอลัมน์ใน List:</span> ' + unmatched.join(', ') : ' · ครบทุกช่อง 🎉');
+            info.className = 'text-xs text-slate-500';
         }
         // อ่านค่าดรอปดาวน์จากแท็บ List-ทะเบียน-1 (ครั้งเดียว) แล้วสร้างฟอร์มใหม่ให้ใช้ค่าจริง
         async function loadRecordLists() {
