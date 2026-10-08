@@ -5433,10 +5433,29 @@
             { group: 'ผ่าตัด / SSI (ถ้ามี)', optional: 1, fields: [
                 { col: 'ชนิดSSI', label: 'ชนิด SSI', type: 'text' },
                 { col: 'วันที่ผ่าตัด', label: 'วันที่ผ่าตัด', type: 'date' },
+                { col: 'ห้องผ่าตัด', label: 'ห้องผ่าตัด', type: 'text' },
+                { col: 'เวลาเริ่มผ่าตัด', label: 'เวลาเริ่มผ่าตัด', type: 'text', ph: 'ชช:นน' },
+                { col: 'เวลาสิ้นสุดผ่าตัด', label: 'เวลาสิ้นสุดผ่าตัด', type: 'text', ph: 'ชช:นน' },
+                { col: 'Total-time', label: 'เวลารวม (นาที)', type: 'text' },
                 { col: 'อวัยวะผ่าตัด', label: 'อวัยวะที่ผ่าตัด', type: 'text' },
                 { col: 'ชื่อผ่าตัด1', label: 'ชื่อผ่าตัด 1', type: 'text' },
                 { col: 'ชื่อผ่าตัด2', label: 'ชื่อผ่าตัด 2', type: 'text' },
+                { col: 'RN1', label: 'พยาบาลผ่าตัด 1 (RN1)', type: 'text' },
+                { col: 'RN2', label: 'พยาบาลผ่าตัด 2 (RN2)', type: 'text' },
+                { col: 'PN', label: 'พยาบาล (PN)', type: 'text' },
+                { col: 'NA', label: 'ผู้ช่วย (NA)', type: 'text' },
+                { col: 'DR', label: 'แพทย์ผ่าตัด (DR)', type: 'text' },
+                { col: 'ATB pre op', label: 'ATB ก่อนผ่าตัด', type: 'text' },
+                { col: 'EB', label: 'EB', type: 'text' },
+                { col: 'suture', label: 'Suture', type: 'text' },
+                { col: 'Bs', label: 'Bs', type: 'text' },
+                { col: 'dtx', label: 'DTX', type: 'text' },
+                { col: 'ครั้งที่ผ่าแล้วพบ SSI', label: 'ครั้งที่ผ่าแล้วพบ SSI', type: 'text' },
                 { col: 'ASA', label: 'ASA class', type: 'text' }
+            ] },
+            { group: 'เฝ้าระวัง (ถ้ามี)', optional: 1, fields: [
+                { col: 'บำราศ', label: 'บำราศ', type: 'text' },
+                { col: 'ประสิทธิภาพ', label: 'ประสิทธิภาพการเฝ้าระวัง', type: 'text' }
             ] }
         ];
         const REC_COLS = REC_GROUPS.reduce((a, g) => a.concat(g.fields.map(f => f.col)), []);
