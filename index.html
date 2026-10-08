@@ -5440,6 +5440,17 @@
             ] }
         ];
         const REC_COLS = REC_GROUPS.reduce((a, g) => a.concat(g.fields.map(f => f.col)), []);
+        // โทนสีการ์ดเฟดต่อหมวด (ไล่สีให้แต่ละกลุ่มแยกชัด ไม่ขาวโล่ง)
+        const REC_GROUP_PALETTE = [
+            { grad: 'from-emerald-50', bd: 'border-emerald-100', bar: 'bg-emerald-500', tx: 'text-emerald-800' },
+            { grad: 'from-sky-50', bd: 'border-sky-100', bar: 'bg-sky-500', tx: 'text-sky-800' },
+            { grad: 'from-violet-50', bd: 'border-violet-100', bar: 'bg-violet-500', tx: 'text-violet-800' },
+            { grad: 'from-amber-50', bd: 'border-amber-100', bar: 'bg-amber-500', tx: 'text-amber-800' },
+            { grad: 'from-rose-50', bd: 'border-rose-100', bar: 'bg-rose-500', tx: 'text-rose-800' },
+            { grad: 'from-teal-50', bd: 'border-teal-100', bar: 'bg-teal-500', tx: 'text-teal-800' },
+            { grad: 'from-indigo-50', bd: 'border-indigo-100', bar: 'bg-indigo-500', tx: 'text-indigo-800' },
+            { grad: 'from-fuchsia-50', bd: 'border-fuchsia-100', bar: 'bg-fuchsia-500', tx: 'text-fuchsia-800' }
+        ];
         const REC_DATALISTS = { units: [], pcts: [], org: [], titles: ['นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.'], site: ['cauti', 'vap', 'hap', 'clabsi', 'ssi', 'uti', 'bsi', 'omphalitis'], mdr: ['mdr', 'cre', 'esbl', 'xdr', 'vre', 'mrsa'] };
         // ค่าดรอปดาวน์อ่านสดจากแท็บ "List-ทะเบียน-1" (หัวคอลัมน์ = ชื่อฟิลด์, ค่าในคอลัมน์ = ตัวเลือก)
         const REC_LIST_SHEET = 'List-ทะเบียน-1';
@@ -5637,9 +5648,14 @@
             REC_LIST_IDS = {}; let di = 0;
             const dynDls = Object.keys(REC_LISTS).map(k => { const id = 'recdyn_' + (di++); REC_LIST_IDS[k] = id; return '<datalist id="' + id + '">' + REC_LISTS[k].map(v => '<option value="' + recEsc(v) + '">').join('') + '</datalist>'; }).join('');
             wrap.innerHTML = dls + dynDls + REC_GROUPS.map((g, gi) => {
+                const p = REC_GROUP_PALETTE[gi % REC_GROUP_PALETTE.length];
+                const card = 'rounded-2xl border ' + p.bd + ' bg-gradient-to-br ' + p.grad + ' to-white p-4 shadow-sm';
+                const head = '<span class="inline-block w-1.5 h-4 rounded-full ' + p.bar + '"></span>';
                 const grid = '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">' + g.fields.map(recFieldHtml).join('') + '</div>';
-                if (g.optional) return '<details class="border-t border-slate-100 pt-4"><summary class="text-sm font-semibold text-slate-600 cursor-pointer">' + recEsc(g.group) + '</summary><div class="mt-3">' + grid + '</div></details>';
-                return '<div' + (gi > 0 ? ' class="border-t border-slate-100 pt-4"' : '') + '><h4 class="text-sm font-semibold text-slate-600 mb-2">' + recEsc(g.group) + '</h4>' + grid + '</div>';
+                if (g.optional) {
+                    return '<details class="' + card + '"><summary class="flex items-center gap-2 text-sm font-semibold ' + p.tx + ' cursor-pointer select-none">' + head + recEsc(g.group) + '</summary><div class="mt-3">' + grid + '</div></details>';
+                }
+                return '<div class="' + card + '"><h4 class="flex items-center gap-2 text-sm font-semibold ' + p.tx + ' mb-3">' + head + recEsc(g.group) + '</h4>' + grid + '</div>';
             }).join('');
         }
         // ผูก event หลังสร้างฟอร์มใหม่ทุกครั้ง (เดือน→ไตรมาส, ค่าปีตั้งต้น, fallback datalist)
