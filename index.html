@@ -5734,7 +5734,10 @@
                     headers.forEach(h => {
                         if (!h) return;
                         const vals = [...new Set(objs.map(o => (o[h] || '').toString().trim()).filter(Boolean))];
-                        if (vals.length) lists[normKey(h)] = vals;
+                        if (!vals.length) return;
+                        // รองรับหัวสองภาษา เช่น "Year ปี" → จับได้ทั้ง full / "Year" / "ปี"
+                        lists[normKey(h)] = vals;
+                        h.split(/[\s/|()]+/).forEach(tok => { const tk = normKey(tok); if (tk && !(tk in lists)) lists[tk] = vals; });
                     });
                     if (Object.keys(lists).length) { REC_LISTS = lists; recListsLoaded = true; buildRecordForm(); bindRecordForm(); }
                 }
