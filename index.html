@@ -1443,7 +1443,7 @@
                     <!-- การเชื่อมต่อชีต -->
                     <div class="border-t border-slate-100 pt-4">
                         <label class="block text-xs font-medium text-slate-500 mb-1">URL Apps Script Web App (เขียนลงชีต “ทะเบียน-1”)</label>
-                        <input id="rec_url" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="https://script.google.com/macros/s/.../exec">
+                        <input id="rec_url" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400 transition-colors" placeholder="https://script.google.com/macros/s/.../exec">
                         <p class="text-[11px] text-slate-400 mt-1">ถ้ายังไม่ตั้งค่า URL สามารถใช้ปุ่ม “คัดลอกเป็นแถว” / “ดาวน์โหลด CSV” เพื่อวางลงชีตเองได้</p>
                     </div>
                     <p id="rec_status" class="text-xs text-slate-400"></p>
@@ -5485,11 +5485,11 @@
         function astPanelHtml() {
             const cells = ANTIBIOTICS.map((d, i) =>
                 '<label class="flex items-center justify-between gap-1 text-[11px] py-0.5"><span class="truncate">' + recEsc(d.n) + '</span>' +
-                '<select class="astSel border border-slate-200 rounded px-1 py-0.5 text-[11px]" data-drug="' + i + '">' +
+                '<select class="astSel border border-slate-200 rounded-lg px-1 py-0.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400" data-drug="' + i + '">' +
                 '<option value=""></option><option value="S">S</option><option value="I">I</option><option value="R">R</option><option value="N">N</option></select></label>'
             ).join('');
             const ro = (col, label) => '<div><label class="block text-[11px] font-medium text-slate-500 mb-0.5">' + label + '</label>' +
-                '<input data-col="' + col + '" readonly class="w-full border border-slate-100 bg-slate-50 rounded-lg px-2 py-1.5 text-xs text-slate-600"></div>';
+                '<input data-col="' + col + '" readonly class="w-full border border-slate-100 bg-slate-50 rounded-xl px-2 py-1.5 text-xs text-slate-600"></div>';
             return '<div class="col-span-2 sm:col-span-3 lg:col-span-4 rounded-lg border border-slate-200 p-3">' +
                 '<div id="recDrop" class="border-2 border-dashed border-slate-300 rounded-xl p-3 mb-3 text-center text-sm text-slate-500 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors">' +
                     '📄 ลากรูป <b>ใบผลเพาะเชื้อ/AST</b> มาวาง หรือคลิกเพื่อเลือกไฟล์<br>' +
@@ -5605,7 +5605,7 @@
             }
         }
         function recFieldHtml(f) {
-            const base = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm';
+            const base = 'w-full border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400 transition-colors';
             const lab = '<label class="block text-xs font-medium text-slate-500 mb-1">' + recEsc(f.label) + (f.req ? ' *' : '') + '</label>';
             const key = normKey(f.col);
             const listVals = REC_LISTS[key];          // ค่าจากแท็บ List (ถ้ามี)
@@ -5615,7 +5615,7 @@
                 input = '<select data-col="Month" data-req="1" id="rec_month" class="' + base + '"><option value=""></option>' +
                     FISCAL_MONTHS.map(m => '<option value="' + m + '">' + m + ' — ' + MONTH_LABELS[m] + '</option>').join('') + '</select>';
             } else if (f.type === 'quarter') {
-                input = '<input data-col="Quater" id="rec_quarter" readonly class="w-full border border-slate-100 bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-500">';
+                input = '<input data-col="Quater" id="rec_quarter" readonly class="w-full border border-slate-100 bg-slate-50 rounded-xl px-3 py-2 text-sm text-slate-500">';
             } else if (f.type === 'select') {
                 const opts = (listVals && listVals.length) ? listVals : f.opts;
                 input = '<select data-col="' + recEsc(f.col) + '"' + (f.req ? ' data-req="1"' : '') + ' class="' + base + '"><option value=""></option>' +
@@ -5624,7 +5624,8 @@
                 const t = f.type === 'number' ? 'number' : 'text';
                 const list = (listVals && listVals.length) ? ' list="' + REC_LIST_IDS[key] + '"' : (f.datalist ? ' list="recdl_' + f.datalist + '"' : '');
                 const ph = f.type === 'date' ? ' placeholder="วว/ดด/ปปปป (พ.ศ.)"' : (f.ph ? ' placeholder="' + recEsc(f.ph) + '"' : '');
-                input = '<input type="' + t + '" data-col="' + recEsc(f.col) + '"' + (f.req ? ' data-req="1"' : '') + list + ph + ' class="' + base + '">';
+                const cls = f.type === 'date' ? (base + ' recdate') : base;
+                input = '<input type="' + t + '" data-col="' + recEsc(f.col) + '"' + (f.req ? ' data-req="1"' : '') + list + ph + ' class="' + cls + '">';
             }
             return '<div>' + lab + input + '</div>';
         }
@@ -5646,6 +5647,28 @@
             if (monthSel) monthSel.addEventListener('change', () => { const q = recQuarterOfMonth(monthSel.value); const qe = document.getElementById('rec_quarter'); if (qe) qe.value = q ? 'Q' + q : ''; });
             const y = document.querySelector('#recFormFields [data-col="Year"]'); if (y && !y.value) y.value = new Date().getFullYear() + 543;
             document.querySelectorAll('#recFormFields .astSel').forEach(sel => sel.addEventListener('change', recomputeAst));
+            // ปฏิทินพรีเมียม (flatpickr) สำหรับช่องวันที่ — เก็บค่าเป็น วว/ดด/ปปปป (พ.ศ.) ตรงกับชีต
+            if (typeof flatpickr !== 'undefined') {
+                document.querySelectorAll('#recFormFields .recdate').forEach(el => {
+                    if (el._flatpickr) return;
+                    flatpickr(el, {
+                        locale: (flatpickr.l10ns && flatpickr.l10ns.th) ? 'th' : 'default',
+                        monthSelectorType: 'dropdown', disableMobile: true, allowInput: true,
+                        dateFormat: 'd/m/Y',
+                        formatDate: (date) => {
+                            const d = String(date.getDate()).padStart(2, '0');
+                            const m = String(date.getMonth() + 1).padStart(2, '0');
+                            return d + '/' + m + '/' + (date.getFullYear() + 543); // แสดง/เก็บเป็น พ.ศ.
+                        },
+                        parseDate: (str) => {
+                            const mm = String(str).match(/(\d{1,2})\/(\d{1,2})\/(\d{3,4})/);
+                            if (!mm) return undefined;
+                            let yr = +mm[3]; if (yr > 2400) yr -= 543; // พ.ศ. → ค.ศ. ภายใน
+                            return new Date(yr, +mm[2] - 1, +mm[1]);
+                        }
+                    });
+                });
+            }
             // ช่องลากรูป OCR (อยู่ในแผง AST — ผูกใหม่ทุกครั้งที่สร้างฟอร์ม)
             const drop = document.getElementById('recDrop'), dropIn = document.getElementById('recDropInput');
             if (drop && dropIn) {
@@ -5705,7 +5728,7 @@
             const dl = REC_LIST_IDS[key] ? REC_LIST_IDS[key] : 'recdl_org';
             const row = document.createElement('div');
             row.className = 'flex items-center gap-2';
-            row.innerHTML = '<input class="recExtraOrg flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm" list="' + dl + '" placeholder="ชื่อเชื้อก่อโรคเพิ่ม" value="' + recEsc(val || '') + '">' +
+            row.innerHTML = '<input class="recExtraOrg flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400" list="' + dl + '" placeholder="ชื่อเชื้อก่อโรคเพิ่ม" value="' + recEsc(val || '') + '">' +
                 '<button type="button" class="recDelOrg text-rose-500 hover:text-rose-700 text-lg leading-none px-2">&times;</button>';
             row.querySelector('.recDelOrg').addEventListener('click', () => row.remove());
             list.appendChild(row);
@@ -5768,7 +5791,7 @@
         }
         function clearRecordForm() {
             const keep = { 'Year': 1, 'Month': 1, 'Quater': 1, 'Unit': 1, 'PCT': 1 };
-            document.querySelectorAll('#recFormFields [data-col]').forEach(el => { if (!keep[el.dataset.col]) el.value = ''; });
+            document.querySelectorAll('#recFormFields [data-col]').forEach(el => { if (!keep[el.dataset.col]) { if (el._flatpickr) el._flatpickr.clear(); else el.value = ''; } });
             document.querySelectorAll('#recFormFields .astSel').forEach(sel => { sel.value = ''; });
             document.getElementById('recExtraOrgList').innerHTML = '';
             const st = document.getElementById('rec_status'); st.textContent = 'ล้างฟอร์มแล้ว (คงปี/เดือน/ไตรมาส/หอ/กลุ่มงาน ไว้)'; st.className = 'text-xs text-slate-400';
