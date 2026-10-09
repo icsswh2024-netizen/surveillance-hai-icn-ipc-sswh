@@ -6029,7 +6029,7 @@
             return '<div class="col-span-2 sm:col-span-3 lg:col-span-4 rounded-lg border border-slate-200 p-3">' +
                 '<div id="recDrop" class="border-2 border-dashed border-slate-300 rounded-xl p-3 mb-3 text-center text-sm text-slate-500 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors">' +
                     '📄 ลากรูป <b>ใบผลเพาะเชื้อ/AST</b> มาวาง (ลากได้<b>หลายใบ</b>) — ถ้าใบเดียวพบ<b>หลายเชื้อ</b> (คอลัมน์ 1-2-3) ระบบแยกเป็นเชื้อหลัก + เชื้อเพิ่มให้<br>' +
-                    '<span class="text-xs text-slate-400">อ่านรูปในเครื่อง (ไม่ส่งข้อมูลออก) แล้วกรอกผลไวต่อยา/เชื้อ/HN ให้ — โปรดตรวจทานก่อนบันทึก</span>' +
+                    '<span class="text-xs text-slate-400">อ่านรูปในเครื่อง (ไม่ส่งข้อมูลออก) แล้วกรอก เชื้อ/ผลไวต่อยา · HN/AN · ชื่อ-สกุล · อายุ · หอ · ดื้อยา (ESBL/CRE/MRSA→AMR/MDR) ให้ — โปรดตรวจทานก่อนบันทึก</span>' +
                     '<input id="recDropInput" type="file" accept="image/*" multiple class="hidden">' +
                 '</div>' +
                 '<p id="recOcrStatus" class="text-xs text-slate-400 mb-2"></p>' +
@@ -6153,8 +6153,28 @@
             }
             const r = { organisms: organisms, N: N, perDrug: perDrug }; let m;
             if ((m = flat.match(/H\.?\s*N\.?\s*[:：]?\s*([0-9]{5,})/i))) r.hn = m[1];
+            if ((m = flat.match(/\bA\.?\s*N\.?\s*[:：]?\s*([0-9]{6,})/i))) r.an = m[1];
             if ((m = flat.match(/SEX\s*[:：]?\s*([MF])/i))) r.sex = m[1].toUpperCase() === 'M' ? 'male' : 'female';
             if ((m = flat.match(/SPECIMEN\s*[:：]?\s*([A-Za-z]+)/i))) r.specimen = m[1].toLowerCase();
+            // อายุ (Age 72 Y / อายุ 72 ปี)
+            if ((m = flat.match(/(?:AGE|อายุ)\s*[:：]?\s*(\d{1,3})\s*(?:Y|YR|YEARS?|ปี)?/i))) r.age = m[1];
+            // ชื่อ-สกุล (NAME: นายสมชาย ใจดี  หรือ  Name: ...) — เก็บทั้งข้อความแล้วแยกคำ
+            if ((m = flat.match(/(?:NAME|ชื่อ[-\s]*สกุล|ชื่อ)\s*[:：]\s*((?:นาย|นาง|นางสาว|ด\.ช\.|ด\.ญ\.)?\s*[^\d|]{2,40}?)\s*(?:HN|AN|AGE|SEX|WARD|อายุ|เพศ|หอ|$)/i))) {
+                const full = m[1].replace(/^(นาย|นางสาว|นาง|ด\.ช\.|ด\.ญ\.)\s*/, '').trim().split(/\s+/);
+                if (full[0]) r.name = full[0];
+                if (full.length > 1) r.surname = full.slice(1).join(' ');
+            }
+            // หอผู้ป่วย / Ward / Location
+            if ((m = flat.match(/(?:WARD|LOCATION|หอ(?:ผู้ป่วย)?|ward)\s*[:：]?\s*([A-Za-z0-9ก-๙/\-]{2,20})/i))) r.ward = m[1].trim();
+            // ธงดื้อยา (พิมพ์บนใบ) → AMR/MDR อัตโนมัติ
+            const flags = [];
+            if (/\bESBL\b/i.test(flat)) flags.push('esbl');
+            if (/\bCRE\b|CARBAPENEM(ASE)?[- ]?RESISTANT|CARBAPENEMASE/i.test(flat)) flags.push('cre');
+            if (/\bMRSA\b|METHICILLIN[- ]?RESISTANT/i.test(flat)) flags.push('mrsa');
+            if (/\bVRE\b|VANCOMYCIN[- ]?RESISTANT/i.test(flat)) flags.push('vre');
+            if (/\bXDR\b/i.test(flat)) flags.push('xdr');
+            if (/\bMDR\b/i.test(flat)) flags.push('mdr');
+            if (flags.length) { r.mdrFlags = flags; r.amr = 'mdr'; }
             // แยก AST ของเชื้อลำดับ k → {idx:letter}
             r.astOf = function (k) { const map = {}; Object.keys(perDrug).forEach(idx => { const L = perDrug[idx][k]; if (L) map[idx] = L; }); return map; };
             return r;
@@ -6176,7 +6196,7 @@
                 await ensureTesseract();
                 const summary = [];
                 const orgsAll = [];   // รวมเชื้อจากทุกใบ → สถานะ REC_AST_ORGS
-                let headerDone = false;
+                let headerDone = false, hdr = null;
                 for (let i = 0; i < files.length; i++) {
                     const idx = i;
                     const { data } = await Tesseract.recognize(files[i], 'eng', {
@@ -6185,9 +6205,16 @@
                     const r = parseAstReport(data.text || '');
                     if (!headerDone) {
                         if (r.hn) recSetColIfEmpty('HN', r.hn);
+                        if (r.an) recSetColIfEmpty('AN', r.an);
                         if (r.sex) recSetColIfEmpty('เพศ', r.sex);
+                        if (r.age) recSetColIfEmpty('อายุ', r.age);
+                        if (r.name) recSetColIfEmpty('ชื่อ', r.name);
+                        if (r.surname) recSetColIfEmpty('สกุล', r.surname);
+                        if (r.ward) recSetColIfEmpty('Unit', r.ward);
                         if (r.specimen) recSetColIfEmpty('สิ่งส่ตรวจ1', r.specimen);
-                        headerDone = true;
+                        if (r.amr) recSetColIfEmpty('AMR', r.amr);
+                        if (r.mdrFlags && r.mdrFlags.length) recSetColIfEmpty('MDR', r.mdrFlags.join(', '));
+                        headerDone = true; hdr = r;
                     }
                     const orgs = r.organisms.length ? r.organisms : ['(เชื้อ?)'];
                     for (let k = 0; k < orgs.length; k++) {
@@ -6203,7 +6230,17 @@
                     recSaveDraft();
                     const det = document.querySelector('#recOrgWrap details'); if (det) det.open = true;
                 }
-                st.innerHTML = '✅ อ่านแล้ว — ' + summary.join(' · ') + ' <b>(โปรดตรวจทานก่อนบันทึก)</b>';
+                const hParts = [];
+                if (hdr) {
+                    if (hdr.name || hdr.surname) hParts.push('ชื่อ ' + [hdr.name, hdr.surname].filter(Boolean).join(' '));
+                    if (hdr.hn) hParts.push('HN ' + hdr.hn);
+                    if (hdr.an) hParts.push('AN ' + hdr.an);
+                    if (hdr.age) hParts.push('อายุ ' + hdr.age);
+                    if (hdr.ward) hParts.push('หอ ' + hdr.ward);
+                    if (hdr.mdrFlags && hdr.mdrFlags.length) hParts.push('ดื้อยา ' + hdr.mdrFlags.join('/').toUpperCase());
+                }
+                const hTxt = hParts.length ? ('<br><span class="text-slate-500">ข้อมูลผู้ป่วย: ' + hParts.join(' · ') + '</span>') : '';
+                st.innerHTML = '✅ อ่านแล้ว — ' + summary.join(' · ') + hTxt + ' <b>(โปรดตรวจทานก่อนบันทึก)</b>';
                 st.className = 'text-xs text-emerald-600 mt-1';
             } catch (e) {
                 st.textContent = '⚠️ อ่านรูปไม่สำเร็จ: ' + e.message + ' (ลองรูปที่ชัดขึ้น หรือกรอกเอง)';
