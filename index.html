@@ -257,6 +257,46 @@
                 <div class="z-10"><h3 id="kpiOmphalitis" class="text-3xl font-bold">0</h3><p class="text-xs text-white/80 mt-1">เคส · <span id="kpiOmphRate">-</span></p></div>
             </div>
 
+            <!-- HAP -->
+            <div class="kpi bg-gradient-to-r from-lime-400 to-green-500 rounded-2xl p-5 text-white shadow-md h-32 flex flex-col justify-between">
+                <span class="ring ring-lg"></span><span class="ring ring-sm"></span>
+                <span class="kpi-icon"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6z"></path></svg></span>
+                <h6 class="font-medium text-white/90 z-10 text-sm">HAP</h6>
+                <div class="z-10"><h3 id="kpiHAP" class="text-3xl font-bold">0</h3><p class="text-xs text-white/80 mt-1">เคส · <span id="kpiHAPrate">-</span></p></div>
+            </div>
+
+            <!-- CLABSI -->
+            <div class="kpi bg-gradient-to-r from-cyan-400 to-sky-500 rounded-2xl p-5 text-white shadow-md h-32 flex flex-col justify-between">
+                <span class="ring ring-lg"></span><span class="ring ring-sm"></span>
+                <span class="kpi-icon"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3z" clip-rule="evenodd"></path></svg></span>
+                <h6 class="font-medium text-white/90 z-10 text-sm">CLABSI</h6>
+                <div class="z-10"><h3 id="kpiCLABSI" class="text-3xl font-bold">0</h3><p class="text-xs text-white/80 mt-1">เคส · <span id="kpiCLABSIrate">-</span></p></div>
+            </div>
+
+            <!-- UTI -->
+            <div class="kpi bg-gradient-to-r from-yellow-400 to-amber-500 rounded-2xl p-5 text-white shadow-md h-32 flex flex-col justify-between">
+                <span class="ring ring-lg"></span><span class="ring ring-sm"></span>
+                <span class="kpi-icon"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8z" clip-rule="evenodd"></path></svg></span>
+                <h6 class="font-medium text-white/90 z-10 text-sm">UTI</h6>
+                <div class="z-10"><h3 id="kpiUTI" class="text-3xl font-bold">0</h3><p class="text-xs text-white/80 mt-1">เคส · <span id="kpiUTIrate">-</span></p></div>
+            </div>
+
+            <!-- BSI -->
+            <div class="kpi bg-gradient-to-r from-pink-400 to-rose-500 rounded-2xl p-5 text-white shadow-md h-32 flex flex-col justify-between">
+                <span class="ring ring-lg"></span><span class="ring ring-sm"></span>
+                <span class="kpi-icon"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg></span>
+                <h6 class="font-medium text-white/90 z-10 text-sm">BSI</h6>
+                <div class="z-10"><h3 id="kpiBSI" class="text-3xl font-bold">0</h3><p class="text-xs text-white/80 mt-1">เคส · <span id="kpiBSIrate">-</span></p></div>
+            </div>
+
+            <!-- SSTI -->
+            <div class="kpi bg-gradient-to-r from-indigo-400 to-violet-500 rounded-2xl p-5 text-white shadow-md h-32 flex flex-col justify-between">
+                <span class="ring ring-lg"></span><span class="ring ring-sm"></span>
+                <span class="kpi-icon"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6z" clip-rule="evenodd"></path></svg></span>
+                <h6 class="font-medium text-white/90 z-10 text-sm">SSTI (ผิวหนัง)</h6>
+                <div class="z-10"><h3 id="kpiSSTI" class="text-3xl font-bold">0</h3><p class="text-xs text-white/80 mt-1">เคส · <span id="kpiSSTIrate">-</span></p></div>
+            </div>
+
             <!-- MDR -->
             <div class="kpi bg-gradient-to-r from-purple-500 to-fuchsia-600 rounded-2xl p-5 text-white shadow-md h-32 flex flex-col justify-between">
                 <span class="ring ring-lg"></span><span class="ring ring-sm"></span>
@@ -1682,6 +1722,7 @@
             { key: 'Omphalitis', test: s => s.includes('omphal') },
             { key: 'UTI',        test: s => s.includes('uti') && !s.includes('cauti') },
             { key: 'BSI',        test: s => s.includes('bsi') },
+            { key: 'SSTI',       test: s => s.includes('ssti') || s.includes('sst') || s.includes('skin') },
         ];
         function classifySite(site) {
             const s = (site || '').toString().trim().toLowerCase();
@@ -1823,7 +1864,8 @@
             HAP:    { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' },
             UTI:    { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' },
             BSI:    { den: 'ivDay',      factor: 1000, unit: '/1,000 วันให้สารน้ำ+NSS Lock' },
-            Omphalitis: { den: 'liveBirth', factor: 100,  unit: '/100 เด็กเกิดมีชีพ' }
+            Omphalitis: { den: 'liveBirth', factor: 100,  unit: '/100 เด็กเกิดมีชีพ' },
+            SSTI:   { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' }
         };
         // อัตราของชนิด key ในเดือน m (คืน number หรือ null ถ้าไม่มีตัวหาร/ไม่มีสูตร)
         function rateFor(key, m, byMonth, den) {
@@ -1850,7 +1892,7 @@
         const CAT = {
             HAI: '#10b981', CAUTI: '#f97316', VAP: '#14b8a6', CLABSI: '#ef4444',
             SSI: '#3b82f6', HAP: '#6366f1', UTI: '#eab308', BSI: '#ec4899',
-            Omphalitis: '#f43f5e', Other: '#94a3b8', MDR: '#a855f7'
+            Omphalitis: '#f43f5e', SSTI: '#8b5cf6', Other: '#94a3b8', MDR: '#a855f7'
         };
         // ทำสีให้เข้มลง (สำหรับจุด badge)
         function darken(hex, f = 0.72) {
@@ -2159,7 +2201,7 @@
         function aggregateByMonth(cases) {
             const byMonth = {};
             FISCAL_MONTHS.forEach(m => {
-                byMonth[m] = { HAI: 0, CAUTI: 0, VAP: 0, HAP: 0, CLABSI: 0, SSI: 0, UTI: 0, BSI: 0, Omphalitis: 0, Other: 0 };
+                byMonth[m] = { HAI: 0, CAUTI: 0, VAP: 0, HAP: 0, CLABSI: 0, SSI: 0, UTI: 0, BSI: 0, Omphalitis: 0, SSTI: 0, Other: 0 };
             });
             cases.forEach(c => {
                 if (c.month == null || !byMonth[c.month]) return;
@@ -2174,7 +2216,7 @@
             const byMonth = aggregateByMonth(cases);
 
             // นับ KPI ตรงจากเคส (ไม่ผูกกับการแยกเดือน เพื่อไม่ให้ค่าหายหากเดือนผิดรูปแบบ)
-            const total = { HAI: 0, CAUTI: 0, VAP: 0, HAP: 0, CLABSI: 0, SSI: 0, UTI: 0, BSI: 0, Omphalitis: 0, Other: 0 };
+            const total = { HAI: 0, CAUTI: 0, VAP: 0, HAP: 0, CLABSI: 0, SSI: 0, UTI: 0, BSI: 0, Omphalitis: 0, SSTI: 0, Other: 0 };
             cases.forEach(c => {
                 total.HAI += 1;
                 if (total[c.siteType] !== undefined) total[c.siteType] += 1;
@@ -2186,6 +2228,11 @@
             animateValue('kpiVAP', total.VAP);
             animateValue('kpiSSI', total.SSI);
             animateValue('kpiOmphalitis', total.Omphalitis);
+            animateValue('kpiHAP', total.HAP);
+            animateValue('kpiCLABSI', total.CLABSI);
+            animateValue('kpiUTI', total.UTI);
+            animateValue('kpiBSI', total.BSI);
+            animateValue('kpiSSTI', total.SSTI);
             animateValue('kpiMDR', mdrCount);
             document.getElementById('kpiMDRpct').textContent = total.HAI ? Math.round(mdrCount / total.HAI * 100) : 0;
             document.getElementById('kpiMDRfrac').textContent = '(' + mdrCount + '/' + total.HAI + ')';
@@ -2193,7 +2240,7 @@
             const den = aggregateDenominatorsByMonth(getFilteredRows());
             // กำกับอัตราบนการ์ด KPI (ตัวตั้ง/ตัวหาร → อัตรา ต่อ 1,000 หรือ 100)
             const denTot = {};
-            ['patientDay', 'cathDay', 'venDay', 'lineDay', 'op', 'liveBirth'].forEach(k =>
+            ['patientDay', 'cathDay', 'venDay', 'lineDay', 'ivDay', 'op', 'liveBirth'].forEach(k =>
                 denTot[k] = FISCAL_MONTHS.reduce((a, m) => a + (den[m] ? den[m][k] : 0), 0));
             const setRate = (id, key) => {
                 const el = document.getElementById(id); if (!el) return;
@@ -2205,6 +2252,11 @@
             setRate('kpiVAPrate', 'VAP');
             setRate('kpiSSIrate', 'SSI');
             setRate('kpiOmphRate', 'Omphalitis');
+            setRate('kpiHAPrate', 'HAP');
+            setRate('kpiCLABSIrate', 'CLABSI');
+            setRate('kpiUTIrate', 'UTI');
+            setRate('kpiBSIrate', 'BSI');
+            setRate('kpiSSTIrate', 'SSTI');
             updateCharts(byMonth, total, den);
             updateTable(byMonth, den);
             updateRateChart(byMonth, den);
@@ -2609,7 +2661,7 @@
             renderChartLegend(trendRateChartInstance, 'trendRateLegend');
 
             // เรียงมากไปน้อย (ชิ้นใหญ่เริ่มด้านขวา ไล่ลง)
-            const siteKeys = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'Other']
+            const siteKeys = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'SSTI', 'Other']
                 .slice().sort((a, b) => (total[b] || 0) - (total[a] || 0));
             const siteVals = siteKeys.map(k => total[k]);
             const siteTotal = siteVals.reduce((a, b) => a + b, 0);
@@ -2707,7 +2759,7 @@
 
         // ส่งออกตารางเป็น CSV
         function exportCSV() {
-            const cols = ['HAI', 'CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis'];
+            const cols = ['HAI', 'CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'SSTI'];
             const byMonth = aggregateByMonth(getFilteredCases());
             let csv = 'เดือน,' + cols.join(',') + '\n';
             FISCAL_MONTHS.forEach(m => {
@@ -3145,7 +3197,7 @@
                     '<div class="flex items-center gap-2"><div>' + avgBox + '</div><div class="flex flex-wrap gap-1">' + cells + '</div></div></div>';
             };
             const admitEl = document.getElementById('calAdmit');
-            const order = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'Other'];
+            const order = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'SSTI', 'Other'];
             admitEl.innerHTML = order.filter(t => admitByType[t]).map(t => buildRow(t, CAT[t] || '#94a3b8', admitByType[t])).join('') || '<p class="text-xs text-slate-400">ไม่มีข้อมูล</p>';
             const devEl = document.getElementById('calDevice');
             devEl.innerHTML = ['CAUTI', 'VAP', 'CLABSI'].filter(t => Object.keys(devByType[t]).length).map(t => buildRow(t + ' (ใส่สาย)', CAT[t], devByType[t])).join('') || '<p class="text-xs text-slate-400">ไม่มีข้อมูลวันใส่อุปกรณ์</p>';
@@ -4214,7 +4266,7 @@
             { key: 'CAUTI', den: 'cathDay', denLabel: 'คาสาย(วัน)', per: 1000, rateLabel: '/1000วัน' },
             { key: 'UTI', den: 'patientDay', denLabel: 'วันนอน', per: 1000, rateLabel: '/1000วัน' },
             { key: 'CLABSI', den: 'lineDay', denLabel: 'คาสาย(วัน)', per: 1000, rateLabel: '/1000วัน' },
-            { key: 'BSI', den: 'patientDay', denLabel: 'วันนอน', per: 1000, rateLabel: '/1000วัน' }
+            { key: 'BSI', den: 'ivDay', denLabel: 'ให้สารน้ำ(วัน)', per: 1000, rateLabel: '/1000วัน' }
         ];
         const REPORT_SITES_POST = [
             { key: 'Omph', siteKey: 'Omphalitis', den: 'liveBirth', denLabel: 'เด็กมีชีพ', per: 100, rateLabel: '/100ราย' },
@@ -4239,7 +4291,7 @@
         // สร้างเมทริกซ์ หอผู้ป่วย × ตำแหน่ง (mdrOnly=true → นับเฉพาะเชื้อดื้อยา)
         function reportMatrix(mdrOnly) {
             const rows = getFilteredRows();
-            const newDen = () => ({ patientDay: 0, venDay: 0, cathDay: 0, lineDay: 0, op: 0, liveBirth: 0, wc1: 0, wc2: 0, wc3: 0, wc4: 0, wcAll: 0 });
+            const newDen = () => ({ patientDay: 0, venDay: 0, cathDay: 0, lineDay: 0, ivDay: 0, op: 0, liveBirth: 0, wc1: 0, wc2: 0, wc3: 0, wc4: 0, wcAll: 0 });
             // แสดงเฉพาะ 17 หอผู้ป่วยตามรายงาน (ลำดับคงที่ เสมอ) — จับคู่โดยไม่สนตัวพิมพ์
             const wards = {};
             REPORT_WARD_ORDER.forEach(u => { wards[u] = { unit: u, den: newDen(), cases: {} }; });
@@ -4248,6 +4300,7 @@
                 const w = wards[u]; if (!w) return; // ข้ามหอที่ไม่อยู่ในรายการ
                 w.den.patientDay += r.patientDay; w.den.venDay += r.venDay; w.den.cathDay += r.cathDay;
                 w.den.lineDay += r.lineDay; w.den.op += r.op; w.den.liveBirth += r.liveBirth;
+                w.den.ivDay += (r.bsi2 || 0) + (r.bsi4 || 0);
                 w.den.wc1 += r.w1; w.den.wc2 += r.w2; w.den.wc3 += r.w3; w.den.wc4 += r.w4;
                 w.den.wcAll += r.w1 + r.w2 + r.w3 + r.w4;
                 if (r.isHAI && (!mdrOnly || r.isMDR)) {
