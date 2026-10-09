@@ -5575,9 +5575,9 @@
                 '<input data-col="' + col + '" readonly class="w-full border border-slate-100 bg-slate-50 rounded-xl px-2 py-1.5 text-xs text-slate-600"></div>';
             return '<div class="col-span-2 sm:col-span-3 lg:col-span-4 rounded-lg border border-slate-200 p-3">' +
                 '<div id="recDrop" class="border-2 border-dashed border-slate-300 rounded-xl p-3 mb-3 text-center text-sm text-slate-500 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors">' +
-                    '📄 ลากรูป <b>ใบผลเพาะเชื้อ/AST</b> มาวาง หรือคลิกเพื่อเลือกไฟล์<br>' +
+                    '📄 ลากรูป <b>ใบผลเพาะเชื้อ/AST</b> มาวาง (ลากได้<b>หลายใบ</b> — ใบแรก=เคสหลัก ใบถัดไป=เพิ่มเชื้อ+AST ของใบนั้น)<br>' +
                     '<span class="text-xs text-slate-400">อ่านรูปในเครื่อง (ไม่ส่งข้อมูลออก) แล้วกรอกผลไวต่อยา/เชื้อ/HN ให้ — โปรดตรวจทานก่อนบันทึก</span>' +
-                    '<input id="recDropInput" type="file" accept="image/*" class="hidden">' +
+                    '<input id="recDropInput" type="file" accept="image/*" multiple class="hidden">' +
                 '</div>' +
                 '<p id="recOcrStatus" class="text-xs text-slate-400 mb-2"></p>' +
                 '<p class="text-xs text-slate-500 mb-2">เลือกผลไวต่อยา (S=ไว · I=ปานกลาง · R=ดื้อ · N=nonsusceptible) — ระบบเติม “ชื่อยา” และ “กลุ่มยา” ให้อัตโนมัติ (N รวมกับ R)</p>' +
@@ -5651,46 +5651,69 @@
                 else e.value = val;
             }
         }
-        function parseAstText(text) {
+        // อ่านข้อความใบ AST → ผลแบบ object (ไม่ยุ่งกับฟอร์ม): {ast:{idx:letter}, hn, sex, specimen, ward, organism}
+        function parseAstResult(text) {
             const flat = text.replace(/\s+/g, ' ');
-            // 1) ผลไวต่อยา
             const found = [];
             REC_AST_ALIASES.forEach(a => { const m = flat.match(a[1]); if (m) found.push({ i: a[0], pos: m.index }); });
             found.sort((x, y) => x.pos - y.pos);
-            let n = 0;
+            const ast = {};
             for (let k = 0; k < found.length; k++) {
                 const seg = flat.slice(found[k].pos, k + 1 < found.length ? found[k + 1].pos : flat.length);
                 const res = seg.match(/\b([SIRN])\b/);
-                if (res) { if (recSetAst(found[k].i, res[1].toUpperCase())) n++; }
+                if (res) ast[found[k].i] = res[1].toUpperCase();
             }
-            recomputeAst();
-            // 2) ข้อมูลหัวใบ
-            let m;
-            if ((m = flat.match(/H\.?\s*N\.?\s*[:：]?\s*([0-9]{5,})/i))) recSetColIfEmpty('HN', m[1]);
-            if ((m = flat.match(/SEX\s*[:：]?\s*([MF])/i))) recSetColIfEmpty('เพศ', m[1].toUpperCase() === 'M' ? 'male' : 'female');
-            if ((m = flat.match(/SPECIMEN\s*[:：]?\s*([A-Za-z]+)/i))) recSetColIfEmpty('สิ่งส่ตรวจ1', m[1].toLowerCase());
-            if ((m = flat.match(/WARD\s*[:：]?\s*([A-Za-z0-9 .\-]+?)\s*(?:SPECIMEN|COLLECTED|$)/i))) recSetColIfEmpty('Unit', m[1].trim());
-            // เชื้อก่อโรค: ข้อความหลัง CFU/mL
-            if ((m = flat.match(/CFU\s*\/?\s*mL?\.?\s+([A-Za-z][A-Za-z .,()\/]+)/i))) {
-                recSetColIfEmpty('เชื้อก่อโรค', m[1].replace(/\s*\.*\s*$/, '').trim());
-            }
-            return n;
+            const r = { ast: ast }; let m;
+            if ((m = flat.match(/H\.?\s*N\.?\s*[:：]?\s*([0-9]{5,})/i))) r.hn = m[1];
+            if ((m = flat.match(/SEX\s*[:：]?\s*([MF])/i))) r.sex = m[1].toUpperCase() === 'M' ? 'male' : 'female';
+            if ((m = flat.match(/SPECIMEN\s*[:：]?\s*([A-Za-z]+)/i))) r.specimen = m[1].toLowerCase();
+            if ((m = flat.match(/WARD\s*[:：]?\s*([A-Za-z0-9 .\-]+?)\s*(?:SPECIMEN|COLLECTED|$)/i))) r.ward = m[1].trim();
+            if ((m = flat.match(/CFU\s*\/?\s*mL?\.?\s+([A-Za-z][A-Za-z .,()\/]+)/i))) r.organism = m[1].replace(/\s*\.*\s*$/, '').trim();
+            return r;
         }
-        async function recOcr(file) {
+        // ast {idx:letter} → คอลัมน์ชื่อยา/กลุ่มยา S/I/R (ใช้กับบรรทัดต่อของแต่ละเชื้อ)
+        function astMapToCols(ast) {
+            const buckets = { S: [], I: [], R: [] };
+            Object.keys(ast).forEach(idx => { const d = ANTIBIOTICS[+idx]; if (!d) return; const b = ast[idx] === 'S' ? 'S' : ast[idx] === 'I' ? 'I' : 'R'; buckets[b].push(d); });
+            const uniq = a => [...new Set(a)]; const cols = {};
+            ['S', 'I', 'R'].forEach(b => { cols['ชื่อยา ' + b] = uniq(buckets[b].map(d => d.n)).join(', '); cols['กลุ่มยา ' + b] = uniq(buckets[b].map(d => d.c)).join(', '); });
+            return cols;
+        }
+        function astApplyToPanel(ast) {
+            Object.keys(ast).forEach(idx => recSetAst(+idx, ast[idx]));
+            recomputeAst();
+            return Object.keys(ast).length;
+        }
+        async function recOcrFiles(fileList) {
             const st = document.getElementById('recOcrStatus');
-            if (!file || !/^image\//.test(file.type)) { st.textContent = '⚠️ กรุณาเลือกไฟล์รูปภาพ'; st.className = 'text-xs text-rose-600 mt-1'; return; }
+            const files = [...fileList].filter(f => /^image\//.test(f.type));
+            if (!files.length) { st.textContent = '⚠️ กรุณาเลือกไฟล์รูปภาพ'; st.className = 'text-xs text-rose-600 mt-1'; return; }
             st.textContent = 'กำลังเตรียมตัวอ่าน OCR...'; st.className = 'text-xs text-slate-500 mt-1';
             try {
                 await ensureTesseract();
-                st.textContent = 'กำลังอ่านรูป...';
-                const { data } = await Tesseract.recognize(file, 'eng', {
-                    logger: mm => { if (mm.status === 'recognizing text') st.textContent = 'กำลังอ่านรูป... ' + Math.round(mm.progress * 100) + '%'; }
-                });
-                const n = parseAstText(data.text || '');
-                // เปิดกลุ่มที่มีแผงยา ให้เห็นผล
+                const summary = [];
+                for (let i = 0; i < files.length; i++) {
+                    const idx = i;
+                    const { data } = await Tesseract.recognize(files[i], 'eng', {
+                        logger: mm => { if (mm.status === 'recognizing text') st.textContent = 'อ่านใบ ' + (idx + 1) + '/' + files.length + '... ' + Math.round(mm.progress * 100) + '%'; }
+                    });
+                    const r = parseAstResult(data.text || '');
+                    if (i === 0) {
+                        const n = astApplyToPanel(r.ast);
+                        if (r.hn) recSetColIfEmpty('HN', r.hn);
+                        if (r.sex) recSetColIfEmpty('เพศ', r.sex);
+                        if (r.specimen) recSetColIfEmpty('สิ่งส่ตรวจ1', r.specimen);
+                        if (r.ward) recSetColIfEmpty('Unit', r.ward);
+                        if (r.organism) recSetColIfEmpty('เชื้อก่อโรค', r.organism);
+                        summary.push('ใบ1 ' + (r.organism || '(เชื้อ?)') + ' · ยา ' + n);
+                    } else {
+                        recAddOrgRow(r.organism || '', astMapToCols(r.ast));
+                        summary.push('ใบ' + (i + 1) + ' ' + (r.organism || '(เชื้อ?)') + ' · ยา ' + Object.keys(r.ast).length);
+                    }
+                }
                 const panel = document.querySelector('#recFormFields .astSel');
                 if (panel) { const det = panel.closest('details'); if (det) det.open = true; }
-                st.innerHTML = '✅ อ่านเสร็จ · กรอกผลไวต่อยาได้ <b>' + n + '</b> ตัว (+ เชื้อ/HN ถ้าพบ) — <b>โปรดตรวจทานก่อนบันทึก</b>';
+                st.innerHTML = '✅ อ่าน ' + files.length + ' ใบแล้ว — ' + summary.join(' · ') + ' <b>(โปรดตรวจทานก่อนบันทึก)</b>';
                 st.className = 'text-xs text-emerald-600 mt-1';
             } catch (e) {
                 st.textContent = '⚠️ อ่านรูปไม่สำเร็จ: ' + e.message + ' (ลองรูปที่ชัดขึ้น หรือกรอกเอง)';
@@ -5779,10 +5802,10 @@
             const drop = document.getElementById('recDrop'), dropIn = document.getElementById('recDropInput');
             if (drop && dropIn) {
                 drop.addEventListener('click', () => dropIn.click());
-                dropIn.addEventListener('change', () => { if (dropIn.files[0]) recOcr(dropIn.files[0]); });
+                dropIn.addEventListener('change', () => { if (dropIn.files.length) recOcrFiles(dropIn.files); });
                 ['dragover', 'dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('border-emerald-400', 'bg-emerald-50/40'); }));
                 ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('border-emerald-400', 'bg-emerald-50/40'); }));
-                drop.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) recOcr(f); });
+                drop.addEventListener('drop', e => { const fs = e.dataTransfer && e.dataTransfer.files; if (fs && fs.length) recOcrFiles(fs); });
             }
             if (!recListsLoaded) {
                 const setDl = (id, arr) => { const el = document.getElementById(id); if (el) el.innerHTML = arr.map(v => '<option value="' + recEsc(v) + '">').join(''); };
@@ -5845,20 +5868,27 @@
             loadRecordLists();
         }
         // แถวอินพุต "เชื้อเพิ่ม" (บรรทัดต่อ)
-        function recAddOrgRow(val) {
+        function recAddOrgRow(val, astCols) {
             const list = document.getElementById('recExtraOrgList'); if (!list) return;
             const lk = recListKey('เชื้อก่อโรค');
             const dl = lk ? REC_LIST_IDS[lk] : 'recdl_org';
             const row = document.createElement('div');
             row.className = 'flex items-center gap-2';
             row.innerHTML = '<input class="recExtraOrg flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400" list="' + dl + '" placeholder="ชื่อเชื้อก่อโรคเพิ่ม" value="' + recEsc(val || '') + '">' +
+                (astCols ? '<span class="text-[10px] bg-emerald-50 text-emerald-700 rounded-lg px-1.5 py-1 whitespace-nowrap" title="มีผล AST ของเชื้อนี้ (จะบันทึกชื่อยา/กลุ่มยาในบรรทัดต่อ)">AST ✓</span>' : '') +
                 '<button type="button" class="recDelOrg text-rose-500 hover:text-rose-700 text-lg leading-none px-2">&times;</button>';
+            if (astCols) row.dataset.ast = JSON.stringify(astCols);
             row.querySelector('.recDelOrg').addEventListener('click', () => row.remove());
             list.appendChild(row);
             row.querySelector('input').focus();
         }
         function recExtraOrgs() {
-            return [...document.querySelectorAll('#recExtraOrgList .recExtraOrg')].map(el => (el.value || '').trim()).filter(Boolean);
+            return [...document.querySelectorAll('#recExtraOrgList > div')].map(row => {
+                const el = row.querySelector('.recExtraOrg'); const name = el ? (el.value || '').trim() : '';
+                if (!name) return null;
+                let ast = null; try { ast = row.dataset.ast ? JSON.parse(row.dataset.ast) : null; } catch (e) { }
+                return { name: name, ast: ast };
+            }).filter(Boolean);
         }
         function recRecord() {
             const rec = {};
@@ -5866,11 +5896,14 @@
             if (!rec['Quater']) rec['Quater'] = recQuarterOfMonth(rec['Month']); // เว้นว่าง → คำนวณจากเดือน (เลข 1-4)
             return rec;
         }
-        // บรรทัดต่อสำหรับเชื้อเพิ่ม: ใช้ข้อมูลระบุไซต์เดิม เว้น HAI/ชื่อ → ไม่นับซ้ำเป็นเคส
-        function recContinuationRow(main, organism) {
+        // บรรทัดต่อสำหรับเชื้อเพิ่ม: ใช้ข้อมูลระบุไซต์เดิม เว้น HAI/ชื่อ → ไม่นับซ้ำเป็นเคส (+ AST ของเชื้อนั้นถ้ามี)
+        function recContinuationRow(main, org) {
+            const name = (typeof org === 'string') ? org : org.name;
+            const ast = (typeof org === 'string') ? null : org.ast;
             const keep = ['Unit', 'Unit2', 'PCT', 'Year', 'Quater', 'Month', 'HN', 'AN', 'SITE'];
             const row = {}; keep.forEach(k => { if (main[k]) row[k] = main[k]; });
-            row['เชื้อก่อโรค'] = organism;
+            row['เชื้อก่อโรค'] = name;
+            if (ast) Object.keys(ast).forEach(k => { if (ast[k]) row[k] = ast[k]; });
             return row;
         }
         // รวมทุกบรรทัดที่จะบันทึก (เคสหลัก + เชื้อเพิ่มเป็นบรรทัดต่อ)
