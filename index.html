@@ -5462,7 +5462,6 @@
                 { col: 'สาเหตุ Death', label: 'สาเหตุการเสียชีวิต', type: 'text' }
             ] },
             { group: 'เชื้อ / ยา / ผลไวต่อยา (AST)', fields: [
-                { col: 'เชื้อก่อโรค', label: 'เชื้อก่อโรค (หลัก)', type: 'text', datalist: 'org' },
                 { col: 'AMR', label: 'ผลดื้อยา (AMR)', type: 'select', opts: ['no mdr', 'mdr'] },
                 { col: 'MDR', label: 'ชนิดดื้อยา (MDR)', type: 'text', datalist: 'mdr', ph: 'mdr, cre, esbl, xdr, vre' },
                 { type: 'ast' },
@@ -5565,12 +5564,9 @@
             { n: 'Chloramphenicol', c: 'Phenicols' }, { n: 'Fosfomycin', c: 'Fosfomycin' },
             { n: 'Fusidic acid', c: 'Others' }
         ];
+        // สถานะเชื้อก่อโรคหลายตัว: อาร์เรย์ของ { name, ast:{ดัชนียา:ตัวอักษร S/I/R/N} } — ตัวแรก = เชื้อหลัก
+        let REC_AST_ORGS = [{ name: '', ast: {} }];
         function astPanelHtml() {
-            const cells = ANTIBIOTICS.map((d, i) =>
-                '<label class="flex items-center justify-between gap-1 text-[11px] py-0.5"><span class="truncate">' + recEsc(d.n) + '</span>' +
-                '<select class="astSel border border-slate-200 rounded-lg px-1 py-0.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400" data-drug="' + i + '">' +
-                '<option value=""></option><option value="S">S</option><option value="I">I</option><option value="R">R</option><option value="N">N</option></select></label>'
-            ).join('');
             const ro = (col, label) => '<div><label class="block text-[11px] font-medium text-slate-500 mb-0.5">' + label + '</label>' +
                 '<input data-col="' + col + '" readonly class="w-full border border-slate-100 bg-slate-50 rounded-xl px-2 py-1.5 text-xs text-slate-600"></div>';
             return '<div class="col-span-2 sm:col-span-3 lg:col-span-4 rounded-lg border border-slate-200 p-3">' +
@@ -5580,39 +5576,63 @@
                     '<input id="recDropInput" type="file" accept="image/*" multiple class="hidden">' +
                 '</div>' +
                 '<p id="recOcrStatus" class="text-xs text-slate-400 mb-2"></p>' +
-                '<details class="mb-2"><summary class="text-xs font-semibold text-slate-600 cursor-pointer select-none">เลือกผลไวต่อยารายตัว (S/I/R/N) — กางเพื่อแก้</summary>' +
-                    '<p class="text-xs text-slate-500 my-2">S=ไว · I=ปานกลาง · R=ดื้อ · N=nonsusceptible — ระบบเติม “ชื่อยา” และ “กลุ่มยา” ให้อัตโนมัติ (N รวมกับ R)</p>' +
-                    '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3">' + cells + '</div>' +
-                '</details>' +
+                // แผงเชื้อหลายตัว + ตารางผลไวต่อยา (สร้างโดย astRenderOrgs)
+                '<div id="recOrgWrap"></div>' +
+                // สรุปชื่อยา/กลุ่มยาของเชื้อหลัก (เติมอัตโนมัติจากคอลัมน์ "หลัก" ของตาราง)
                 '<div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 border-t border-slate-100 pt-3">' +
-                    ro('ชื่อยา S', 'ชื่อยาที่ไว (S)') + ro('ชื่อยา I', 'ชื่อยา intermediate (I)') + ro('ชื่อยา R', 'ชื่อยาที่ดื้อ (R)') +
+                    ro('ชื่อยา S', 'ชื่อยาที่ไว (S) — เชื้อหลัก') + ro('ชื่อยา I', 'ชื่อยา intermediate (I)') + ro('ชื่อยา R', 'ชื่อยาที่ดื้อ (R)') +
                     ro('กลุ่มยา S', 'กลุ่มยา S') + ro('กลุ่มยา I', 'กลุ่มยา I') + ro('กลุ่มยา R', 'กลุ่มยา R') +
-                '</div>' +
-                // เชื้อก่อโรคเพิ่ม (บรรทัดต่อ)
-                '<div class="border-t border-slate-100 mt-3 pt-3">' +
-                    '<div class="flex items-center justify-between mb-2">' +
-                        '<h4 class="text-sm font-semibold text-slate-600">เชื้อก่อโรคเพิ่ม (บรรทัดต่อ)</h4>' +
-                        '<button id="recAddOrg" type="button" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1 px-2.5 rounded-lg font-medium">➕ เพิ่มเชื้อ</button>' +
-                    '</div>' +
-                    '<div id="recExtraOrgList" class="space-y-2"></div>' +
-                    '<p class="text-[11px] text-slate-400 mt-1">แต่ละเชื้อที่เพิ่มจะถูกบันทึกเป็นอีก 1 บรรทัด โดยใช้ Unit/HN/SITE เดิม และเว้น HAI/ชื่อ ไว้ จึง<b>ไม่ถูกนับซ้ำเป็นเคส</b> แต่ถูกนับเป็นเชื้อของไซต์นั้น</p>' +
                 '</div>' +
                 '</div>';
         }
+        // วาดแผงเชื้อหลายตัว (ชื่อเชื้อ + ตารางผลไวต่อยาแยกคอลัมน์ต่อเชื้อ) จากสถานะ REC_AST_ORGS
+        function astRenderOrgs() {
+            const wrap = document.getElementById('recOrgWrap'); if (!wrap) return;
+            if (!REC_AST_ORGS.length) REC_AST_ORGS = [{ name: '', ast: {} }];
+            const lk = recListKey('เชื้อก่อโรค');
+            const dl = lk ? REC_LIST_IDS[lk] : 'recdl_org';
+            const names = REC_AST_ORGS.map((o, k) => {
+                const dc = k === 0 ? ' data-col="เชื้อก่อโรค"' : '';
+                const badge = k === 0
+                    ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 rounded-lg px-1.5 py-0.5 whitespace-nowrap">หลัก</span>'
+                    : '<span class="text-[10px] bg-sky-100 text-sky-700 rounded-lg px-1.5 py-0.5 whitespace-nowrap">เชื้อ ' + (k + 1) + '</span>';
+                const del = k === 0 ? '' : '<button type="button" class="recDelOrg text-rose-500 hover:text-rose-700 text-lg leading-none px-2" data-k="' + k + '" title="ลบเชื้อนี้">&times;</button>';
+                return '<div class="flex items-center gap-2">' + badge +
+                    '<input class="recOrgName flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400" data-k="' + k + '"' + dc + ' list="' + dl + '" placeholder="ชื่อเชื้อก่อโรค' + (k === 0 ? ' (หลัก)' : ' เพิ่ม') + '" value="' + recEsc(o.name || '') + '">' + del + '</div>';
+            }).join('');
+            const headCols = REC_AST_ORGS.map((o, k) => '<th class="px-1.5 py-1 text-center font-medium text-slate-500 whitespace-nowrap">' + (k === 0 ? 'หลัก' : 'เชื้อ ' + (k + 1)) + '</th>').join('');
+            const body = ANTIBIOTICS.map((d, i) => {
+                const tds = REC_AST_ORGS.map((o, k) => {
+                    const v = (o.ast && o.ast[i]) || '';
+                    const opt = (lv) => '<option value="' + lv + '"' + (v === lv ? ' selected' : '') + '>' + lv + '</option>';
+                    return '<td class="px-1 py-0.5 text-center"><select class="astSel border border-slate-200 rounded-lg px-1 py-0.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400" data-drug="' + i + '" data-org="' + k + '">' +
+                        '<option value=""></option>' + opt('S') + opt('I') + opt('R') + opt('N') + '</select></td>';
+                }).join('');
+                return '<tr class="border-t border-slate-100"><td class="px-1.5 py-0.5 text-[11px] text-slate-600 whitespace-nowrap">' + recEsc(d.n) + '</td>' + tds + '</tr>';
+            }).join('');
+            const grid = '<details class="mt-3"><summary class="text-xs font-semibold text-slate-600 cursor-pointer select-none">ผลไวต่อยารายตัว (S/I/R/N) แยกต่อเชื้อ — กางเพื่อแก้</summary>' +
+                '<p class="text-xs text-slate-500 my-2">S=ไว · I=ปานกลาง · R=ดื้อ · N=nonsusceptible — เชื้อหลักเติม “ชื่อยา/กลุ่มยา” ให้อัตโนมัติ; เชื้อเพิ่มบันทึกเป็นบรรทัดต่อ (N รวมกับ R)</p>' +
+                '<div class="overflow-x-auto"><table class="text-[11px] border-collapse"><thead><tr><th class="px-1.5 py-1 text-left font-medium text-slate-500">ยา</th>' + headCols + '</tr></thead><tbody>' + body + '</tbody></table></div></details>';
+            wrap.innerHTML = '<div class="flex items-center justify-between mb-2"><h4 class="text-sm font-semibold text-slate-600">เชื้อก่อโรค (รองรับหลายเชื้อ)</h4>' +
+                '<button id="recAddOrg" type="button" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1 px-2.5 rounded-lg font-medium">➕ เพิ่มเชื้อ</button></div>' +
+                '<div class="space-y-2">' + names + '</div>' + grid +
+                '<p class="text-[11px] text-slate-400 mt-1">เชื้อเพิ่มแต่ละตัวบันทึกเป็นอีก 1 บรรทัด ใช้ Unit/HN/SITE เดิม เว้น HAI/ชื่อ จึง<b>ไม่นับซ้ำเป็นเคส</b> แต่นับเป็นเชื้อของไซต์นั้น</p>';
+            // ผูก event
+            wrap.querySelectorAll('.recOrgName').forEach(inp => inp.addEventListener('input', () => { const k = +inp.dataset.k; if (REC_AST_ORGS[k]) REC_AST_ORGS[k].name = inp.value; recSaveDraft(); }));
+            wrap.querySelectorAll('.astSel').forEach(sel => sel.addEventListener('change', () => {
+                const i = +sel.dataset.drug, k = +sel.dataset.org; if (!REC_AST_ORGS[k]) return;
+                REC_AST_ORGS[k].ast = REC_AST_ORGS[k].ast || {};
+                if (sel.value) REC_AST_ORGS[k].ast[i] = sel.value; else delete REC_AST_ORGS[k].ast[i];
+                if (k === 0) recomputeAst();
+                recSaveDraft();
+            }));
+            const add = wrap.querySelector('#recAddOrg'); if (add) add.addEventListener('click', () => { REC_AST_ORGS.push({ name: '', ast: {} }); astRenderOrgs(); recSaveDraft(); });
+            wrap.querySelectorAll('.recDelOrg').forEach(b => b.addEventListener('click', () => { const k = +b.dataset.k; REC_AST_ORGS.splice(k, 1); if (!REC_AST_ORGS.length) REC_AST_ORGS = [{ name: '', ast: {} }]; astRenderOrgs(); recomputeAst(); recSaveDraft(); }));
+        }
+        // เติมสรุปชื่อยา/กลุ่มยา S/I/R ของเชื้อหลัก (REC_AST_ORGS[0]) ลงช่อง readonly
         function recomputeAst() {
-            const buckets = { S: [], I: [], R: [] };
-            document.querySelectorAll('#recFormFields .astSel').forEach(sel => {
-                const v = sel.value; if (!v) return;
-                const d = ANTIBIOTICS[+sel.dataset.drug]; if (!d) return;
-                const b = v === 'S' ? 'S' : v === 'I' ? 'I' : 'R'; // R และ N → R
-                buckets[b].push(d);
-            });
-            const uniq = a => [...new Set(a)];
-            const setCol = (col, val) => { const e = document.querySelector('#recFormFields [data-col="' + col + '"]'); if (e) e.value = val; };
-            ['S', 'I', 'R'].forEach(b => {
-                setCol('ชื่อยา ' + b, uniq(buckets[b].map(d => d.n)).join(', '));
-                setCol('กลุ่มยา ' + b, uniq(buckets[b].map(d => d.c)).join(', '));
-            });
+            const cols = astMapToCols((REC_AST_ORGS[0] || { ast: {} }).ast || {});
+            Object.keys(cols).forEach(col => { const e = document.querySelector('#recFormFields [data-col="' + col + '"]'); if (e) e.value = cols[col]; });
         }
         // ---- OCR ใบ AST (อ่านในเครื่องด้วย Tesseract.js) ----
         // รูปแบบคำที่พบในใบแล็บ → ดัชนีใน ANTIBIOTICS
@@ -5639,11 +5659,6 @@
                 document.head.appendChild(s);
             });
             return tessPromise;
-        }
-        function recSetAst(i, letter) {
-            const sel = document.querySelector('#recFormFields .astSel[data-drug="' + i + '"]');
-            if (sel) { sel.value = letter; return true; }
-            return false;
         }
         function recSetColIfEmpty(col, val) {
             const e = document.querySelector('#recFormFields [data-col="' + col + '"]');
@@ -5690,11 +5705,6 @@
             ['S', 'I', 'R'].forEach(b => { cols['ชื่อยา ' + b] = uniq(buckets[b].map(d => d.n)).join(', '); cols['กลุ่มยา ' + b] = uniq(buckets[b].map(d => d.c)).join(', '); });
             return cols;
         }
-        function astApplyToPanel(ast) {
-            Object.keys(ast).forEach(idx => recSetAst(+idx, ast[idx]));
-            recomputeAst();
-            return Object.keys(ast).length;
-        }
         async function recOcrFiles(fileList) {
             const st = document.getElementById('recOcrStatus');
             const files = [...fileList].filter(f => /^image\//.test(f.type));
@@ -5703,7 +5713,8 @@
             try {
                 await ensureTesseract();
                 const summary = [];
-                let mainFilled = false, headerDone = false;
+                const orgsAll = [];   // รวมเชื้อจากทุกใบ → สถานะ REC_AST_ORGS
+                let headerDone = false;
                 for (let i = 0; i < files.length; i++) {
                     const idx = i;
                     const { data } = await Tesseract.recognize(files[i], 'eng', {
@@ -5719,19 +5730,17 @@
                     const orgs = r.organisms.length ? r.organisms : ['(เชื้อ?)'];
                     for (let k = 0; k < orgs.length; k++) {
                         const map = r.astOf(k);
-                        if (!mainFilled) {
-                            recSetColIfEmpty('เชื้อก่อโรค', orgs[k]);
-                            astApplyToPanel(map);
-                            mainFilled = true;
-                            summary.push('หลัก: ' + orgs[k] + ' · ยา ' + Object.keys(map).length);
-                        } else {
-                            recAddOrgRow(orgs[k], astMapToCols(map));
-                            summary.push('เพิ่ม: ' + orgs[k] + ' · ยา ' + Object.keys(map).length);
-                        }
+                        orgsAll.push({ name: orgs[k], ast: map });
+                        summary.push((orgsAll.length === 1 ? 'หลัก: ' : 'เพิ่ม: ') + orgs[k] + ' · ยา ' + Object.keys(map).length);
                     }
                 }
-                const panel = document.querySelector('#recFormFields .astSel');
-                if (panel) { const det = panel.closest('details'); if (det) det.open = true; }
+                if (orgsAll.length) {
+                    REC_AST_ORGS = orgsAll.map(o => ({ name: o.name, ast: o.ast }));
+                    astRenderOrgs();
+                    recomputeAst();
+                    recSaveDraft();
+                    const det = document.querySelector('#recOrgWrap details'); if (det) det.open = true;
+                }
                 st.innerHTML = '✅ อ่านแล้ว — ' + summary.join(' · ') + ' <b>(โปรดตรวจทานก่อนบันทึก)</b>';
                 st.className = 'text-xs text-emerald-600 mt-1';
             } catch (e) {
@@ -5793,8 +5802,7 @@
             const monthSel = document.getElementById('rec_month');
             if (monthSel) monthSel.addEventListener('change', () => { const q = recQuarterOfMonth(monthSel.value); const qe = document.getElementById('rec_quarter'); if (qe) qe.value = q || ''; });
             const y = document.querySelector('#recFormFields [data-col="Year"]'); if (y && !y.value) y.value = String(new Date().getFullYear() + 543);
-            document.querySelectorAll('#recFormFields .astSel').forEach(sel => sel.addEventListener('change', recomputeAst));
-            const addOrg = document.getElementById('recAddOrg'); if (addOrg) addOrg.addEventListener('click', () => recAddOrgRow(''));
+            astRenderOrgs(); // วาดแผงเชื้อหลายตัว + ตารางผลไวต่อยา
             // ปฏิทินพรีเมียม (flatpickr) สำหรับช่องวันที่ — เก็บค่าเป็น วว/ดด/ปปปป (พ.ศ.) ตรงกับชีต
             if (typeof flatpickr !== 'undefined') {
                 document.querySelectorAll('#recFormFields .recdate').forEach(el => {
@@ -5896,54 +5904,35 @@
             try {
                 const cols = {};
                 document.querySelectorAll('#recFormFields [data-col]').forEach(el => { if (el.value) cols[el.dataset.col] = el.value; });
-                const ast = {};
-                document.querySelectorAll('#recFormFields .astSel').forEach(sel => { if (sel.value) ast[sel.dataset.drug] = sel.value; });
-                const extras = recExtraOrgs();
-                localStorage.setItem('recDraft', JSON.stringify({ cols: cols, ast: ast, extras: extras, ts: Date.now() }));
+                localStorage.setItem('recDraft', JSON.stringify({ cols: cols, orgs: REC_AST_ORGS, ts: Date.now() }));
             } catch (e) { }
         }
         function recDraftMeaningful(d) {
             if (!d) return false;
             const c = d.cols || {};
-            // มีข้อมูลเฉพาะเคส (นอกเหนือ ปี/เดือน/ไตรมาส/หอ/กลุ่มงาน) หรือมีผล AST/เชื้อเพิ่ม
+            // มีข้อมูลเฉพาะเคส (นอกเหนือ ปี/เดือน/ไตรมาส/หอ/กลุ่มงาน) หรือมีผล AST/ชื่อเชื้อ
             const keys = Object.keys(c).filter(k => ['Year', 'Month', 'Quater', 'Unit', 'PCT'].indexOf(k) < 0);
-            return keys.length > 0 || Object.keys(d.ast || {}).length > 0 || (d.extras || []).length > 0;
+            const orgs = d.orgs || [];
+            const orgData = orgs.some(o => (o.name || '').trim() || Object.keys(o.ast || {}).length);
+            return keys.length > 0 || orgData;
         }
         function recRestoreDraft() {
             let d = null; try { d = JSON.parse(localStorage.getItem('recDraft') || 'null'); } catch (e) { }
             if (!d) return;
             const cols = d.cols || {};
             Object.keys(cols).forEach(c => { const el = document.querySelector('#recFormFields [data-col="' + c + '"]'); if (el) el.value = cols[c]; });
-            if (d.ast) { Object.keys(d.ast).forEach(idx => recSetAst(+idx, d.ast[idx])); recomputeAst(); }
-            if (d.extras && d.extras.length) { const list = document.getElementById('recExtraOrgList'); if (list) { list.innerHTML = ''; d.extras.forEach(o => recAddOrgRow(o.name, o.ast || null)); } }
+            if (d.orgs && d.orgs.length) { REC_AST_ORGS = d.orgs.map(o => ({ name: o.name || '', ast: o.ast || {} })); astRenderOrgs(); recomputeAst(); }
             if (recDraftMeaningful(d)) {
                 const st = document.getElementById('rec_status');
                 if (st) { st.innerHTML = '📝 กู้แบบร่างที่ค้างไว้ (ยังไม่บันทึก) — กรอกต่อหรือกด “ล้างฟอร์ม” เพื่อเริ่มใหม่'; st.className = 'text-xs text-amber-600'; }
             }
         }
         function recClearDraft() { try { localStorage.removeItem('recDraft'); } catch (e) { } }
-        // แถวอินพุต "เชื้อเพิ่ม" (บรรทัดต่อ)
-        function recAddOrgRow(val, astCols) {
-            const list = document.getElementById('recExtraOrgList'); if (!list) return;
-            const lk = recListKey('เชื้อก่อโรค');
-            const dl = lk ? REC_LIST_IDS[lk] : 'recdl_org';
-            const row = document.createElement('div');
-            row.className = 'flex items-center gap-2';
-            row.innerHTML = '<input class="recExtraOrg flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400" list="' + dl + '" placeholder="ชื่อเชื้อก่อโรคเพิ่ม" value="' + recEsc(val || '') + '">' +
-                (astCols ? '<span class="text-[10px] bg-emerald-50 text-emerald-700 rounded-lg px-1.5 py-1 whitespace-nowrap" title="มีผล AST ของเชื้อนี้ (จะบันทึกชื่อยา/กลุ่มยาในบรรทัดต่อ)">AST ✓</span>' : '') +
-                '<button type="button" class="recDelOrg text-rose-500 hover:text-rose-700 text-lg leading-none px-2">&times;</button>';
-            if (astCols) row.dataset.ast = JSON.stringify(astCols);
-            row.querySelector('.recDelOrg').addEventListener('click', () => row.remove());
-            list.appendChild(row);
-            row.querySelector('input').focus();
-        }
+        // เชื้อเพิ่ม (ตัวที่ 2 เป็นต้นไป) → {name, ast:คอลัมน์ชื่อยา/กลุ่มยา} สำหรับบันทึกเป็นบรรทัดต่อ
         function recExtraOrgs() {
-            return [...document.querySelectorAll('#recExtraOrgList > div')].map(row => {
-                const el = row.querySelector('.recExtraOrg'); const name = el ? (el.value || '').trim() : '';
-                if (!name) return null;
-                let ast = null; try { ast = row.dataset.ast ? JSON.parse(row.dataset.ast) : null; } catch (e) { }
-                return { name: name, ast: ast };
-            }).filter(Boolean);
+            return REC_AST_ORGS.slice(1)
+                .map(o => ({ name: (o.name || '').trim(), ast: astMapToCols(o.ast || {}) }))
+                .filter(o => o.name);
         }
         function recRecord() {
             const rec = {};
@@ -6003,8 +5992,9 @@
         function clearRecordForm() {
             const keep = { 'Year': 1, 'Month': 1, 'Quater': 1, 'Unit': 1, 'PCT': 1 };
             document.querySelectorAll('#recFormFields [data-col]').forEach(el => { if (!keep[el.dataset.col]) { if (el._flatpickr) el._flatpickr.clear(); else el.value = ''; } });
-            document.querySelectorAll('#recFormFields .astSel').forEach(sel => { sel.value = ''; });
-            document.getElementById('recExtraOrgList').innerHTML = '';
+            REC_AST_ORGS = [{ name: '', ast: {} }];
+            astRenderOrgs();
+            recomputeAst();
             recClearDraft();
             const st = document.getElementById('rec_status'); st.textContent = 'ล้างฟอร์มแล้ว (คงปี/เดือน/ไตรมาส/หอ/กลุ่มงาน ไว้)'; st.className = 'text-xs text-slate-400';
         }
