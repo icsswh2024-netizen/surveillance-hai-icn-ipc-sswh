@@ -1837,6 +1837,7 @@
                     hd1N: num(pick(r, ['HD1'])),     // จำนวนครั้งฟอกเลือด (HD)
                     // ประเภทแผลผ่าตัด (Wound class) 1-4 + SSI แยกชนิดผ่าตัด
                     w1: num(pick(r, ['1'])), w2: num(pick(r, ['2'])), w3: num(pick(r, ['3'])), w4: num(pick(r, ['4'])),
+                    ssiType: pick(r, ['ชนิดSSI', 'ชนิด SSI']).toString().trim(),  // ประเภทแผลผ่าตัด (1-4 หรือ clean/…)
                     ssiEye: num(pick(r, ['eye'])), ssiHip: num(pick(r, ['hip'])), ssiKnee: num(pick(r, ['knee'])), ssiGyn: num(pick(r, ['gyn'])),
                     patientDay: num(pick(r, ['วันนนอน', 'วันนอน', 'PatientDays'])), // วันนอนผู้ป่วย -> HAI รวม
                     op: num(pick(r, ['op', 'OP', 'จำนวนผ่าตัด'])),        // จำนวนผ่าตัด -> SSI
@@ -2844,7 +2845,7 @@
                 w.den.wcAll += r.w1 + r.w2 + r.w3 + r.w4;
                 if (r.isHAI) {
                     let cs = reportSiteOf(r);
-                    if (cs === 'SSI') { const k = r.w1 ? 1 : r.w2 ? 2 : r.w3 ? 3 : r.w4 ? 4 : 0; cs = 'SSI' + k; }
+                    if (cs === 'SSI') cs = 'SSI' + ssiClassOf(r);
                     w.cases[cs] = (w.cases[cs] || 0) + 1;
                     if (r.isMDR) w.MDR += 1;
                 }
@@ -4420,6 +4421,16 @@
             return r.siteType;
         }
         function reportIsICU(u) { return /(^|[^a-z])(icu|nicu|sicu)([^a-z]|$)/.test((u || '').toLowerCase()); }
+        // ประเภทแผลผ่าตัดของเคส SSI → 1-4 (จากคอลัมน์ "ชนิดSSI" ก่อน แล้วค่อยคอลัมน์ 1/2/3/4) ไม่พบ → 0
+        function ssiClassOf(r) {
+            const s = (r.ssiType || '').toString().toLowerCase();
+            const dig = s.match(/[1-4]/); if (dig) return +dig[0];
+            if (/dirty|infect|สกปรก|ติดเชื้อ/.test(s)) return 4;
+            if (/clean[\s\-]*contam|กึ่ง|สะอาดปน/.test(s)) return 2;
+            if (/contam|ปนเปื้อน|ปน/.test(s)) return 3;
+            if (/clean|สะอาด/.test(s)) return 1;
+            return r.w1 ? 1 : r.w2 ? 2 : r.w3 ? 3 : r.w4 ? 4 : 0;
+        }
         // สร้างเมทริกซ์ หอผู้ป่วย × ตำแหน่ง (mdrOnly=true → นับเฉพาะเชื้อดื้อยา)
         function reportMatrix(mdrOnly) {
             const rows = getFilteredRows();
@@ -4437,8 +4448,8 @@
                 w.den.wcAll += r.w1 + r.w2 + r.w3 + r.w4;
                 if (r.isHAI && (!mdrOnly || r.isMDR)) {
                     let cs = reportSiteOf(r);
-                    // SSI แยกตามประเภทแผลผ่าตัด 1-4 (จากคอลัมน์ 1/2/3/4); ไม่ระบุ → SSI0
-                    if (cs === 'SSI') { const k = r.w1 ? 1 : r.w2 ? 2 : r.w3 ? 3 : r.w4 ? 4 : 0; cs = 'SSI' + k; }
+                    // SSI แยกตามประเภทแผลผ่าตัด 1-4 (จากคอลัมน์ ชนิดSSI/1/2/3/4); ไม่ระบุ → SSI0
+                    if (cs === 'SSI') cs = 'SSI' + ssiClassOf(r);
                     w.cases[cs] = (w.cases[cs] || 0) + 1;
                 }
             });
