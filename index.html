@@ -4407,7 +4407,9 @@
             { key: 'SSI1', siteKey: 'SSI1', den: 'wc1', denLabel: 'ผ่าตัด', per: 100, rateLabel: '%' },
             { key: 'SSI2', siteKey: 'SSI2', den: 'wc2', denLabel: 'ผ่าตัด', per: 100, rateLabel: '%' },
             { key: 'SSI3', siteKey: 'SSI3', den: 'wc3', denLabel: 'ผ่าตัด', per: 100, rateLabel: '%' },
-            { key: 'SSI4', siteKey: 'SSI4', den: 'wc4', denLabel: 'ผ่าตัด', per: 100, rateLabel: '%' }
+            { key: 'SSI4', siteKey: 'SSI4', den: 'wc4', denLabel: 'ผ่าตัด', per: 100, rateLabel: '%' },
+            // เคส SSI ที่ไม่ได้ระบุประเภทแผล (คอลัมน์ 1-4 ว่าง) — แสดงไว้ไม่ให้ยอดหาย
+            { key: 'SSI?', siteKey: 'SSI0', denFn: o => o.den.wcAll, denLabel: 'ผ่าตัด', per: 100, rateLabel: '%' }
         ];
         // รายการคอลัมน์ตามสถานะย่อ/ขยาย SSI
         function repSites() { return REPORT_SITES_PRE.concat(repSsiExpanded ? REPORT_SSI_SUBS : [REPORT_SSI_TOTAL], REPORT_SITES_POST); }
