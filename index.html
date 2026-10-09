@@ -5854,7 +5854,7 @@
         let recInited = false;
         function initRecordView() {
             if (!recInited) {
-                try { const u = localStorage.getItem('recordSaveUrl'); const e = document.getElementById('rec_url'); if (u) e.value = u; else if (!REC_URL.includes('PASTE_')) e.value = REC_URL; } catch (e) { }
+                try { const e = document.getElementById('rec_url'); const u = localStorage.getItem('recordSaveUrl'); e.value = (!REC_URL.includes('PASTE_')) ? REC_URL : (u || ''); if (!REC_URL.includes('PASTE_') && u !== REC_URL) localStorage.setItem('recordSaveUrl', REC_URL); } catch (e) { }
                 document.getElementById('recSave').addEventListener('click', saveRecord);
                 document.getElementById('recCopy').addEventListener('click', copyRecordRow);
                 document.getElementById('recCsv').addEventListener('click', downloadRecordCsv);
@@ -6007,7 +6007,7 @@
         let LE_DATA = {}, LE_ORDER = [];
         function leStatus(msg, cls) { const st = document.getElementById('le_status'); if (st) { st.textContent = msg; st.className = 'text-xs ' + (cls || 'text-slate-400'); } }
         async function initListEdit() {
-            try { const u = localStorage.getItem('recordSaveUrl'); const e = document.getElementById('le_url'); if (u) e.value = u; else if (!REC_URL.includes('PASTE_')) e.value = REC_URL; } catch (e) { }
+            try { const e = document.getElementById('le_url'); const u = localStorage.getItem('recordSaveUrl'); e.value = (!REC_URL.includes('PASTE_')) ? REC_URL : (u || ''); if (!REC_URL.includes('PASTE_') && u !== REC_URL) localStorage.setItem('recordSaveUrl', REC_URL); } catch (e) { }
             if (!initListEdit._bound) {
                 document.getElementById('le_col').addEventListener('change', leRenderCol);
                 document.getElementById('le_addcol').addEventListener('click', leAddColumn);
