@@ -531,10 +531,14 @@
         <!-- ===================== VIEW: เชื้อดื้อยา (MDR) ===================== -->
         <div id="viewMdr" class="space-y-6" hidden>
             <!-- MDR summary cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-2xl p-5 text-white shadow-md flex flex-col justify-between h-28">
                     <h6 class="font-medium text-fuchsia-50">MDR ทั้งหมด</h6>
                     <div><h3 id="mdrTotal" class="text-3xl font-bold">0</h3><p class="text-xs text-fuchsia-100 mt-1">จำนวนเคสดื้อยา</p></div>
+                </div>
+                <div class="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-5 text-white shadow-md flex flex-col justify-between h-28">
+                    <h6 class="font-medium text-rose-50">อัตรา MDRO</h6>
+                    <div><h3 id="mdrRate" class="text-3xl font-bold">-</h3><p class="text-xs text-rose-100 mt-1">ต่อ 1,000 วันนอน (<span id="mdrRateDen">0</span>)</p></div>
                 </div>
                 <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between h-28">
                     <h6 class="font-medium text-slate-700">%MDR ของ HAI</h6>
@@ -3030,6 +3034,11 @@
             document.getElementById('mdrTotal').textContent = mdr;
             document.getElementById('mdrHai').textContent = cases.length;
             document.getElementById('mdrPct').textContent = (cases.length ? Math.round(mdr / cases.length * 100) : 0) + '%';
+            // อัตรา MDRO ต่อ 1,000 วันนอน (ฐานเดียวกับ HAI)
+            const mdrDenMonths = aggregateDenominatorsByMonth(getFilteredRows());
+            const mdrPd = FISCAL_MONTHS.reduce((a, m) => a + (mdrDenMonths[m] ? mdrDenMonths[m].patientDay : 0), 0);
+            document.getElementById('mdrRate').textContent = mdrPd ? (mdr / mdrPd * 1000).toFixed(2) : '-';
+            document.getElementById('mdrRateDen').textContent = Math.round(mdrPd).toLocaleString();
             updateMdrChart();
             renderMdrRateChart();
 
