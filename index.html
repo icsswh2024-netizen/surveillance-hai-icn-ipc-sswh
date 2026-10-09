@@ -5601,7 +5601,7 @@
                     '<input class="recOrgName flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400" data-k="' + k + '"' + dc + ' list="' + dl + '" placeholder="ชื่อเชื้อก่อโรค' + (k === 0 ? ' (หลัก)' : ' เพิ่ม') + '" value="' + recEsc(o.name || '') + '">' + del + '</div>';
             }).join('');
             const headCols = REC_AST_ORGS.map((o, k) => '<th class="px-1.5 py-1 text-center font-medium text-slate-500 whitespace-nowrap">' + (k === 0 ? 'หลัก' : 'เชื้อ ' + (k + 1)) + '</th>').join('');
-            const body = ANTIBIOTICS.map((d, i) => {
+            const rowHtml = (d, i) => {
                 const tds = REC_AST_ORGS.map((o, k) => {
                     const v = (o.ast && o.ast[i]) || '';
                     const opt = (lv) => '<option value="' + lv + '"' + (v === lv ? ' selected' : '') + '>' + lv + '</option>';
@@ -5609,10 +5609,15 @@
                         '<option value=""></option>' + opt('S') + opt('I') + opt('R') + opt('N') + '</select></td>';
                 }).join('');
                 return '<tr class="border-t border-slate-100"><td class="px-1.5 py-0.5 text-[11px] text-slate-600 whitespace-nowrap">' + recEsc(d.n) + '</td>' + tds + '</tr>';
-            }).join('');
+            };
+            // แบ่งรายการยาเป็น 2 คอลัมน์ (ครึ่งซ้าย/ขวา) ลดความยาวแนวตั้ง
+            const half = Math.ceil(ANTIBIOTICS.length / 2);
+            const tbl = (start, end) => '<table class="text-[11px] border-collapse w-full"><thead><tr>' +
+                '<th class="px-1.5 py-1 text-left font-medium text-slate-500">ยา</th>' + headCols + '</tr></thead><tbody>' +
+                ANTIBIOTICS.slice(start, end).map((d, j) => rowHtml(d, start + j)).join('') + '</tbody></table>';
             const grid = '<details class="mt-3"><summary class="text-xs font-semibold text-slate-600 cursor-pointer select-none">ผลไวต่อยารายตัว (S/I/R/N) แยกต่อเชื้อ — กางเพื่อแก้</summary>' +
                 '<p class="text-xs text-slate-500 my-2">S=ไว · I=ปานกลาง · R=ดื้อ · N=nonsusceptible — เชื้อหลักเติม “ชื่อยา/กลุ่มยา” ให้อัตโนมัติ; เชื้อเพิ่มบันทึกเป็นบรรทัดต่อ (N รวมกับ R)</p>' +
-                '<div class="overflow-x-auto"><table class="text-[11px] border-collapse"><thead><tr><th class="px-1.5 py-1 text-left font-medium text-slate-500">ยา</th>' + headCols + '</tr></thead><tbody>' + body + '</tbody></table></div></details>';
+                '<div class="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-2"><div class="overflow-x-auto">' + tbl(0, half) + '</div><div class="overflow-x-auto">' + tbl(half, ANTIBIOTICS.length) + '</div></div></details>';
             wrap.innerHTML = '<div class="flex items-center justify-between mb-2"><h4 class="text-sm font-semibold text-slate-600">เชื้อก่อโรค (รองรับหลายเชื้อ)</h4>' +
                 '<button id="recAddOrg" type="button" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1 px-2.5 rounded-lg font-medium">➕ เพิ่มเชื้อ</button></div>' +
                 '<div class="space-y-2">' + names + '</div>' + grid +
