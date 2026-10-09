@@ -144,6 +144,10 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
                 เชื้อก่อโรค HAI
             </button>
+            <button id="menuPatient" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                วิเคราะห์ผู้ป่วย
+            </button>
             <button id="menuSpecial" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
                 เฝ้าระวังหน่วยพิเศษ
@@ -1041,6 +1045,41 @@
                 </div>
             </div>
         </div><!-- /viewOrg -->
+
+        <!-- ===================== VIEW: วิเคราะห์ผู้ป่วย ===================== -->
+        <div id="viewPatient" class="space-y-6" hidden>
+            <div id="patientKpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            <div class="grid lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100"><h3 class="text-lg font-semibold text-slate-800">การกระจายตามกลุ่มอายุ</h3><p class="text-xs text-slate-400 mt-1">เคส HAI ตามตัวกรอง</p></div>
+                    <div class="p-6"><div class="relative h-72"><canvas id="patientAgeChart"></canvas></div></div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100"><h3 class="text-lg font-semibold text-slate-800">สัดส่วนเพศ</h3><p class="text-xs text-slate-400 mt-1">เคส HAI ตามตัวกรอง</p></div>
+                    <div class="p-6"><div class="relative h-72"><canvas id="patientSexChart"></canvas></div></div>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">สรุปตามตำแหน่งติดเชื้อ (SITE)</h3>
+                        <p class="text-xs text-slate-400 mt-1">จำนวน · อายุเฉลี่ย · ระยะเวลาจนเกิดอาการ (วัน) · %ดื้อยา</p>
+                    </div>
+                    <button id="btnExportPatient" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold"><tr>
+                            <th class="py-3 px-4">ตำแหน่ง (SITE)</th><th class="py-3 px-4 text-right">จำนวน</th>
+                            <th class="py-3 px-4 text-right">ชาย</th><th class="py-3 px-4 text-right">หญิง</th>
+                            <th class="py-3 px-4 text-right">อายุเฉลี่ย</th><th class="py-3 px-4 text-right">วันจนเกิดอาการ (เฉลี่ย)</th>
+                            <th class="py-3 px-4 text-right text-fuchsia-700">%ดื้อยา</th>
+                        </tr></thead>
+                        <tbody id="patientSiteBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div><!-- /viewPatient -->
 
         <!-- ===================== VIEW: เฝ้าระวังหน่วยพิเศษ ===================== -->
         <div id="viewSpecial" class="space-y-6" hidden>
@@ -4251,6 +4290,94 @@
             setTimeout(() => URL.revokeObjectURL(a.href), 1000);
         }
 
+        /* ===================== เมนู: วิเคราะห์ผู้ป่วย ===================== */
+        const PATIENT_AGE_GROUPS = [[0, 0, '<1 ปี'], [1, 14, '1-14'], [15, 30, '15-30'], [31, 45, '31-45'], [46, 60, '46-60'], [61, 75, '61-75'], [76, 200, '76+']];
+        function patientDaysToOnset(c) {
+            if (!c.dAdmit || !c.dOnset) return null;
+            const d = (c.dOnset - c.dAdmit) / 86400000;
+            return (isFinite(d) && d >= 0 && d < 400) ? d : null;
+        }
+        function patientSiteStats() {
+            const cases = getFilteredCases();
+            const bySite = {};
+            cases.forEach(c => {
+                const s = SITE_LABEL[c.siteType] || c.siteType || '(ไม่ระบุ)';
+                const b = bySite[s] || (bySite[s] = { site: s, n: 0, male: 0, female: 0, ageSum: 0, ageN: 0, dSum: 0, dN: 0, mdr: 0 });
+                b.n++;
+                if (/^m/i.test(c.sex)) b.male++; else if (/^f/i.test(c.sex)) b.female++;
+                const age = parseFloat(c.age); if (isFinite(age)) { b.ageSum += age; b.ageN++; }
+                const d = patientDaysToOnset(c); if (d != null) { b.dSum += d; b.dN++; }
+                if (c.isMDR) b.mdr++;
+            });
+            return Object.values(bySite).sort((a, b) => b.n - a.n);
+        }
+        let patientAgeChartInstance = null, patientSexChartInstance = null;
+        function updatePatientView() {
+            const cases = getFilteredCases();
+            const n = cases.length;
+            const ages = cases.map(c => parseFloat(c.age)).filter(a => isFinite(a));
+            const avgAge = ages.length ? (ages.reduce((a, b) => a + b, 0) / ages.length) : null;
+            const male = cases.filter(c => /^m/i.test(c.sex)).length;
+            const female = cases.filter(c => /^f/i.test(c.sex)).length;
+            const dList = cases.map(patientDaysToOnset).filter(d => d != null);
+            const avgD = dList.length ? (dList.reduce((a, b) => a + b, 0) / dList.length) : null;
+            const kpi = (label, val, sub, tint) => '<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">' +
+                '<p class="text-xs text-slate-400">' + label + '</p><p class="text-2xl font-bold ' + tint + ' mt-1">' + val + '</p>' +
+                '<p class="text-xs text-slate-400 mt-1">' + sub + '</p></div>';
+            const kw = document.getElementById('patientKpis');
+            if (kw) kw.innerHTML =
+                kpi('ผู้ป่วย HAI', n, 'ราย', 'text-emerald-700') +
+                kpi('อายุเฉลี่ย', avgAge == null ? '-' : avgAge.toFixed(0), 'ปี (' + ages.length + ' ราย)', 'text-sky-700') +
+                kpi('ชาย : หญิง', male + ' : ' + female, (n ? Math.round(male / n * 100) : 0) + '% : ' + (n ? Math.round(female / n * 100) : 0) + '%', 'text-violet-700') +
+                kpi('วันจนเกิดอาการ (เฉลี่ย)', avgD == null ? '-' : avgD.toFixed(1), 'วัน (' + dList.length + ' ราย)', 'text-amber-700');
+            // กราฟกลุ่มอายุ
+            const grp = PATIENT_AGE_GROUPS.map(g => ages.filter(a => a >= g[0] && a <= g[1]).length);
+            const ctxA = document.getElementById('patientAgeChart');
+            if (ctxA) {
+                if (patientAgeChartInstance) patientAgeChartInstance.destroy();
+                patientAgeChartInstance = new Chart(ctxA, {
+                    type: 'bar',
+                    data: { labels: PATIENT_AGE_GROUPS.map(g => g[2]), datasets: [{ label: 'จำนวน', data: grp, backgroundColor: '#0ea5e9', borderRadius: 6, _badge: true, _badgeColor: '#0369a1' }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+                });
+            }
+            // กราฟเพศ
+            const ctxS = document.getElementById('patientSexChart');
+            if (ctxS) {
+                const other = n - male - female;
+                if (patientSexChartInstance) patientSexChartInstance.destroy();
+                patientSexChartInstance = new Chart(ctxS, {
+                    type: 'doughnut',
+                    data: { labels: ['ชาย', 'หญิง'].concat(other > 0 ? ['ไม่ระบุ'] : []), datasets: [{ data: [male, female].concat(other > 0 ? [other] : []), backgroundColor: ['#3b82f6', '#ec4899', '#cbd5e1'], borderColor: '#fff', borderWidth: 2 }] },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '58%', plugins: { legend: { position: 'bottom' } } }
+                });
+            }
+            // ตารางตาม SITE
+            const body = document.getElementById('patientSiteBody');
+            const rows = patientSiteStats();
+            if (body) body.innerHTML = rows.length ? rows.map(b =>
+                '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 font-medium text-slate-700">' + b.site + '</td>' +
+                '<td class="py-2.5 px-4 text-right font-semibold">' + b.n + '</td>' +
+                '<td class="py-2.5 px-4 text-right">' + b.male + '</td>' +
+                '<td class="py-2.5 px-4 text-right">' + b.female + '</td>' +
+                '<td class="py-2.5 px-4 text-right">' + (b.ageN ? (b.ageSum / b.ageN).toFixed(0) : '-') + '</td>' +
+                '<td class="py-2.5 px-4 text-right">' + (b.dN ? (b.dSum / b.dN).toFixed(1) : '-') + '</td>' +
+                '<td class="py-2.5 px-4 text-right text-fuchsia-700">' + (b.n ? Math.round(b.mdr / b.n * 100) + '%' : '-') + '</td></tr>'
+            ).join('') : '<tr><td colspan="7" class="py-8 text-center text-slate-400">— ไม่มีเคส HAI ตามตัวกรอง —</td></tr>';
+        }
+        function exportPatientCSV() {
+            const q = v => '"' + (v == null ? '' : v.toString()).replace(/"/g, '""') + '"';
+            const rows = patientSiteStats();
+            let csv = '﻿' + ['ตำแหน่ง (SITE)', 'จำนวน', 'ชาย', 'หญิง', 'อายุเฉลี่ย', 'วันจนเกิดอาการเฉลี่ย', '%ดื้อยา'].map(q).join(',') + '\n';
+            rows.forEach(b => {
+                csv += [q(b.site), b.n, b.male, b.female, (b.ageN ? (b.ageSum / b.ageN).toFixed(0) : ''), (b.dN ? (b.dSum / b.dN).toFixed(1) : ''), (b.n ? Math.round(b.mdr / b.n * 100) : 0) + '%'].join(',') + '\n';
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'patient_analysis.csv'; a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }
+
         /* ===================== เมนู: สรุปรายงาน (รายงานอัตราการติดเชื้อแยกตำแหน่ง × หอผู้ป่วย) ===================== */
         // ชื่อหอผู้ป่วย (รหัส → ชื่อไทย) ตามรายงานจริง + ลำดับการแสดง
         const REPORT_WARD_NAMES = {
@@ -6621,9 +6748,9 @@
         }
 
         function switchView(view) {
-            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', report: 'viewReport', org: 'viewOrg', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord', listedit: 'viewListEdit' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
-            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', report: 'สรุปรายงาน', org: 'เชื้อก่อโรค HAI', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI', listedit: 'แก้ไข Dropdown (List)' };
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', report: 'viewReport', org: 'viewOrg', patient: 'viewPatient', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord', listedit: 'viewListEdit' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', patient: 'menuPatient', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', report: 'สรุปรายงาน', org: 'เชื้อก่อโรค HAI', patient: 'วิเคราะห์ผู้ป่วย', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI', listedit: 'แก้ไข Dropdown (List)' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
@@ -6652,6 +6779,7 @@
             if (view === 'analysis') updateAnalysisView();
             if (view === 'report') updateReportView();
             if (view === 'org') updateOrgView();
+            if (view === 'patient') updatePatientView();
             if (view === 'special') updateSpecialView();
             if (view === 'postdc') loadPostDC();
             if (view === 'control') updateControlView();
@@ -6666,6 +6794,7 @@
                 updateDashboard(); updateWardTable(); updateMdrView(); updateServiceView(); updateAnalysisView(); updateSpecialView();
                 if (!document.getElementById('viewReport').hidden) updateReportView();
                 if (!document.getElementById('viewOrg').hidden) updateOrgView();
+                if (!document.getElementById('viewPatient').hidden) updatePatientView();
                 if (!document.getElementById('viewPostDC').hidden) loadPostDC(); // ให้ Post-discharge ตามปีบน
                 if (!document.getElementById('viewControl').hidden) updateControlView();
                 if (!document.getElementById('viewRisk').hidden) refreshRisk(); // Risk Analysis ตามปี/ไตรมาสบน
@@ -6697,6 +6826,8 @@
         document.getElementById('btnExportOrgSite2').addEventListener('click', exportOrgBySiteCSV);
         document.getElementById('btnExportOrgAll').addEventListener('click', exportOrgAllCSV);
         document.getElementById('orgTopN').addEventListener('change', updateOrgView);
+        document.getElementById('menuPatient').addEventListener('click', () => switchView('patient'));
+        document.getElementById('btnExportPatient').addEventListener('click', exportPatientCSV);
         document.getElementById('menuSpecial').addEventListener('click', () => switchView('special'));
         document.getElementById('btnExportSpecial').addEventListener('click', exportSpecialCSV);
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
