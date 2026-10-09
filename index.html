@@ -4180,11 +4180,13 @@
         // สร้างเมทริกซ์ หอผู้ป่วย × ตำแหน่ง (mdrOnly=true → นับเฉพาะเชื้อดื้อยา)
         function reportMatrix(mdrOnly) {
             const rows = getFilteredRows();
-            const wards = {};
             const newDen = () => ({ patientDay: 0, venDay: 0, cathDay: 0, lineDay: 0, op: 0, liveBirth: 0, wc1: 0, wc2: 0, wc3: 0, wc4: 0 });
-            const ensure = u => wards[u] || (wards[u] = { unit: u, den: newDen(), cases: {} });
+            // แสดงเฉพาะ 17 หอผู้ป่วยตามรายงาน (ลำดับคงที่ เสมอ) — จับคู่โดยไม่สนตัวพิมพ์
+            const wards = {};
+            REPORT_WARD_ORDER.forEach(u => { wards[u] = { unit: u, den: newDen(), cases: {} }; });
             rows.forEach(r => {
-                const w = ensure(r.unit || '(ไม่ระบุ)');
+                const u = (r.unit || '').toLowerCase();
+                const w = wards[u]; if (!w) return; // ข้ามหอที่ไม่อยู่ในรายการ
                 w.den.patientDay += r.patientDay; w.den.venDay += r.venDay; w.den.cathDay += r.cathDay;
                 w.den.lineDay += r.lineDay; w.den.op += r.op; w.den.liveBirth += r.liveBirth;
                 w.den.wc1 += r.w1; w.den.wc2 += r.w2; w.den.wc3 += r.w3; w.den.wc4 += r.w4;
@@ -4195,12 +4197,7 @@
                     w.cases[cs] = (w.cases[cs] || 0) + 1;
                 }
             });
-            const list = Object.values(wards);
-            list.sort((a, b) => {
-                const ia = REPORT_WARD_ORDER.indexOf(a.unit), ib = REPORT_WARD_ORDER.indexOf(b.unit);
-                if (ia < 0 && ib < 0) return a.unit.localeCompare(b.unit);
-                return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-            });
+            const list = REPORT_WARD_ORDER.map(u => wards[u]);
             // ยอดรวม
             const tot = { den: newDen(), cases: {} };
             const icu = { den: newDen(), cases: {} };
