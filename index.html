@@ -5441,9 +5441,6 @@
             { group: 'การติดเชื้อ', fields: [
                 { col: 'HAI', label: 'สถานะ HAI', type: 'select', opts: ['hai', 'no'], req: 1 },
                 { col: 'SITE', label: 'ตำแหน่งติดเชื้อ (SITE)', type: 'text', datalist: 'site', ph: 'cauti, vap, hap, ...' },
-                { col: 'AMR', label: 'ผลดื้อยา (AMR)', type: 'select', opts: ['no mdr', 'mdr'] },
-                { col: 'MDR', label: 'ชนิดดื้อยา (MDR)', type: 'text', datalist: 'mdr', ph: 'mdr, cre, esbl, xdr, vre' },
-                { col: 'เชื้อก่อโรค', label: 'เชื้อก่อโรค (หลัก)', type: 'text', datalist: 'org' },
                 { col: 'สิ่งส่ตรวจ1', label: 'สิ่งส่งตรวจ', type: 'text', ph: 'urine, sputum, ...' },
                 { col: 'การมา', label: 'การมา (ที่มา/ส่งต่อ)', type: 'text' }
             ] },
@@ -5464,7 +5461,10 @@
                 { col: 'ประเภทการจำหนาย', label: 'ประเภทการจำหน่าย', type: 'text' },
                 { col: 'สาเหตุ Death', label: 'สาเหตุการเสียชีวิต', type: 'text' }
             ] },
-            { group: 'ยา / ผลไวต่อยา (AST) (ถ้ามี)', optional: 1, fields: [
+            { group: 'เชื้อ / ยา / ผลไวต่อยา (AST)', fields: [
+                { col: 'เชื้อก่อโรค', label: 'เชื้อก่อโรค (หลัก)', type: 'text', datalist: 'org' },
+                { col: 'AMR', label: 'ผลดื้อยา (AMR)', type: 'select', opts: ['no mdr', 'mdr'] },
+                { col: 'MDR', label: 'ชนิดดื้อยา (MDR)', type: 'text', datalist: 'mdr', ph: 'mdr, cre, esbl, xdr, vre' },
                 { type: 'ast' },
                 { col: 'ATB1', label: 'ยาที่ใช้จริง 1', type: 'text' },
                 { col: 'ATB2', label: 'ยาที่ใช้จริง 2', type: 'text' },
@@ -5580,8 +5580,10 @@
                     '<input id="recDropInput" type="file" accept="image/*" multiple class="hidden">' +
                 '</div>' +
                 '<p id="recOcrStatus" class="text-xs text-slate-400 mb-2"></p>' +
-                '<p class="text-xs text-slate-500 mb-2">เลือกผลไวต่อยา (S=ไว · I=ปานกลาง · R=ดื้อ · N=nonsusceptible) — ระบบเติม “ชื่อยา” และ “กลุ่มยา” ให้อัตโนมัติ (N รวมกับ R)</p>' +
-                '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3">' + cells + '</div>' +
+                '<details class="mb-2"><summary class="text-xs font-semibold text-slate-600 cursor-pointer select-none">เลือกผลไวต่อยารายตัว (S/I/R/N) — กางเพื่อแก้</summary>' +
+                    '<p class="text-xs text-slate-500 my-2">S=ไว · I=ปานกลาง · R=ดื้อ · N=nonsusceptible — ระบบเติม “ชื่อยา” และ “กลุ่มยา” ให้อัตโนมัติ (N รวมกับ R)</p>' +
+                    '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3">' + cells + '</div>' +
+                '</details>' +
                 '<div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 border-t border-slate-100 pt-3">' +
                     ro('ชื่อยา S', 'ชื่อยาที่ไว (S)') + ro('ชื่อยา I', 'ชื่อยา intermediate (I)') + ro('ชื่อยา R', 'ชื่อยาที่ดื้อ (R)') +
                     ro('กลุ่มยา S', 'กลุ่มยา S') + ro('กลุ่มยา I', 'กลุ่มยา I') + ro('กลุ่มยา R', 'กลุ่มยา R') +
