@@ -3027,8 +3027,8 @@
             document.getElementById('mdrTotal').textContent = mdr;
             document.getElementById('mdrHai').textContent = cases.length;
             document.getElementById('mdrPct').textContent = (cases.length ? Math.round(mdr / cases.length * 100) : 0) + '%';
-            // อัตรา MDRO ต่อ 1,000 วันนอน (ฐานเดียวกับ HAI)
-            const mdrDenMonths = aggregateDenominatorsByMonth(getFilteredRows());
+            // อัตรา MDRO ต่อ 1,000 วันนอน — ใช้วันนอนของทุกตึก (เหมือนฐาน HAI รวม)
+            const mdrDenMonths = aggregateDenominatorsByMonth(getRowsForWards());
             const mdrPd = FISCAL_MONTHS.reduce((a, m) => a + (mdrDenMonths[m] ? mdrDenMonths[m].patientDay : 0), 0);
             document.getElementById('mdrRate').textContent = mdrPd ? (mdr / mdrPd * 1000).toFixed(2) : '-';
             document.getElementById('mdrRateDen').textContent = Math.round(mdrPd).toLocaleString();
@@ -3063,11 +3063,11 @@
             trTot.className = 'bg-slate-50 font-semibold text-slate-800';
             trTot.innerHTML =
                 '<td class="py-3 px-4">รวมทั้งหมด</td>' +
-                '<td class="py-3 px-4 text-right">' + tot.patientDay.toLocaleString() + '</td>' +
+                '<td class="py-3 px-4 text-right">' + Math.round(mdrPd).toLocaleString() + '</td>' +
                 '<td class="py-3 px-4 text-right">' + tot.HAI + '</td>' +
                 '<td class="py-3 px-4 text-right text-fuchsia-700">' + tot.MDR + '</td>' +
                 '<td class="py-3 px-4 text-right text-fuchsia-700">' + (tot.HAI ? Math.round(tot.MDR / tot.HAI * 100) + '%' : '-') + '</td>' +
-                '<td class="py-3 px-4 text-right text-fuchsia-700">' + fmtRate(rate(tot.MDR, tot.patientDay, 1000)) + '</td>' +
+                '<td class="py-3 px-4 text-right text-fuchsia-700">' + fmtRate(rate(tot.MDR, mdrPd, 1000)) + '</td>' +
                 '<td class="py-3 px-4 text-right">' + tot.CAUTI + '</td>' +
                 '<td class="py-3 px-4 text-right">' + tot.VAP + '</td>' +
                 '<td class="py-3 px-4 text-right">' + tot.CLABSI + '</td>' +
