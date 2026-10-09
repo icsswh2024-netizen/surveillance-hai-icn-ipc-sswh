@@ -5968,7 +5968,7 @@
             st.textContent = 'กำลังตรวจสอบการเชื่อมต่อ...'; st.className = 'text-xs text-slate-500';
             try {
                 let ping = null; try { ping = await jsonpFrom(url, 'action=ping'); } catch (e) { }
-                if (!ping || ping.version !== 'record-v1') { st.innerHTML = '⚠️ Apps Script ยังไม่พร้อม — ต้องวางโค้ด RecordCode.gs แล้ว <b>Deploy → New version</b> ก่อน'; st.className = 'text-xs text-rose-600'; return; }
+                if (!ping || !(ping.record === 'record-v1' || ping.version === 'record-v1')) { st.innerHTML = '⚠️ Apps Script ยังไม่พร้อม — ต้องวางโค้ด (Record หรือ Code-ALL) แล้ว <b>Deploy → New version</b> ก่อน'; st.className = 'text-xs text-rose-600'; return; }
                 const extra = rows.length - 1;
                 st.textContent = 'กำลังบันทึกลงชีต “ทะเบียน-1”' + (extra ? ' (เคส + ' + extra + ' เชื้อเพิ่ม)' : '') + '...'; st.className = 'text-xs text-slate-500';
                 await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'addCase', records: rows }) });
