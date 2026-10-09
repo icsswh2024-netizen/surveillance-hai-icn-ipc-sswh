@@ -2487,14 +2487,7 @@
                             const n = c.dataset._counts ? c.dataset._counts[c.dataIndex] : null;
                             const cntTxt = n == null ? '' : ' · ' + n + ' เคส';
                             return c.dataset.label + ': ' + (c.parsed.y ?? '-') + cntTxt;
-                        } } },
-                        datalabels: {
-                            display: ctx => (ctx.dataset.data[ctx.dataIndex] ?? 0) > 0,
-                            align: 'top', anchor: 'end', offset: 2,
-                            color: ctx => ctx.dataset.borderColor || '#334155',
-                            font: { family: 'Kanit, sans-serif', weight: '600', size: 10 },
-                            formatter: v => (v == null ? '' : (+v).toFixed(2))
-                        }
+                        } } }
                     },
                     scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา (ต่อ 1,000 / 100)' } }, x: { grid: { display: false } } }
                 }
