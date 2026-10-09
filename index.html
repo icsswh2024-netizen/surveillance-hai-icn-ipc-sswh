@@ -3532,7 +3532,7 @@
         }
         async function deleteIndicator(code) {
             if (!code) return;
-            if (!confirm('ลบตัวชี้วัด "' + code + '" ออกจากทะเบียน?')) return;
+            if (!(await uiConfirm('ลบตัวชี้วัด "' + code + '" ออกจากทะเบียน?'))) return;
             const m = riskStatusProxy(); m.textContent = 'กำลังลบ...'; m.className = 'text-blue-600';
             try {
                 await postIndicator({ action: 'delete', code: code });
@@ -6046,8 +6046,8 @@
             const n = document.getElementById('le_values').value.split('\n').map(s => s.trim()).filter(Boolean).length;
             document.getElementById('le_count').textContent = '· ' + n + ' ค่า';
         }
-        function leAddColumn() {
-            const name = (prompt('ชื่อคอลัมน์ใหม่ (ให้ตรงกับหัวใน “ทะเบียน-1” เช่น ชนิดSSI หรือ ห้องผ่าตัด OR):') || '').trim();
+        async function leAddColumn() {
+            const name = ((await uiPrompt('ชื่อคอลัมน์ใหม่ (ให้ตรงกับหัวใน “ทะเบียน-1” เช่น ชนิดSSI หรือ ห้องผ่าตัด)', '', { placeholder: 'ชื่อคอลัมน์' })) || '').trim();
             if (!name) return;
             if (LE_ORDER.includes(name)) { document.getElementById('le_col').value = name; leRenderCol(); return; }
             LE_ORDER.push(name); LE_DATA[name] = [];
@@ -6283,6 +6283,57 @@
                 return s;
             };
             window.hideRiskModal = hide;
+        })();
+    </script>
+
+    <!-- การ์ดกลางจอ: ยืนยัน (confirm) / กรอกข้อความ (prompt) แบบพรีเมียมขอบมน -->
+    <div id="uiModal" class="fixed inset-0 z-[9999] hidden items-center justify-center p-4" style="background:rgba(15,23,42,.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" style="box-shadow:0 25px 60px -15px rgba(2,6,23,.45);animation:riskPop .18s ease-out;">
+            <div id="uiModalTop" class="h-1.5 bg-emerald-500"></div>
+            <div class="p-6">
+                <div id="uiModalIcon" class="mx-auto mb-3 w-14 h-14 rounded-full flex items-center justify-center text-2xl"></div>
+                <p id="uiModalMsg" class="text-slate-700 text-sm leading-relaxed whitespace-pre-line text-center"></p>
+                <input id="uiModalInput" class="hidden mt-4 w-full border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400">
+                <div class="mt-5 flex gap-2">
+                    <button id="uiModalCancel" class="flex-1 py-2.5 rounded-xl font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition">ยกเลิก</button>
+                    <button id="uiModalOk" class="flex-1 py-2.5 rounded-xl font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition">ตกลง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            const modal = document.getElementById('uiModal');
+            const top = document.getElementById('uiModalTop'), icon = document.getElementById('uiModalIcon');
+            const msg = document.getElementById('uiModalMsg'), input = document.getElementById('uiModalInput');
+            const ok = document.getElementById('uiModalOk'), cancel = document.getElementById('uiModalCancel');
+            let resolver = null;
+            function close(val) { modal.classList.add('hidden'); modal.classList.remove('flex'); const r = resolver; resolver = null; if (r) r(val); }
+            function open(o) {
+                return new Promise(function (res) {
+                    resolver = res;
+                    msg.textContent = o.message || '';
+                    const danger = !!o.danger;
+                    top.className = 'h-1.5 ' + (danger ? 'bg-rose-500' : 'bg-emerald-500');
+                    icon.className = 'mx-auto mb-3 w-14 h-14 rounded-full flex items-center justify-center text-2xl ' + (danger ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600');
+                    icon.textContent = o.icon || (danger ? '🗑️' : (o.prompt ? '✏️' : '❓'));
+                    ok.className = 'flex-1 py-2.5 rounded-xl font-semibold text-white transition ' + (danger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700');
+                    ok.textContent = o.okText || 'ตกลง';
+                    if (o.prompt) { input.classList.remove('hidden'); input.value = o.def || ''; input.placeholder = o.placeholder || ''; }
+                    else input.classList.add('hidden');
+                    cancel.classList.toggle('hidden', o.alert === true);
+                    modal.classList.remove('hidden'); modal.classList.add('flex');
+                    if (o.prompt) setTimeout(function () { input.focus(); input.select(); }, 60);
+                });
+            }
+            function isPrompt() { return !input.classList.contains('hidden'); }
+            ok.addEventListener('click', function () { close(isPrompt() ? input.value : true); });
+            cancel.addEventListener('click', function () { close(isPrompt() ? null : false); });
+            modal.addEventListener('click', function (e) { if (e.target === modal) cancel.click(); });
+            input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); ok.click(); } else if (e.key === 'Escape') cancel.click(); });
+            window.uiConfirm = function (message, opts) { return open(Object.assign({ message: message, danger: true, okText: 'ยืนยัน' }, opts || {})); };
+            window.uiPrompt = function (message, def, opts) { return open(Object.assign({ message: message, prompt: true, def: def }, opts || {})); };
+            window.uiAlert = function (message, opts) { return open(Object.assign({ message: message, alert: true }, opts || {})); };
         })();
     </script>
 
