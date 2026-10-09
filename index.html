@@ -45,6 +45,7 @@
 
         /* การ์ด KPI สไตล์เหมือนภาพ: วงกลมโปร่ง + วงซ้อน + ไอคอนในวงกลม */
         .kpi { position: relative; overflow: hidden; }
+        .kpi p { white-space: nowrap; }
         /* ฟองบับเบิลลอยในการ์ด (reuse .ring spans เป็นฟอง) */
         .kpi .ring { position: absolute; border-radius: 9999px;
             background: radial-gradient(circle closest-side at 50% 50%, rgba(255,255,255,.16) 0%, rgba(255,255,255,.06) 60%, rgba(255,255,255,0) 100%);
@@ -2272,10 +2273,12 @@
             const denTot = {};
             ['patientDay', 'cathDay', 'venDay', 'lineDay', 'ivDay', 'op', 'liveBirth'].forEach(k =>
                 denTot[k] = FISCAL_MONTHS.reduce((a, m) => a + (den[m] ? den[m][k] : 0), 0));
+            // หน่วยแบบสั้น ให้ทุกการ์ดแสดงอัตราบรรทัดเดียวเท่ากัน
+            const shortUnit = meta => (meta.factor === 100 ? '/100' : '/1000');
             const setRate = (id, key) => {
                 const el = document.getElementById(id); if (!el) return;
                 const meta = RATE_META[key]; const d = denTot[meta.den];
-                el.textContent = d ? ((total[key] / d * meta.factor).toFixed(2) + ' ' + meta.unit) : 'ไม่มีตัวหาร';
+                el.textContent = d ? ((total[key] / d * meta.factor).toFixed(2) + ' ' + shortUnit(meta)) : 'ไม่มีตัวหาร';
             };
             setRate('kpiHAIrate', 'HAI');
             setRate('kpiCAUTIrate', 'CAUTI');
@@ -2288,7 +2291,7 @@
             setRate('kpiBSIrate', 'BSI');
             setRate('kpiSSTIrate', 'SSTI');
             const mdrRateEl = document.getElementById('kpiMDRrate');
-            if (mdrRateEl) mdrRateEl.textContent = denTot.patientDay ? ((mdrCount / denTot.patientDay * 1000).toFixed(2) + ' /1,000 วันนอน') : 'ไม่มีตัวหาร';
+            if (mdrRateEl) mdrRateEl.textContent = denTot.patientDay ? ((mdrCount / denTot.patientDay * 1000).toFixed(2) + ' /1000') : 'ไม่มีตัวหาร';
             updateCharts(byMonth, total, den);
             updateTable(byMonth, den);
             updateRateChart(byMonth, den);
