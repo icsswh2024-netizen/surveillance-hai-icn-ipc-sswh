@@ -5539,7 +5539,7 @@
             }
             return null;
         }
-        const REC_URL = 'https://script.google.com/macros/s/AKfycbyb0lzgL9ye6xVeGYnIfNqFhhZeLRdiToKkcb8FVVBUj1yhEB7KZOjR1eUCbZStDxq_/exec';
+        const REC_URL = 'https://script.google.com/macros/s/AKfycbyY7wDypjuSluyJYqDZfYPgbaPKZ7d0EyTsNxotx3KKbLBL9Z7qbSbG-swO2uRkU1r7/exec';
         function recQuarterOfMonth(m) { const i = FISCAL_MONTHS.indexOf(+m); return i < 0 ? '' : String(Math.floor(i / 3) + 1); }
         const recEsc = s => (s == null ? '' : s.toString()).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         // รายการยาปฏิชีวนะ (ตามใบ AST ของห้องแล็บ) + กลุ่มยา → ใช้เติม "กลุ่มยา" อัตโนมัติ
