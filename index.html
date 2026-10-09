@@ -4163,7 +4163,10 @@
             { key: 'UTI', den: 'patientDay', denLabel: 'วันนอน', per: 1000, rateLabel: '/1000วัน' },
             { key: 'CLABSI', den: 'lineDay', denLabel: 'คาสาย(วัน)', per: 1000, rateLabel: '/1000วัน' },
             { key: 'BSI', den: 'patientDay', denLabel: 'วันนอน', per: 1000, rateLabel: '/1000วัน' },
-            { key: 'SSI', den: 'op', denLabel: 'ผ่าตัด', per: 100, rateLabel: '%' },
+            { key: 'SSI1', siteKey: 'SSI1', den: 'wc1', denLabel: 'ผ่าตัด', per: 100, rateLabel: '%' },
+            { key: 'SSI2', siteKey: 'SSI2', den: 'wc2', denLabel: 'ผ่าตัด', per: 100, rateLabel: '%' },
+            { key: 'SSI3', siteKey: 'SSI3', den: 'wc3', denLabel: 'ผ่าตัด', per: 100, rateLabel: '%' },
+            { key: 'SSI4', siteKey: 'SSI4', den: 'wc4', denLabel: 'ผ่าตัด', per: 100, rateLabel: '%' },
             { key: 'Omph', siteKey: 'Omphalitis', den: 'liveBirth', denLabel: 'เด็กมีชีพ', per: 100, rateLabel: '/100ราย' },
             { key: 'SSTI', den: 'patientDay', denLabel: 'วันนอน', per: 1000, rateLabel: '/1000วัน' }
         ];
@@ -4178,12 +4181,19 @@
         function reportMatrix(mdrOnly) {
             const rows = getFilteredRows();
             const wards = {};
-            const ensure = u => wards[u] || (wards[u] = { unit: u, den: { patientDay: 0, venDay: 0, cathDay: 0, lineDay: 0, op: 0, liveBirth: 0 }, cases: {} });
+            const newDen = () => ({ patientDay: 0, venDay: 0, cathDay: 0, lineDay: 0, op: 0, liveBirth: 0, wc1: 0, wc2: 0, wc3: 0, wc4: 0 });
+            const ensure = u => wards[u] || (wards[u] = { unit: u, den: newDen(), cases: {} });
             rows.forEach(r => {
                 const w = ensure(r.unit || '(ไม่ระบุ)');
                 w.den.patientDay += r.patientDay; w.den.venDay += r.venDay; w.den.cathDay += r.cathDay;
                 w.den.lineDay += r.lineDay; w.den.op += r.op; w.den.liveBirth += r.liveBirth;
-                if (r.isHAI && (!mdrOnly || r.isMDR)) { const cs = reportSiteOf(r); w.cases[cs] = (w.cases[cs] || 0) + 1; }
+                w.den.wc1 += r.w1; w.den.wc2 += r.w2; w.den.wc3 += r.w3; w.den.wc4 += r.w4;
+                if (r.isHAI && (!mdrOnly || r.isMDR)) {
+                    let cs = reportSiteOf(r);
+                    // SSI แยกตามประเภทแผลผ่าตัด 1-4 (จากคอลัมน์ 1/2/3/4); ไม่ระบุ → SSI0
+                    if (cs === 'SSI') { const k = r.w1 ? 1 : r.w2 ? 2 : r.w3 ? 3 : r.w4 ? 4 : 0; cs = 'SSI' + k; }
+                    w.cases[cs] = (w.cases[cs] || 0) + 1;
+                }
             });
             const list = Object.values(wards);
             list.sort((a, b) => {
@@ -4192,9 +4202,9 @@
                 return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
             });
             // ยอดรวม
-            const tot = { den: { patientDay: 0, venDay: 0, cathDay: 0, lineDay: 0, op: 0, liveBirth: 0 }, cases: {} };
-            const icu = { den: { patientDay: 0, venDay: 0, cathDay: 0, lineDay: 0, op: 0, liveBirth: 0 }, cases: {} };
-            const non = { den: { patientDay: 0, venDay: 0, cathDay: 0, lineDay: 0, op: 0, liveBirth: 0 }, cases: {} };
+            const tot = { den: newDen(), cases: {} };
+            const icu = { den: newDen(), cases: {} };
+            const non = { den: newDen(), cases: {} };
             list.forEach(w => {
                 const bucket = reportIsICU(w.unit) ? icu : non;
                 Object.keys(w.den).forEach(k => { tot.den[k] += w.den[k]; bucket.den[k] += w.den[k]; });
@@ -4206,6 +4216,8 @@
         const repDenOf = (o, site) => o.den[site.den] || 0;
         const repRate = (o, site) => { const d = repDenOf(o, site); return d ? (repCaseOf(o, site) / d * site.per) : null; };
         const repTotalCases = o => Object.values(o.cases).reduce((a, x) => a + x, 0);
+        // รวมเคส SSI ทุกประเภทแผล (SSI0-4) และตัวหารผ่าตัดรวม
+        const repSsiCases = o => Object.keys(o.cases).reduce((a, k) => a + (k.indexOf('SSI') === 0 ? o.cases[k] : 0), 0);
         function updateReportView() {
             const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
             const y = document.getElementById('filterYear').value, q = document.getElementById('filterQuarter').value;
@@ -4237,7 +4249,7 @@
                     });
                     const tc = repTotalCases(o);
                     const tr1000 = o.den.patientDay ? (tc / o.den.patientDay * 1000) : null;
-                    const ssi = repCaseOf(o, REPORT_SITES[6]); const ssiR = o.den.op ? (ssi / o.den.op * 100) : null;
+                    const ssi = repSsiCases(o); const ssiR = o.den.op ? (ssi / o.den.op * 100) : null;
                     tr += '<td class="px-1 py-1 border border-slate-200 text-right font-bold text-rose-700 bg-rose-50/40">' + tc + '</td>' +
                         '<td class="px-1 py-1 border border-slate-200 text-right font-medium bg-rose-50/40">' + fx(tr1000) + '</td>' +
                         '<td class="px-1 py-1 border border-slate-200 text-right bg-rose-50/40">' + fx(ssiR) + '</td></tr>';
@@ -4255,7 +4267,7 @@
             // สรุปตัวเลขรวม (KPI) จาก all + mdr
             const mAll = reportMatrix(false), mMdr = reportMatrix(true);
             const totCases = repTotalCases(mAll.tot), mdrCases = repTotalCases(mMdr.tot), pd = mAll.tot.den.patientDay, op = mAll.tot.den.op;
-            const ssiCases = repCaseOf(mAll.tot, REPORT_SITES[6]);
+            const ssiCases = repSsiCases(mAll.tot);
             const hospRate = pd ? (totCases / pd * 1000) : null, ssiRate = op ? (ssiCases / op * 100) : null, mdroRate = pd ? (mdrCases / pd * 1000) : null;
             const card = (label, val, sub, tint) => '<div class="rounded-2xl border border-slate-100 bg-gradient-to-br ' + tint + ' to-white p-5">' +
                 '<p class="text-xs text-slate-500">' + label + '</p><p class="text-2xl font-bold text-slate-800 mt-1">' + val + '</p>' +
@@ -4284,7 +4296,7 @@
                     const cells = [label];
                     REPORT_SITES.forEach(s => cells.push(repDenOf(o, s), repCaseOf(o, s), fx(repRate(o, s))));
                     const tc = repTotalCases(o), tr = o.den.patientDay ? (tc / o.den.patientDay * 1000) : null;
-                    const ssi = repCaseOf(o, REPORT_SITES[6]), ssiR = o.den.op ? (ssi / o.den.op * 100) : null;
+                    const ssi = repSsiCases(o), ssiR = o.den.op ? (ssi / o.den.op * 100) : null;
                     cells.push(tc, fx(tr), fx(ssiR));
                     return cells.map(q).join(',');
                 };
