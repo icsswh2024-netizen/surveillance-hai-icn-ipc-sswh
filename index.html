@@ -1863,7 +1863,7 @@
             SSI:    { den: 'op',         factor: 100,  unit: '/100 ผ่าตัด' },
             HAP:    { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' },
             UTI:    { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' },
-            BSI:    { den: 'ivDay',      factor: 1000, unit: '/1,000 วันให้สารน้ำ+NSS Lock' },
+            BSI:    { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' },
             Omphalitis: { den: 'liveBirth', factor: 100,  unit: '/100 เด็กเกิดมีชีพ' },
             SSTI:   { den: 'patientDay', factor: 1000, unit: '/1,000 วันนอน' }
         };
@@ -4261,7 +4261,7 @@
             { key: 'CAUTI', den: 'cathDay', denLabel: 'คาสาย(วัน)', per: 1000, rateLabel: '/1000วัน' },
             { key: 'UTI', den: 'patientDay', denLabel: 'วันนอน', per: 1000, rateLabel: '/1000วัน' },
             { key: 'CLABSI', den: 'lineDay', denLabel: 'คาสาย(วัน)', per: 1000, rateLabel: '/1000วัน' },
-            { key: 'BSI', den: 'ivDay', denLabel: 'ให้สารน้ำ(วัน)', per: 1000, rateLabel: '/1000วัน' }
+            { key: 'BSI', den: 'patientDay', denLabel: 'วันนอน', per: 1000, rateLabel: '/1000วัน' }
         ];
         const REPORT_SITES_POST = [
             { key: 'Omph', siteKey: 'Omphalitis', den: 'liveBirth', denLabel: 'เด็กมีชีพ', per: 100, rateLabel: '/100ราย' },
