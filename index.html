@@ -470,28 +470,14 @@
                         <h3 class="text-lg font-semibold text-slate-800">สรุปการติดเชื้อรายหอผู้ป่วย</h3>
                         <p class="text-xs text-slate-400 mt-1">อัตรา device ต่อ 1,000 วันคาอุปกรณ์ · HAI ต่อ 1,000 วันนอน · SSI ต่อ 100 การผ่าตัด (คำนวณสดจากทะเบียน-1)</p>
                     </div>
-                    <button id="btnExportWards" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                    <div class="flex gap-2 self-start">
+                        <button id="btnWardSsi" class="text-xs font-medium bg-violet-100 hover:bg-violet-200 text-violet-700 py-1.5 px-3 rounded-lg transition-colors">▸ ขยาย SSI 1-4</button>
+                        <button id="btnExportWards" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
-                        <thead class="bg-slate-50 text-slate-700 font-semibold">
-                            <tr>
-                                <th class="py-3 px-4">หอผู้ป่วย</th>
-                                <th class="py-3 px-4 text-right">วันนอน</th>
-                                <th class="py-3 px-4 text-right">HAI</th>
-                                <th class="py-3 px-4 text-right text-blue-700">อัตรา HAI<br><span class="font-normal text-slate-400">/1000 วันนอน</span></th>
-                                <th class="py-3 px-4 text-right">CAUTI</th>
-                                <th class="py-3 px-4 text-right text-amber-600">/1000 วันคาสาย</th>
-                                <th class="py-3 px-4 text-right">VAP</th>
-                                <th class="py-3 px-4 text-right text-emerald-600">/1000 วันเครื่องช่วยหายใจ</th>
-                                <th class="py-3 px-4 text-right">CLABSI</th>
-                                <th class="py-3 px-4 text-right text-red-600">/1000 วันคาสายหลอดเลือด</th>
-                                <th class="py-3 px-4 text-right">SSI</th>
-                                <th class="py-3 px-4 text-right text-cyan-600">/100 ผ่าตัด</th>
-                                <th class="py-3 px-4 text-right text-fuchsia-700">MDR</th>
-                                <th class="py-3 px-4 text-right text-fuchsia-700">%MDR</th>
-                            </tr>
-                        </thead>
+                    <table class="text-left text-[11px] text-slate-600 border-collapse min-w-max">
+                        <thead id="wardThead" class="bg-slate-50 text-slate-700 font-semibold"></thead>
                         <tbody id="wardTableBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
@@ -2805,61 +2791,78 @@
         }
         const fmtRate = v => (v == null ? '-' : v.toFixed(2));
 
+        // รวมยอดรายหอในรูปแบบ {unit, den, cases, MDR} (ใช้คอลัมน์ SITE ชุดเดียวกับสรุปรายงาน)
+        function wardSiteAgg(rows) {
+            const newDen = () => ({ patientDay: 0, venDay: 0, cathDay: 0, lineDay: 0, ivDay: 0, op: 0, liveBirth: 0, wc1: 0, wc2: 0, wc3: 0, wc4: 0, wcAll: 0 });
+            const wards = {};
+            const ensure = u => wards[u] || (wards[u] = { unit: u, den: newDen(), cases: {}, MDR: 0 });
+            rows.forEach(r => {
+                const w = ensure(r.unit || '(ไม่ระบุ)');
+                w.den.patientDay += r.patientDay; w.den.venDay += r.venDay; w.den.cathDay += r.cathDay;
+                w.den.lineDay += r.lineDay; w.den.op += r.op; w.den.liveBirth += r.liveBirth;
+                w.den.ivDay += (r.bsi2 || 0) + (r.bsi4 || 0);
+                w.den.wc1 += r.w1; w.den.wc2 += r.w2; w.den.wc3 += r.w3; w.den.wc4 += r.w4;
+                w.den.wcAll += r.w1 + r.w2 + r.w3 + r.w4;
+                if (r.isHAI) {
+                    let cs = reportSiteOf(r);
+                    if (cs === 'SSI') { const k = r.w1 ? 1 : r.w2 ? 2 : r.w3 ? 3 : r.w4 ? 4 : 0; cs = 'SSI' + k; }
+                    w.cases[cs] = (w.cases[cs] || 0) + 1;
+                    if (r.isMDR) w.MDR += 1;
+                }
+            });
+            return Object.values(wards);
+        }
         function updateWardTable() {
-            const wards = aggregateByWard(getRowsForWards())
-                .map(w => ({
-                    ...w,
-                    rHAI: rate(w.HAI, w.patientDay, 1000),
-                    rCAUTI: rate(w.CAUTI, w.cathDay, 1000),
-                    rVAP: rate(w.VAP, w.venDay, 1000),
-                    rCLABSI: rate(w.CLABSI, w.lineDay, 1000),
-                    rSSI: rate(w.SSI, w.op, 100)
-                }))
-                .sort((a, b) => (b.rHAI ?? -1) - (a.rHAI ?? -1) || b.HAI - a.HAI);
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            const SITES = repSites();
+            const wards = wardSiteAgg(getRowsForWards())
+                .map(w => ({ ...w, HAIc: repTotalCases(w), rHAI: rate(repTotalCases(w), w.den.patientDay, 1000) }))
+                .sort((a, b) => (b.rHAI ?? -1) - (a.rHAI ?? -1) || b.HAIc - a.HAIc);
+            // ปุ่มย่อ/ขยาย SSI
+            const btn = document.getElementById('btnWardSsi');
+            if (btn) btn.textContent = repSsiExpanded ? '▾ ย่อ SSI (แสดงรวม)' : '▸ ขยาย SSI 1-4';
+            // ส่วนหัว 2 ชั้น (สร้างแบบไดนามิกตามชุด SITE)
+            const thead = document.getElementById('wardThead');
+            let h1 = '<tr><th rowspan="2" class="py-2 px-2 text-left sticky left-0 bg-slate-50">หอผู้ป่วย</th>' +
+                '<th rowspan="2" class="py-2 px-2 text-right">วันนอน</th>' +
+                '<th rowspan="2" class="py-2 px-2 text-right">HAI</th>' +
+                '<th rowspan="2" class="py-2 px-2 text-right text-blue-700">อัตรา/1000</th>';
+            SITES.forEach(s => { const ssi = s.key.indexOf('SSI') === 0; h1 += '<th colspan="2" class="py-2 px-2 text-center' + (ssi ? ' bg-violet-100 cursor-pointer repSsiToggleW' : '') + '">' + (s.key === 'SSI' ? 'SSI(รวม)▸' : s.key) + '</th>'; });
+            h1 += '<th rowspan="2" class="py-2 px-2 text-right text-fuchsia-700">MDR</th><th rowspan="2" class="py-2 px-2 text-right text-fuchsia-700">%MDR</th></tr>';
+            let h2 = '<tr>';
+            SITES.forEach(s => { h2 += '<th class="py-1 px-2 text-right font-normal text-slate-400">ครั้ง</th><th class="py-1 px-2 text-right font-normal text-slate-400">' + s.rateLabel + '</th>'; });
+            h2 += '</tr>';
+            thead.innerHTML = h1 + h2;
+            thead.querySelectorAll('.repSsiToggleW').forEach(el => el.addEventListener('click', () => { repSsiExpanded = !repSsiExpanded; updateWardTable(); }));
 
             const tbody = document.getElementById('wardTableBody');
             tbody.innerHTML = '';
-            const tot = { patientDay: 0, HAI: 0, CAUTI: 0, cathDay: 0, VAP: 0, venDay: 0, CLABSI: 0, lineDay: 0, SSI: 0, op: 0, MDR: 0 };
+            const tot = { den: {}, cases: {}, MDR: 0 };
+            const rowHtml = (o, label, cls, isTot) => {
+                const hc = repTotalCases(o);
+                let tr = '<tr class="' + cls + '"><td class="py-2 px-2 ' + (isTot ? '' : 'font-medium text-slate-700') + ' sticky left-0 ' + (isTot ? 'bg-slate-50' : 'bg-white') + '">' + esc(label) + '</td>' +
+                    '<td class="py-2 px-2 text-right">' + Math.round(o.den.patientDay || 0).toLocaleString() + '</td>' +
+                    '<td class="py-2 px-2 text-right font-semibold">' + hc + '</td>' +
+                    '<td class="py-2 px-2 text-right text-blue-700 font-semibold">' + fmtRate(rate(hc, o.den.patientDay, 1000)) + '</td>';
+                SITES.forEach(s => {
+                    const c = repCaseOf(o, s), r = repRate(o, s);
+                    const bg = s.key.indexOf('SSI') === 0 ? ' bg-violet-50/30' : '';
+                    tr += '<td class="py-2 px-2 text-right' + bg + (c ? ' font-semibold text-slate-700' : ' text-slate-300') + '">' + c + '</td>' +
+                        '<td class="py-2 px-2 text-right text-slate-500' + bg + '">' + fmtRate(r) + '</td>';
+                });
+                tr += '<td class="py-2 px-2 text-right text-fuchsia-700 font-semibold">' + o.MDR + '</td>' +
+                    '<td class="py-2 px-2 text-right text-fuchsia-700">' + (hc ? Math.round(o.MDR / hc * 100) + '%' : '-') + '</td></tr>';
+                return tr;
+            };
+            let body = '';
             wards.forEach(w => {
-                Object.keys(tot).forEach(k => tot[k] += w[k]);
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-50 transition-colors';
-                tr.innerHTML =
-                    '<td class="py-3 px-4 font-medium text-slate-700">' + w.unit + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + (w.patientDay || 0).toLocaleString() + '</td>' +
-                    '<td class="py-3 px-4 text-right font-semibold">' + w.HAI + '</td>' +
-                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(w.rHAI) + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + w.CAUTI + '</td>' +
-                    '<td class="py-3 px-4 text-right text-amber-600">' + fmtRate(w.rCAUTI) + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + w.VAP + '</td>' +
-                    '<td class="py-3 px-4 text-right text-emerald-600">' + fmtRate(w.rVAP) + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + w.CLABSI + '</td>' +
-                    '<td class="py-3 px-4 text-right text-red-600">' + fmtRate(w.rCLABSI) + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + w.SSI + '</td>' +
-                    '<td class="py-3 px-4 text-right text-cyan-600">' + fmtRate(w.rSSI) + '</td>' +
-                    '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + w.MDR + '</td>' +
-                    '<td class="py-3 px-4 text-right ' + (w.HAI ? pdcPctClass(w.MDR / w.HAI * 100, false) : 'text-fuchsia-700') + '">' + (w.HAI ? Math.round(w.MDR / w.HAI * 100) + '%' : '-') + '</td>';
-                tbody.appendChild(tr);
+                Object.keys(w.den).forEach(k => tot.den[k] = (tot.den[k] || 0) + w.den[k]);
+                Object.keys(w.cases).forEach(k => tot.cases[k] = (tot.cases[k] || 0) + w.cases[k]);
+                tot.MDR += w.MDR;
+                body += rowHtml(w, w.unit, 'hover:bg-slate-50 transition-colors');
             });
-            // แถวรวมทั้งโรงพยาบาล
-            const trTot = document.createElement('tr');
-            trTot.className = 'bg-slate-50 font-semibold text-slate-800';
-            trTot.innerHTML =
-                '<td class="py-3 px-4">รวมทั้งหมด</td>' +
-                '<td class="py-3 px-4 text-right">' + tot.patientDay.toLocaleString() + '</td>' +
-                '<td class="py-3 px-4 text-right">' + tot.HAI + '</td>' +
-                '<td class="py-3 px-4 text-right text-blue-700">' + fmtRate(rate(tot.HAI, tot.patientDay, 1000)) + '</td>' +
-                '<td class="py-3 px-4 text-right">' + tot.CAUTI + '</td>' +
-                '<td class="py-3 px-4 text-right text-amber-600">' + fmtRate(rate(tot.CAUTI, tot.cathDay, 1000)) + '</td>' +
-                '<td class="py-3 px-4 text-right">' + tot.VAP + '</td>' +
-                '<td class="py-3 px-4 text-right text-emerald-600">' + fmtRate(rate(tot.VAP, tot.venDay, 1000)) + '</td>' +
-                '<td class="py-3 px-4 text-right">' + tot.CLABSI + '</td>' +
-                '<td class="py-3 px-4 text-right text-red-600">' + fmtRate(rate(tot.CLABSI, tot.lineDay, 1000)) + '</td>' +
-                '<td class="py-3 px-4 text-right">' + tot.SSI + '</td>' +
-                '<td class="py-3 px-4 text-right text-cyan-600">' + fmtRate(rate(tot.SSI, tot.op, 100)) + '</td>' +
-                '<td class="py-3 px-4 text-right text-fuchsia-700">' + tot.MDR + '</td>' +
-                '<td class="py-3 px-4 text-right text-fuchsia-700">' + (tot.HAI ? Math.round(tot.MDR / tot.HAI * 100) + '%' : '-') + '</td>';
-            tbody.appendChild(trTot);
+            body += rowHtml(tot, 'รวมทั้งหมด', 'bg-slate-50 font-semibold text-slate-800', true);
+            tbody.innerHTML = body;
 
             // ตารางรายบุคคล (เคส HAI ทั้งหมดตามตัวกรอง)
             renderDetailTable(getRowsForWards().filter(d => d.isHAI), 'wardDetailBody', 'wardDetailCount');
@@ -2887,17 +2890,20 @@
         }
 
         function exportWardsCSV() {
-            const head = ['หอผู้ป่วย', 'วันนอน', 'HAI', 'อัตรา HAI/1000', 'CAUTI', 'CAUTI/1000', 'VAP', 'VAP/1000', 'CLABSI', 'CLABSI/1000', 'SSI', 'SSI/100', 'MDR', '%MDR'];
-            const wards = aggregateByWard(getRowsForWards())
-                .sort((a, b) => (rate(b.HAI, b.patientDay, 1000) ?? -1) - (rate(a.HAI, a.patientDay, 1000) ?? -1));
-            let csv = head.join(',') + '\n';
+            const q = v => '"' + (v == null ? '' : v.toString()).replace(/"/g, '""') + '"';
+            const SITES = repSites();
+            const head = ['หอผู้ป่วย', 'วันนอน', 'HAI', 'อัตรา HAI/1000'];
+            SITES.forEach(s => head.push(s.key + ' ครั้ง', s.key + ' ' + s.rateLabel));
+            head.push('MDR', '%MDR');
+            const wards = wardSiteAgg(getRowsForWards())
+                .sort((a, b) => (rate(repTotalCases(b), b.den.patientDay, 1000) ?? -1) - (rate(repTotalCases(a), a.den.patientDay, 1000) ?? -1));
+            let csv = head.map(q).join(',') + '\n';
             wards.forEach(w => {
-                csv += [w.unit, w.patientDay, w.HAI, fmtRate(rate(w.HAI, w.patientDay, 1000)),
-                        w.CAUTI, fmtRate(rate(w.CAUTI, w.cathDay, 1000)),
-                        w.VAP, fmtRate(rate(w.VAP, w.venDay, 1000)),
-                        w.CLABSI, fmtRate(rate(w.CLABSI, w.lineDay, 1000)),
-                        w.SSI, fmtRate(rate(w.SSI, w.op, 100)),
-                        w.MDR, (w.HAI ? Math.round(w.MDR / w.HAI * 100) : 0)].join(',') + '\n';
+                const hc = repTotalCases(w);
+                const cells = [w.unit, Math.round(w.den.patientDay), hc, fmtRate(rate(hc, w.den.patientDay, 1000))];
+                SITES.forEach(s => cells.push(repCaseOf(w, s), fmtRate(repRate(w, s))));
+                cells.push(w.MDR, (hc ? Math.round(w.MDR / hc * 100) : 0) + '%');
+                csv += cells.map(q).join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -6630,6 +6636,7 @@
             }));
         document.getElementById('btnExport').addEventListener('click', exportCSV);
         document.getElementById('btnExportWards').addEventListener('click', exportWardsCSV);
+        document.getElementById('btnWardSsi').addEventListener('click', () => { repSsiExpanded = !repSsiExpanded; updateWardTable(); });
         document.getElementById('btnExportMdr').addEventListener('click', exportMdrCSV);
         document.getElementById('btnExportService').addEventListener('click', exportServiceCSV);
         document.getElementById('menuDashboard').addEventListener('click', () => switchView('dashboard'));
