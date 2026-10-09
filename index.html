@@ -134,6 +134,14 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 บทวิเคราะห์
             </button>
+            <button id="menuReport" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                สรุปรายงาน
+            </button>
+            <button id="menuOrg" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                เชื้อก่อโรค HAI
+            </button>
             <button id="menuSpecial" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
                 เฝ้าระวังหน่วยพิเศษ
@@ -911,6 +919,87 @@
                 </div>
             </div>
         </div><!-- /viewAnalysis -->
+
+        <!-- ===================== VIEW: สรุปรายงาน ===================== -->
+        <div id="viewReport" class="space-y-6" hidden>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">สรุปรายงานการเฝ้าระวังการติดเชื้อในโรงพยาบาล (HAI)</h3>
+                        <p class="text-xs text-slate-400 mt-1" id="reportPeriod">สรุปตามตัวกรองปัจจุบัน</p>
+                    </div>
+                    <div class="flex gap-2 self-start">
+                        <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
+                        <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
+                    </div>
+                </div>
+                <div id="reportContent" class="p-6 space-y-6"></div>
+            </div>
+        </div><!-- /viewReport -->
+
+        <!-- ===================== VIEW: เชื้อก่อโรค HAI ===================== -->
+        <div id="viewOrg" class="space-y-6" hidden>
+            <div id="orgKpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            <div class="grid lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <h3 class="text-lg font-semibold text-slate-800">เชื้อก่อโรคที่พบบ่อย (Top 10)</h3>
+                        <p class="text-xs text-slate-400 mt-1">นับทุกเชื้อจากคอลัมน์ เชื้อก่อโรค/2/3 รวมบรรทัดต่อ</p>
+                    </div>
+                    <div class="p-6"><div class="relative h-80"><canvas id="orgTopChart"></canvas></div></div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <h3 class="text-lg font-semibold text-slate-800">เชื้อดื้อยา (MDR) แยกตามเชื้อ</h3>
+                        <p class="text-xs text-slate-400 mt-1">เฉพาะแถวที่ AMR = ดื้อยา (mdr)</p>
+                    </div>
+                    <div class="overflow-x-auto max-h-80 overflow-y-auto">
+                        <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0"><tr>
+                                <th class="py-3 px-4">เชื้อก่อโรค</th><th class="py-3 px-4 text-right">จำนวน (MDR)</th><th class="py-3 px-4 text-right">% ของ MDR</th>
+                            </tr></thead>
+                            <tbody id="orgMdrBody" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">เชื้อก่อโรคแยกตามตำแหน่งติดเชื้อ (SITE)</h3>
+                        <p class="text-xs text-slate-400 mt-1">หลายเชื้อในไซต์เดียว นับแยกรายเชื้อ</p>
+                    </div>
+                    <button id="btnExportOrgSite2" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="overflow-x-auto max-h-[36rem] overflow-y-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0"><tr>
+                            <th class="py-3 px-4">ตำแหน่ง (SITE)</th><th class="py-3 px-4">เชื้อก่อโรค</th>
+                            <th class="py-3 px-4 text-right">จำนวน</th><th class="py-3 px-4 text-right">% ในไซต์</th>
+                        </tr></thead>
+                        <tbody id="orgBySiteBody2" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">ตารางสรุปเชื้อทั้งหมด</h3>
+                        <p class="text-xs text-slate-400 mt-1">จำนวนและสัดส่วนของเชื้อแต่ละชนิด</p>
+                    </div>
+                    <button id="btnExportOrgAll" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="overflow-x-auto max-h-[36rem] overflow-y-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0"><tr>
+                            <th class="py-3 px-4">#</th><th class="py-3 px-4">เชื้อก่อโรค</th>
+                            <th class="py-3 px-4 text-right">จำนวน</th><th class="py-3 px-4 text-right">% ของทั้งหมด</th>
+                        </tr></thead>
+                        <tbody id="orgAllBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div><!-- /viewOrg -->
 
         <!-- ===================== VIEW: เฝ้าระวังหน่วยพิเศษ ===================== -->
         <div id="viewSpecial" class="space-y-6" hidden>
@@ -3942,8 +4031,8 @@
                 return { site, orgs, total };
             }).sort((a, b) => b.total - a.total || a.site.localeCompare(b.site));
         }
-        function renderOrgBySite() {
-            const body = document.getElementById('orgBySiteBody'); if (!body) return;
+        function renderOrgBySite(bodyId) {
+            const body = document.getElementById(bodyId || 'orgBySiteBody'); if (!body) return;
             const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
             const data = orgBySiteData();
             if (!data.length) { body.innerHTML = '<tr><td colspan="4" class="py-8 text-center text-slate-400">— ไม่มีข้อมูลเชื้อก่อโรคตามตัวกรอง —</td></tr>'; return; }
@@ -3970,6 +4059,181 @@
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
             a.download = 'organisms_by_site.csv'; a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }
+
+        /* ===================== เมนู: เชื้อก่อโรค HAI ===================== */
+        // รวมจำนวนเชื้อทั้งหมด (ทุกแถวตามตัวกรอง) → [{org, n}] เรียงมาก→น้อย
+        function orgOverallData() {
+            const cnt = {};
+            getFilteredRows().forEach(r => (r.organisms || []).forEach(o => {
+                const k = (o || '').toString().trim(); if (!k) return; cnt[k] = (cnt[k] || 0) + 1;
+            }));
+            return Object.keys(cnt).map(o => ({ org: o, n: cnt[o] })).sort((a, b) => b.n - a.n || a.org.localeCompare(b.org));
+        }
+        // เชื้อดื้อยา (MDR) แยกตามเชื้อ → [{org, n}]
+        function orgMdrData() {
+            const cnt = {};
+            getFilteredRows().filter(r => r.isMDR).forEach(r => (r.organisms || []).forEach(o => {
+                const k = (o || '').toString().trim(); if (!k) return; cnt[k] = (cnt[k] || 0) + 1;
+            }));
+            return Object.keys(cnt).map(o => ({ org: o, n: cnt[o] })).sort((a, b) => b.n - a.n || a.org.localeCompare(b.org));
+        }
+        let orgTopChartInstance = null;
+        function updateOrgView() {
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            const all = orgOverallData();
+            const mdr = orgMdrData();
+            const totalOrg = all.reduce((a, x) => a + x.n, 0);
+            const mdrTotal = mdr.reduce((a, x) => a + x.n, 0);
+            const distinctMdr = mdr.length;
+            // KPI การ์ด
+            const kpi = (label, val, sub, tint) => '<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">' +
+                '<p class="text-xs text-slate-400">' + label + '</p>' +
+                '<p class="text-2xl font-bold ' + tint + ' mt-1">' + val + '</p>' +
+                '<p class="text-xs text-slate-400 mt-1">' + sub + '</p></div>';
+            const kw = document.getElementById('orgKpis');
+            if (kw) kw.innerHTML =
+                kpi('จำนวนเชื้อที่พบ (ครั้ง)', totalOrg, 'รวมทุกตำแหน่ง', 'text-emerald-700') +
+                kpi('ชนิดเชื้อที่พบ', all.length, 'ชนิดไม่ซ้ำ', 'text-sky-700') +
+                kpi('เชื้อดื้อยา (MDR)', mdrTotal, (totalOrg ? Math.round(mdrTotal / totalOrg * 100) : 0) + '% ของเชื้อที่พบ', 'text-rose-700') +
+                kpi('ชนิดเชื้อดื้อยา', distinctMdr, 'ชนิดไม่ซ้ำ', 'text-amber-700');
+            // ตาราง MDR
+            const mb = document.getElementById('orgMdrBody');
+            if (mb) mb.innerHTML = mdr.length ? mdr.map(o =>
+                '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4">' + esc(o.org) + '</td>' +
+                '<td class="py-2.5 px-4 text-right font-medium text-rose-600">' + o.n + '</td>' +
+                '<td class="py-2.5 px-4 text-right text-slate-500">' + (mdrTotal ? Math.round(o.n / mdrTotal * 100) : 0) + '%</td></tr>'
+            ).join('') : '<tr><td colspan="3" class="py-8 text-center text-slate-400">— ไม่มีเชื้อดื้อยาตามตัวกรอง —</td></tr>';
+            // ตารางเชื้อทั้งหมด
+            const ab = document.getElementById('orgAllBody');
+            if (ab) ab.innerHTML = all.length ? all.map((o, i) =>
+                '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 text-slate-400">' + (i + 1) + '</td>' +
+                '<td class="py-2.5 px-4">' + esc(o.org) + '</td>' +
+                '<td class="py-2.5 px-4 text-right font-medium">' + o.n + '</td>' +
+                '<td class="py-2.5 px-4 text-right text-slate-500">' + (totalOrg ? Math.round(o.n / totalOrg * 100) : 0) + '%</td></tr>'
+            ).join('') : '<tr><td colspan="4" class="py-8 text-center text-slate-400">— ไม่มีข้อมูลเชื้อก่อโรคตามตัวกรอง —</td></tr>';
+            // ตารางเชื้อแยกตามไซต์ (ใช้ร่วมกับบทวิเคราะห์)
+            renderOrgBySite('orgBySiteBody2');
+            // กราฟ Top 10
+            const ctx = document.getElementById('orgTopChart');
+            if (ctx) {
+                const top = all.slice(0, 10);
+                if (orgTopChartInstance) orgTopChartInstance.destroy();
+                orgTopChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: top.map(o => o.org),
+                        datasets: [{ label: 'จำนวน', data: top.map(o => o.n), backgroundColor: '#10b981', borderRadius: 6 }]
+                    },
+                    options: {
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+                    }
+                });
+            }
+        }
+        function exportOrgAllCSV() {
+            const all = orgOverallData();
+            const tot = all.reduce((a, x) => a + x.n, 0);
+            const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
+            let csv = '﻿' + ['#', 'เชื้อก่อโรค', 'จำนวน', '% ของทั้งหมด'].join(',') + '\n';
+            all.forEach((o, i) => { csv += [i + 1, q(o.org), o.n, (tot ? Math.round(o.n / tot * 100) : 0) + '%'].join(',') + '\n'; });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'organisms_all.csv'; a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }
+
+        /* ===================== เมนู: สรุปรายงาน ===================== */
+        // รวมสถิติหลักตามตัวกรอง → object สำหรับแสดง/ส่งออก
+        function reportStats() {
+            const cases = getFilteredCases();
+            const rows = getFilteredRows();
+            const byMonth = aggregateByMonth(cases);
+            const den = aggregateDenominatorsByMonth(rows);
+            const sum = (obj, k) => FISCAL_MONTHS.reduce((a, m) => a + (obj[m] ? obj[m][k] : 0), 0);
+            const totalHAI = cases.length;
+            const patientDay = sum(den, 'patientDay'), cathDay = sum(den, 'cathDay'), venDay = sum(den, 'venDay'), lineDay = sum(den, 'lineDay'), op = sum(den, 'op');
+            const cnt = { HAI: 0, CAUTI: 0, VAP: 0, HAP: 0, CLABSI: 0, SSI: 0, UTI: 0, BSI: 0, Omphalitis: 0, Other: 0 };
+            cases.forEach(c => { if (cnt[c.siteType] !== undefined) cnt[c.siteType] += 1; });
+            const mdr = cases.filter(c => c.isMDR).length;
+            const rate = (n, d) => d ? (n / d * 1000) : null;
+            // รายหอผู้ป่วย (Top)
+            const ward = {}; cases.forEach(c => { const u = c.unit || '(ไม่ระบุ)'; ward[u] = (ward[u] || 0) + 1; });
+            const wards = Object.keys(ward).map(u => ({ unit: u, n: ward[u] })).sort((a, b) => b.n - a.n);
+            return {
+                totalHAI, patientDay, cathDay, venDay, lineDay, op, mdr,
+                mdrPct: totalHAI ? Math.round(mdr / totalHAI * 100) : 0,
+                overallRate: rate(totalHAI, patientDay),
+                cautiRate: rate(cnt.CAUTI, cathDay), vapRate: rate(cnt.VAP, venDay), clabsiRate: rate(cnt.CLABSI, lineDay),
+                siteCount: cnt, wards
+            };
+        }
+        function updateReportView() {
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            const y = document.getElementById('filterYear').value, q = document.getElementById('filterQuarter').value;
+            const u = document.getElementById('filterUnit').value, p = document.getElementById('filterPCT').value;
+            const per = document.getElementById('reportPeriod');
+            if (per) per.textContent = 'ปีงบ ' + (y === 'ALL' ? 'ทั้งหมด' : y) + ' · ' + (q === 'ALL' ? 'ทุกไตรมาส' : q) +
+                (u !== 'ALL' ? ' · หอ ' + u : '') + (p !== 'ALL' ? ' · กลุ่มงาน ' + p : '') + ' · พิมพ์เมื่อ ' + new Date().toLocaleString('th-TH');
+            const el = document.getElementById('reportContent'); if (!el) return;
+            const s = reportStats();
+            const fx = v => v == null ? '—' : v.toFixed(2);
+            const card = (label, val, sub, tint) => '<div class="rounded-2xl border border-slate-100 bg-gradient-to-br ' + tint + ' to-white p-5">' +
+                '<p class="text-xs text-slate-500">' + label + '</p><p class="text-2xl font-bold text-slate-800 mt-1">' + val + '</p>' +
+                '<p class="text-xs text-slate-400 mt-1">' + sub + '</p></div>';
+            const kpis = '<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">' +
+                card('เคส HAI ทั้งหมด', s.totalHAI, 'ราย', 'from-emerald-50') +
+                card('อัตราการติดเชื้อรวม', fx(s.overallRate), 'ต่อ 1,000 วันนอน (' + s.patientDay.toLocaleString() + ')', 'from-sky-50') +
+                card('เชื้อดื้อยา (MDR)', s.mdr, s.mdrPct + '% ของเคส', 'from-rose-50') +
+                card('จำนวนผ่าตัด', s.op.toLocaleString(), 'ครั้ง (ตัวหาร SSI)', 'from-violet-50') +
+                '</div>';
+            const SITES = [['CAUTI', 'CAUTI'], ['VAP', 'VAP'], ['HAP', 'HAP'], ['CLABSI', 'CLABSI'], ['SSI', 'SSI'], ['UTI', 'UTI'], ['BSI', 'BSI'], ['Omphalitis', 'Omphalitis'], ['Other', 'อื่น ๆ']];
+            const siteRows = SITES.filter(x => s.siteCount[x[0]]).map(x =>
+                '<tr class="hover:bg-slate-50"><td class="py-2 px-4">' + x[1] + '</td><td class="py-2 px-4 text-right font-medium">' + s.siteCount[x[0]] + '</td>' +
+                '<td class="py-2 px-4 text-right text-slate-500">' + (s.totalHAI ? Math.round(s.siteCount[x[0]] / s.totalHAI * 100) : 0) + '%</td></tr>').join('');
+            const siteTbl = '<div><h4 class="font-semibold text-slate-700 mb-2">จำนวนเคสแยกตามตำแหน่งติดเชื้อ (SITE)</h4>' +
+                '<div class="overflow-x-auto rounded-xl border border-slate-100"><table class="w-full text-sm text-slate-600"><thead class="bg-slate-50 font-semibold text-slate-700"><tr>' +
+                '<th class="py-2 px-4 text-left">ตำแหน่ง</th><th class="py-2 px-4 text-right">จำนวน</th><th class="py-2 px-4 text-right">%</th></tr></thead>' +
+                '<tbody>' + (siteRows || '<tr><td colspan="3" class="py-6 text-center text-slate-400">— ไม่มีข้อมูล —</td></tr>') + '</tbody></table></div></div>';
+            const devTbl = '<div><h4 class="font-semibold text-slate-700 mb-2">อัตราการติดเชื้อสัมพันธ์กับอุปกรณ์ (ต่อ 1,000 วันอุปกรณ์)</h4>' +
+                '<div class="overflow-x-auto rounded-xl border border-slate-100"><table class="w-full text-sm text-slate-600"><thead class="bg-slate-50 font-semibold text-slate-700"><tr>' +
+                '<th class="py-2 px-4 text-left">ตัวชี้วัด</th><th class="py-2 px-4 text-right">จำนวนเคส</th><th class="py-2 px-4 text-right">วันอุปกรณ์</th><th class="py-2 px-4 text-right">อัตรา</th></tr></thead><tbody>' +
+                '<tr><td class="py-2 px-4">CAUTI</td><td class="py-2 px-4 text-right">' + s.siteCount.CAUTI + '</td><td class="py-2 px-4 text-right">' + s.cathDay.toLocaleString() + '</td><td class="py-2 px-4 text-right font-medium">' + fx(s.cautiRate) + '</td></tr>' +
+                '<tr><td class="py-2 px-4">VAP</td><td class="py-2 px-4 text-right">' + s.siteCount.VAP + '</td><td class="py-2 px-4 text-right">' + s.venDay.toLocaleString() + '</td><td class="py-2 px-4 text-right font-medium">' + fx(s.vapRate) + '</td></tr>' +
+                '<tr><td class="py-2 px-4">CLABSI</td><td class="py-2 px-4 text-right">' + s.siteCount.CLABSI + '</td><td class="py-2 px-4 text-right">' + s.lineDay.toLocaleString() + '</td><td class="py-2 px-4 text-right font-medium">' + fx(s.clabsiRate) + '</td></tr>' +
+                '</tbody></table></div></div>';
+            const topW = s.wards.slice(0, 10);
+            const wardTbl = '<div><h4 class="font-semibold text-slate-700 mb-2">หอผู้ป่วยที่พบเคสมากที่สุด (Top 10)</h4>' +
+                '<div class="overflow-x-auto rounded-xl border border-slate-100"><table class="w-full text-sm text-slate-600"><thead class="bg-slate-50 font-semibold text-slate-700"><tr>' +
+                '<th class="py-2 px-4 text-left">หอผู้ป่วย</th><th class="py-2 px-4 text-right">จำนวนเคส</th><th class="py-2 px-4 text-right">%</th></tr></thead><tbody>' +
+                (topW.length ? topW.map(w => '<tr class="hover:bg-slate-50"><td class="py-2 px-4">' + esc(w.unit) + '</td><td class="py-2 px-4 text-right font-medium">' + w.n + '</td>' +
+                    '<td class="py-2 px-4 text-right text-slate-500">' + (s.totalHAI ? Math.round(w.n / s.totalHAI * 100) : 0) + '%</td></tr>').join('')
+                    : '<tr><td colspan="3" class="py-6 text-center text-slate-400">— ไม่มีข้อมูล —</td></tr>') + '</tbody></table></div></div>';
+            el.innerHTML = kpis + '<div class="grid lg:grid-cols-2 gap-6">' + siteTbl + devTbl + '</div>' + wardTbl;
+        }
+        function exportReportCSV() {
+            const s = reportStats();
+            const q = v => '"' + (v == null ? '' : v.toString()).replace(/"/g, '""') + '"';
+            const fx = v => v == null ? '' : v.toFixed(2);
+            let csv = '﻿รายการ,ค่า\n';
+            csv += [q('เคส HAI ทั้งหมด'), s.totalHAI].join(',') + '\n';
+            csv += [q('วันนอนผู้ป่วย'), s.patientDay].join(',') + '\n';
+            csv += [q('อัตราการติดเชื้อรวม (/1000 วันนอน)'), fx(s.overallRate)].join(',') + '\n';
+            csv += [q('เชื้อดื้อยา MDR'), s.mdr].join(',') + '\n';
+            csv += [q('% MDR'), s.mdrPct + '%'].join(',') + '\n';
+            csv += [q('อัตรา CAUTI (/1000 วันคาสาย)'), fx(s.cautiRate)].join(',') + '\n';
+            csv += [q('อัตรา VAP (/1000 วันเครื่องช่วยหายใจ)'), fx(s.vapRate)].join(',') + '\n';
+            csv += [q('อัตรา CLABSI (/1000 วันคาสายหลอดเลือด)'), fx(s.clabsiRate)].join(',') + '\n';
+            csv += '\nตำแหน่งติดเชื้อ,จำนวน\n';
+            Object.keys(s.siteCount).forEach(k => { if (s.siteCount[k]) csv += [q(k), s.siteCount[k]].join(',') + '\n'; });
+            csv += '\nหอผู้ป่วย,จำนวนเคส\n';
+            s.wards.forEach(w => { csv += [q(w.unit), w.n].join(',') + '\n'; });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'summary_report.csv'; a.click();
             setTimeout(() => URL.revokeObjectURL(a.href), 1000);
         }
         function updateAnalysisView() {
@@ -6127,9 +6391,9 @@
         }
 
         function switchView(view) {
-            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord', listedit: 'viewListEdit' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
-            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI', listedit: 'แก้ไข Dropdown (List)' };
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', report: 'viewReport', org: 'viewOrg', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord', listedit: 'viewListEdit' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', report: 'สรุปรายงาน', org: 'เชื้อก่อโรค HAI', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI', listedit: 'แก้ไข Dropdown (List)' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
@@ -6156,6 +6420,8 @@
             if (view === 'service') updateServiceView();
             if (view === 'indicator') { loadIndicators(); loadIndicatorRegistry(); }
             if (view === 'analysis') updateAnalysisView();
+            if (view === 'report') updateReportView();
+            if (view === 'org') updateOrgView();
             if (view === 'special') updateSpecialView();
             if (view === 'postdc') loadPostDC();
             if (view === 'control') updateControlView();
@@ -6168,6 +6434,8 @@
         ['filterYear', 'filterQuarter', 'filterUnit', 'filterPCT'].forEach(id =>
             document.getElementById(id).addEventListener('change', () => {
                 updateDashboard(); updateWardTable(); updateMdrView(); updateServiceView(); updateAnalysisView(); updateSpecialView();
+                if (!document.getElementById('viewReport').hidden) updateReportView();
+                if (!document.getElementById('viewOrg').hidden) updateOrgView();
                 if (!document.getElementById('viewPostDC').hidden) loadPostDC(); // ให้ Post-discharge ตามปีบน
                 if (!document.getElementById('viewControl').hidden) updateControlView();
                 if (!document.getElementById('viewRisk').hidden) refreshRisk(); // Risk Analysis ตามปี/ไตรมาสบน
@@ -6191,6 +6459,12 @@
         document.getElementById('menuAnalysis').addEventListener('click', () => switchView('analysis'));
         document.getElementById('btnPrintAnalysis').addEventListener('click', () => window.print());
         document.getElementById('btnExportOrg').addEventListener('click', exportOrgBySiteCSV);
+        document.getElementById('menuReport').addEventListener('click', () => switchView('report'));
+        document.getElementById('btnPrintReport').addEventListener('click', () => window.print());
+        document.getElementById('btnExportReport').addEventListener('click', exportReportCSV);
+        document.getElementById('menuOrg').addEventListener('click', () => switchView('org'));
+        document.getElementById('btnExportOrgSite2').addEventListener('click', exportOrgBySiteCSV);
+        document.getElementById('btnExportOrgAll').addEventListener('click', exportOrgAllCSV);
         document.getElementById('menuSpecial').addEventListener('click', () => switchView('special'));
         document.getElementById('btnExportSpecial').addEventListener('click', exportSpecialCSV);
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
