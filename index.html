@@ -5813,6 +5813,7 @@
                 setDl('recdl_pcts', [...new Set(rawData.map(r => r.pct).filter(Boolean))].sort());
             }
             recUpdateListInfo();
+            recRestoreDraft(); // กู้แบบร่างที่ค้างไว้ (หลังสร้างฟอร์มใหม่ทุกครั้ง)
         }
         // สรุปการจับคู่ดรอปดาวน์กับ List (ให้เห็นว่าช่องไหนยังไม่พบคอลัมน์)
         function recUpdateListInfo() {
@@ -5860,6 +5861,10 @@
                 document.getElementById('recCsv').addEventListener('click', downloadRecordCsv);
                 document.getElementById('recClear').addEventListener('click', () => { clearRecordForm(); });
                 document.getElementById('recListClear').addEventListener('click', () => { try { localStorage.removeItem('recRecent'); } catch (e) { } renderRecentRecords(); });
+                // autosave แบบร่าง: พิมพ์/เลือกอะไรในฟอร์มก็บันทึกลงเครื่อง (กดออกแล้วกลับมากรอกต่อได้)
+                const ff = document.getElementById('recFormFields');
+                ff.addEventListener('input', recSaveDraft);
+                ff.addEventListener('change', recSaveDraft);
                 recInited = true;
             }
             buildRecordForm();
@@ -5867,6 +5872,37 @@
             renderRecentRecords();
             loadRecordLists();
         }
+        /* ===== แบบร่างอัตโนมัติ (localStorage ต่อเครื่อง) ===== */
+        function recSaveDraft() {
+            try {
+                const cols = {};
+                document.querySelectorAll('#recFormFields [data-col]').forEach(el => { if (el.value) cols[el.dataset.col] = el.value; });
+                const ast = {};
+                document.querySelectorAll('#recFormFields .astSel').forEach(sel => { if (sel.value) ast[sel.dataset.drug] = sel.value; });
+                const extras = recExtraOrgs();
+                localStorage.setItem('recDraft', JSON.stringify({ cols: cols, ast: ast, extras: extras, ts: Date.now() }));
+            } catch (e) { }
+        }
+        function recDraftMeaningful(d) {
+            if (!d) return false;
+            const c = d.cols || {};
+            // มีข้อมูลเฉพาะเคส (นอกเหนือ ปี/เดือน/ไตรมาส/หอ/กลุ่มงาน) หรือมีผล AST/เชื้อเพิ่ม
+            const keys = Object.keys(c).filter(k => ['Year', 'Month', 'Quater', 'Unit', 'PCT'].indexOf(k) < 0);
+            return keys.length > 0 || Object.keys(d.ast || {}).length > 0 || (d.extras || []).length > 0;
+        }
+        function recRestoreDraft() {
+            let d = null; try { d = JSON.parse(localStorage.getItem('recDraft') || 'null'); } catch (e) { }
+            if (!d) return;
+            const cols = d.cols || {};
+            Object.keys(cols).forEach(c => { const el = document.querySelector('#recFormFields [data-col="' + c + '"]'); if (el) el.value = cols[c]; });
+            if (d.ast) { Object.keys(d.ast).forEach(idx => recSetAst(+idx, d.ast[idx])); recomputeAst(); }
+            if (d.extras && d.extras.length) { const list = document.getElementById('recExtraOrgList'); if (list) { list.innerHTML = ''; d.extras.forEach(o => recAddOrgRow(o.name, o.ast || null)); } }
+            if (recDraftMeaningful(d)) {
+                const st = document.getElementById('rec_status');
+                if (st) { st.innerHTML = '📝 กู้แบบร่างที่ค้างไว้ (ยังไม่บันทึก) — กรอกต่อหรือกด “ล้างฟอร์ม” เพื่อเริ่มใหม่'; st.className = 'text-xs text-amber-600'; }
+            }
+        }
+        function recClearDraft() { try { localStorage.removeItem('recDraft'); } catch (e) { } }
         // แถวอินพุต "เชื้อเพิ่ม" (บรรทัดต่อ)
         function recAddOrgRow(val, astCols) {
             const list = document.getElementById('recExtraOrgList'); if (!list) return;
@@ -5950,6 +5986,7 @@
             document.querySelectorAll('#recFormFields [data-col]').forEach(el => { if (!keep[el.dataset.col]) { if (el._flatpickr) el._flatpickr.clear(); else el.value = ''; } });
             document.querySelectorAll('#recFormFields .astSel').forEach(sel => { sel.value = ''; });
             document.getElementById('recExtraOrgList').innerHTML = '';
+            recClearDraft();
             const st = document.getElementById('rec_status'); st.textContent = 'ล้างฟอร์มแล้ว (คงปี/เดือน/ไตรมาส/หอ/กลุ่มงาน ไว้)'; st.className = 'text-xs text-slate-400';
         }
         function recSaveUrl() {
@@ -5973,10 +6010,10 @@
                 st.textContent = 'กำลังบันทึกลงชีต “ทะเบียน-1”' + (extra ? ' (เคส + ' + extra + ' เชื้อเพิ่ม)' : '') + '...'; st.className = 'text-xs text-slate-500';
                 await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'addCase', records: rows }) });
                 recPushRecent(rec);
+                clearRecordForm();
                 st.textContent = '✅ บันทึกแล้ว ' + rows.length + ' บรรทัด · HN ' + (rec['HN'] || '-') + ' · ' + (rec['SITE'] || '-') +
                     (extra ? ' · เชื้อเพิ่ม ' + extra + ' รายการ' : '') + ' (ตรวจสอบในชีต และรีเฟรชแดชบอร์ด)';
                 st.className = 'text-xs text-emerald-600';
-                clearRecordForm();
             } catch (e2) { st.textContent = '⚠️ บันทึกไม่สำเร็จ: ' + e2.message; st.className = 'text-xs text-rose-600'; }
         }
         function copyRecordRow() {
