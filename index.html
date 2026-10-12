@@ -46,6 +46,34 @@
         /* การ์ด KPI สไตล์เหมือนภาพ: วงกลมโปร่ง + วงซ้อน + ไอคอนในวงกลม */
         .kpi { position: relative; overflow: hidden; }
         .kpi p { white-space: nowrap; }
+        /* ===== โหมดนำเสนอ (สไลด์ 16:9 + Morph) ===== */
+        #presentOverlay.show { display: flex; }
+        .pslide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center;
+            padding: 64px 80px; color: #0f172a; font-family: 'Kanit', sans-serif;
+            background: radial-gradient(120% 120% at 100% 0%, #eef2ff 0%, #ffffff 42%, #f8fafc 100%); overflow: hidden; }
+        .pslide.dark { color: #f8fafc; background: radial-gradient(130% 130% at 0% 0%, #4338ca 0%, #1e1b4b 55%, #0f172a 100%); }
+        .pslide .p-eyebrow { font-size: 18px; letter-spacing: .18em; text-transform: uppercase; opacity: .6; font-weight: 600; }
+        .pslide .p-title { font-size: 58px; line-height: 1.08; font-weight: 700; margin-top: 6px; }
+        .pslide .p-sub { font-size: 22px; opacity: .7; margin-top: 14px; }
+        .pslide .p-accent { height: 7px; width: 120px; border-radius: 9999px; background: linear-gradient(90deg,#6366f1,#a855f7); margin: 22px 0; }
+        .pslide .p-foot { position: absolute; bottom: 36px; left: 80px; right: 80px; display: flex; justify-content: space-between; font-size: 15px; opacity: .55; }
+        .pstat { background: rgba(255,255,255,.72); border: 1px solid rgba(148,163,184,.25); border-radius: 24px; padding: 28px 30px; box-shadow: 0 10px 30px rgba(2,6,23,.06); backdrop-filter: blur(6px); }
+        .pslide.dark .pstat { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.14); box-shadow: none; }
+        .pstat .n { font-size: 56px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
+        .pstat .l { font-size: 17px; opacity: .7; margin-top: 10px; }
+        .pstat .s { font-size: 14px; opacity: .5; margin-top: 4px; }
+        .ptable { width: 100%; border-collapse: collapse; font-size: 20px; }
+        .ptable th { text-align: left; font-weight: 600; opacity: .6; padding: 10px 14px; border-bottom: 2px solid rgba(148,163,184,.3); }
+        .ptable td { padding: 10px 14px; border-bottom: 1px solid rgba(148,163,184,.18); }
+        .ptable td.r, .ptable th.r { text-align: right; font-variant-numeric: tabular-nums; }
+        @keyframes pFadeUp { from { opacity: 0; transform: translateY(16px);} to { opacity: 1; transform: none; } }
+        .p-anim > * { animation: pFadeUp .5s both; }
+        .p-anim > *:nth-child(2) { animation-delay: .06s; }
+        .p-anim > *:nth-child(3) { animation-delay: .12s; }
+        .p-anim > *:nth-child(4) { animation-delay: .18s; }
+        /* View Transitions: morph ของหัวข้อ/แถบ + crossfade ส่วนอื่น */
+        ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .5s; }
+        @media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
         /* ฟองบับเบิลลอยในการ์ด (reuse .ring spans เป็นฟอง) */
         .kpi .ring { position: absolute; border-radius: 9999px;
             background: radial-gradient(circle closest-side at 50% 50%, rgba(255,255,255,.16) 0%, rgba(255,255,255,.06) 60%, rgba(255,255,255,0) 100%);
@@ -966,6 +994,7 @@
                         <p class="text-xs text-slate-400 mt-1" id="reportPeriod">สรุปตามตัวกรองปัจจุบัน</p>
                     </div>
                     <div class="flex gap-2 self-start">
+                        <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -973,6 +1002,22 @@
                 <div id="reportContent" class="p-6 space-y-6"></div>
             </div>
         </div><!-- /viewReport -->
+
+        <!-- ===================== โหมดนำเสนอ (สไลด์ 16:9 + Morph) ===================== -->
+        <div id="presentOverlay" class="fixed inset-0 z-[100] bg-slate-950 hidden items-center justify-center overflow-hidden">
+            <div id="presentStage" class="relative shadow-2xl" style="width:1280px;height:720px;transform-origin:center center">
+                <div id="presentSlide" class="absolute inset-0"></div>
+            </div>
+            <!-- แถบควบคุม -->
+            <div class="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-full px-4 py-2 text-white/90 text-sm select-none">
+                <button id="presentPrev" class="hover:text-white px-2 text-lg leading-none" title="ก่อนหน้า (←)">‹</button>
+                <span id="presentPage" class="tabular-nums text-xs text-white/70">1 / 1</span>
+                <button id="presentNext" class="hover:text-white px-2 text-lg leading-none" title="ถัดไป (→)">›</button>
+                <span class="w-px h-4 bg-white/20"></span>
+                <button id="presentFull" class="hover:text-white text-xs px-2" title="เต็มจอ (F)">⛶ เต็มจอ</button>
+                <button id="presentClose" class="hover:text-white text-xs px-2" title="ออก (Esc)">✕ ออก</button>
+            </div>
+        </div>
 
         <!-- ===================== VIEW: เชื้อก่อโรค HAI ===================== -->
         <div id="viewOrg" class="space-y-6" hidden>
@@ -4570,6 +4615,168 @@
             a.download = 'summary_report.csv'; a.click();
             setTimeout(() => URL.revokeObjectURL(a.href), 1000);
         }
+
+        /* ===================== โหมดนำเสนอ (สไลด์ 16:9 + Morph) ===================== */
+        const HOSPITAL_NAME = 'โรงพยาบาลศรีสังวรสุโขทัย';
+        let presentSlides = [], presentIdx = 0, presentChartInst = null;
+        function presentData() {
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            const y = document.getElementById('filterYear').value, q = document.getElementById('filterQuarter').value;
+            const u = document.getElementById('filterUnit').value, p = document.getElementById('filterPCT').value;
+            const periodLabel = 'ปีงบ ' + (y === 'ALL' ? 'ทั้งหมด' : y) + ' · ' + (q === 'ALL' ? 'ทุกไตรมาส' : q) +
+                (u !== 'ALL' ? ' · หอ ' + u : '') + (p !== 'ALL' ? ' · กลุ่มงาน ' + p : '');
+            const cases = getFilteredCases();
+            const den = aggregateDenominatorsByMonth(getFilteredRows());
+            const denTot = {};
+            ['patientDay', 'cathDay', 'venDay', 'lineDay', 'ivDay', 'op', 'liveBirth'].forEach(k => denTot[k] = FISCAL_MONTHS.reduce((a, m) => a + (den[m] ? den[m][k] : 0), 0));
+            const cnt = {}; cases.forEach(c => cnt[c.siteType] = (cnt[c.siteType] || 0) + 1);
+            const SITES = ['CAUTI', 'VAP', 'HAP', 'CLABSI', 'SSI', 'UTI', 'BSI', 'Omphalitis', 'SSTI'];
+            const siteRows = SITES.filter(k => cnt[k]).map(k => {
+                const meta = RATE_META[k]; const d = denTot[meta.den];
+                return { label: SITE_LABEL[k] || k, n: cnt[k], rate: d ? (cnt[k] / d * meta.factor) : null, unit: meta.factor === 100 ? '/100' : '/1000' };
+            }).sort((a, b) => b.n - a.n);
+            const totCases = cases.length, pd = denTot.patientDay;
+            const mdr = cases.filter(c => c.isMDR).length;
+            const ssiCases = cnt.SSI || 0;
+            const stat = {
+                totCases, pd, op: denTot.op,
+                hospRate: pd ? totCases / pd * 1000 : null,
+                mdr, mdrPct: totCases ? Math.round(mdr / totCases * 100) : 0,
+                mdrRate: pd ? mdr / pd * 1000 : null,
+                ssiRate: denTot.op ? ssiCases / denTot.op * 100 : null
+            };
+            // หอผู้ป่วยเด่น (จาก reportMatrix)
+            const m = reportMatrix(false);
+            const wards = m.list.map(w => ({ name: (REPORT_WARD_NAMES[w.unit] || w.unit), cases: repTotalCases(w), rate: w.den.patientDay ? (repTotalCases(w) / w.den.patientDay * 1000) : null }))
+                .filter(w => w.cases > 0).sort((a, b) => b.cases - a.cases).slice(0, 8);
+            // เชื้อ
+            const orgsTop = orgOverallData().slice(0, 8);
+            const mdrOrgs = orgMdrData().slice(0, 6);
+            // แนวโน้มรายเดือน
+            const byMonth = aggregateByMonth(cases);
+            const mData = FISCAL_MONTHS.filter(mo => byMonth[mo].HAI > 0 || (den[mo] && den[mo].patientDay > 0));
+            const months = mData.length ? mData : FISCAL_MONTHS;
+            const monthly = {
+                labels: months.map(mo => MONTH_LABELS[mo]),
+                counts: months.map(mo => byMonth[mo].HAI),
+                rates: months.map(mo => { const d = den[mo] ? den[mo].patientDay : 0; return d ? +((byMonth[mo].HAI / d) * 1000).toFixed(2) : 0; })
+            };
+            return { esc, periodLabel, y, q, siteRows, stat, wards, orgsTop, mdrOrgs, monthly };
+        }
+        function presentBuild() {
+            const d = presentData();
+            const foot = '<div class="p-foot"><span>' + HOSPITAL_NAME + '</span><span>' + d.periodLabel + '</span></div>';
+            const fx = v => v == null ? '—' : v.toFixed(2);
+            const slides = [];
+            // 1) ปก
+            slides.push({
+                html: '<div class="pslide dark"><div class="p-anim">' +
+                    '<div class="p-eyebrow">Healthcare-Associated Infection</div>' +
+                    '<h1 class="p-title" style="view-transition-name:pTitle">รายงานผลการเฝ้าระวัง<br>การติดเชื้อในโรงพยาบาล</h1>' +
+                    '<div class="p-accent" style="view-transition-name:pAccent"></div>' +
+                    '<div class="p-sub">' + HOSPITAL_NAME + ' · ' + d.periodLabel + '</div>' +
+                    '</div><div class="p-foot"><span>งานป้องกันและควบคุมการติดเชื้อ (IC)</span><span>' + new Date().toLocaleDateString('th-TH') + '</span></div></div>'
+            });
+            // 2) KPI
+            const tile = (n, l, s, accent) => '<div class="pstat"><div class="n" style="color:' + accent + '">' + n + '</div><div class="l">' + l + '</div><div class="s">' + s + '</div></div>';
+            slides.push({
+                html: '<div class="pslide"><div class="p-eyebrow">ภาพรวม</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:44px">ตัวชี้วัดสำคัญ</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' +
+                    '<div class="p-anim" style="display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:18px">' +
+                    tile(d.stat.totCases, 'เคสติดเชื้อทั้งหมด', 'ราย', '#4f46e5') +
+                    tile(fx(d.stat.hospRate), 'อัตราติดเชื้อใน รพ.', '/1,000 วันนอน (' + (d.stat.pd || 0).toLocaleString() + ')', '#0ea5e9') +
+                    tile(d.stat.mdr, 'เชื้อดื้อยา (MDR)', d.stat.mdrPct + '% · ' + fx(d.stat.mdrRate) + '/1,000', '#e11d48') +
+                    tile(fx(d.stat.ssiRate), 'อัตราแผลผ่าตัด (SSI)', '/100 ผ่าตัด (' + (d.stat.op || 0).toLocaleString() + ')', '#7c3aed') +
+                    '</div>' + foot + '</div>'
+            });
+            // 3) ตามตำแหน่ง SITE
+            const siteBody = d.siteRows.length ? d.siteRows.map(s => '<tr><td>' + d.esc(s.label) + '</td><td class="r">' + s.n + '</td><td class="r">' + fx(s.rate) + ' <span style="opacity:.5">' + s.unit + '</span></td></tr>').join('') : '<tr><td colspan="3" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>';
+            slides.push({
+                html: '<div class="pslide"><div class="p-eyebrow">จำแนกตำแหน่ง</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:44px">การติดเชื้อตามตำแหน่ง (SITE)</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' +
+                    '<div class="p-anim" style="margin-top:8px;max-width:820px"><table class="ptable"><thead><tr><th>ตำแหน่ง</th><th class="r">จำนวน (ราย)</th><th class="r">อัตรา</th></tr></thead><tbody>' + siteBody + '</tbody></table></div>' + foot + '</div>'
+            });
+            // 4) แนวโน้มรายเดือน (กราฟ)
+            slides.push({
+                html: '<div class="pslide"><div class="p-eyebrow">แนวโน้ม</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:44px">แนวโน้มการติดเชื้อรายเดือน</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' +
+                    '<div style="flex:1;position:relative;margin-top:6px"><canvas id="presentChart"></canvas></div>' + foot + '</div>',
+                chart: () => {
+                    const ctx = document.getElementById('presentChart'); if (!ctx) return;
+                    if (presentChartInst) presentChartInst.destroy();
+                    presentChartInst = new Chart(ctx, {
+                        data: { labels: d.monthly.labels, datasets: [
+                            { type: 'bar', label: 'จำนวนเคส', data: d.monthly.counts, backgroundColor: 'rgba(99,102,241,.35)', borderRadius: 8, yAxisID: 'y' },
+                            { type: 'line', label: 'อัตรา /1,000 วันนอน', data: d.monthly.rates, borderColor: '#4f46e5', backgroundColor: '#4f46e5', borderWidth: 3, tension: .4, pointRadius: 4, yAxisID: 'y1' }
+                        ] },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } },
+                            scales: { y: { beginAtZero: true, position: 'left', title: { display: true, text: 'จำนวนเคส' } }, y1: { beginAtZero: true, position: 'right', grid: { display: false }, title: { display: true, text: 'อัตรา/1,000' } }, x: { grid: { display: false } } } }
+                    });
+                }
+            });
+            // 5) เชื้อก่อโรค + MDR
+            const orgList = (arr, color) => arr.length ? arr.map((o, i) => '<tr><td style="opacity:.5">' + (i + 1) + '</td><td>' + d.esc(o.org) + '</td><td class="r" style="color:' + color + ';font-weight:700">' + o.n + '</td></tr>').join('') : '<tr><td colspan="3" style="opacity:.5">— ไม่มี —</td></tr>';
+            slides.push({
+                html: '<div class="pslide"><div class="p-eyebrow">จุลชีพ</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:44px">เชื้อก่อโรคที่พบบ่อย</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' +
+                    '<div class="p-anim" style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:8px">' +
+                    '<div><div style="font-size:18px;font-weight:600;opacity:.6;margin-bottom:8px">เชื้อที่พบบ่อย (Top)</div><table class="ptable" style="font-size:18px"><tbody>' + orgList(d.orgsTop, '#4f46e5') + '</tbody></table></div>' +
+                    '<div><div style="font-size:18px;font-weight:600;opacity:.6;margin-bottom:8px">เชื้อดื้อยา (MDR)</div><table class="ptable" style="font-size:18px"><tbody>' + orgList(d.mdrOrgs, '#e11d48') + '</tbody></table></div>' +
+                    '</div>' + foot + '</div>'
+            });
+            // 6) หอผู้ป่วยเด่น
+            const wardBody = d.wards.length ? d.wards.map((w, i) => '<tr><td style="opacity:.5">' + (i + 1) + '</td><td>' + d.esc(w.name) + '</td><td class="r">' + w.cases + '</td><td class="r">' + fx(w.rate) + ' <span style="opacity:.5">/1000</span></td></tr>').join('') : '<tr><td colspan="4" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>';
+            slides.push({
+                html: '<div class="pslide"><div class="p-eyebrow">รายหอผู้ป่วย</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:44px">หอผู้ป่วยที่พบมากที่สุด</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' +
+                    '<div class="p-anim" style="margin-top:8px;max-width:900px"><table class="ptable"><thead><tr><th>#</th><th>หอผู้ป่วย</th><th class="r">จำนวนเคส</th><th class="r">อัตรา</th></tr></thead><tbody>' + wardBody + '</tbody></table></div>' + foot + '</div>'
+            });
+            // 7) สรุป
+            const bullets = [];
+            bullets.push('พบการติดเชื้อในโรงพยาบาลรวม <b>' + d.stat.totCases + ' ราย</b> คิดเป็นอัตรา <b>' + fx(d.stat.hospRate) + '</b> ต่อ 1,000 วันนอน');
+            if (d.siteRows[0]) bullets.push('ตำแหน่งที่พบมากที่สุดคือ <b>' + d.esc(d.siteRows[0].label) + '</b> จำนวน <b>' + d.siteRows[0].n + ' ราย</b>');
+            bullets.push('เชื้อดื้อยา (MDR) <b>' + d.stat.mdr + ' ราย</b> (' + d.stat.mdrPct + '% ของเคส · อัตรา ' + fx(d.stat.mdrRate) + '/1,000 วันนอน)');
+            if (d.orgsTop[0]) bullets.push('เชื้อก่อโรคที่พบบ่อยที่สุดคือ <b>' + d.esc(d.orgsTop[0].org) + '</b> (' + d.orgsTop[0].n + ' ครั้ง)');
+            slides.push({
+                html: '<div class="pslide dark"><div class="p-eyebrow">สรุป</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:46px">สรุปผลและข้อเสนอแนะ</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' +
+                    '<ul class="p-anim" style="margin-top:10px;font-size:24px;line-height:1.9;list-style:none;padding:0">' +
+                    bullets.map(b => '<li style="margin-bottom:6px">• ' + b + '</li>').join('') +
+                    '</ul>' + foot + '</div>'
+            });
+            presentSlides = slides;
+        }
+        function presentScale() {
+            const stage = document.getElementById('presentStage'); if (!stage) return;
+            const s = Math.min(window.innerWidth * 0.96 / 1280, window.innerHeight * 0.92 / 720);
+            stage.style.transform = 'scale(' + s + ')';
+        }
+        function presentShow(i) {
+            presentIdx = (i + presentSlides.length) % presentSlides.length;
+            const slideEl = document.getElementById('presentSlide');
+            const render = () => { slideEl.innerHTML = presentSlides[presentIdx].html; };
+            if (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(render);
+            else render();
+            document.getElementById('presentPage').textContent = (presentIdx + 1) + ' / ' + presentSlides.length;
+            const ch = presentSlides[presentIdx].chart;
+            if (ch) setTimeout(ch, 60);
+        }
+        function presentOpen() {
+            presentBuild();
+            const ov = document.getElementById('presentOverlay');
+            ov.classList.add('show');
+            presentScale();
+            presentShow(0);
+            if (ov.requestFullscreen) { try { ov.requestFullscreen(); } catch (e) { } }
+        }
+        function presentClose() {
+            const ov = document.getElementById('presentOverlay');
+            ov.classList.remove('show');
+            if (presentChartInst) { presentChartInst.destroy(); presentChartInst = null; }
+            if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) { } }
+        }
+        function presentKey(e) {
+            if (document.getElementById('presentOverlay').classList.contains('show') === false) return;
+            if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); presentShow(presentIdx + 1); }
+            else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); presentShow(presentIdx - 1); }
+            else if (e.key === 'Escape') { presentClose(); }
+            else if (e.key.toLowerCase() === 'f') { const ov = document.getElementById('presentOverlay'); if (document.fullscreenElement) document.exitFullscreen(); else ov.requestFullscreen && ov.requestFullscreen(); }
+        }
+
         function updateAnalysisView() {
             renderOrgBySite();
             const cases = getFilteredCases();
@@ -6836,6 +7043,14 @@
         document.getElementById('menuReport').addEventListener('click', () => switchView('report'));
         document.getElementById('btnPrintReport').addEventListener('click', () => window.print());
         document.getElementById('btnExportReport').addEventListener('click', exportReportCSV);
+        document.getElementById('btnPresent').addEventListener('click', presentOpen);
+        document.getElementById('presentPrev').addEventListener('click', () => presentShow(presentIdx - 1));
+        document.getElementById('presentNext').addEventListener('click', () => presentShow(presentIdx + 1));
+        document.getElementById('presentClose').addEventListener('click', presentClose);
+        document.getElementById('presentFull').addEventListener('click', () => { const ov = document.getElementById('presentOverlay'); if (document.fullscreenElement) document.exitFullscreen(); else ov.requestFullscreen && ov.requestFullscreen(); });
+        document.getElementById('presentStage').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); if ((e.clientX - r.left) < r.width * 0.35) presentShow(presentIdx - 1); else presentShow(presentIdx + 1); });
+        document.addEventListener('keydown', presentKey);
+        window.addEventListener('resize', () => { if (document.getElementById('presentOverlay').classList.contains('show')) presentScale(); });
         document.getElementById('menuOrg').addEventListener('click', () => switchView('org'));
         document.getElementById('btnExportOrgSite2').addEventListener('click', exportOrgBySiteCSV);
         document.getElementById('btnExportOrgAll').addEventListener('click', exportOrgAllCSV);
