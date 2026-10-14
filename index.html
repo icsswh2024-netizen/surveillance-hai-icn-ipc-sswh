@@ -1160,8 +1160,8 @@
                     <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
                         <thead class="bg-slate-50 text-slate-700 font-semibold"><tr>
                             <th class="py-3 px-4">หอผู้ป่วย</th><th class="py-3 px-4 text-right">เคส HAI</th>
-                            <th class="py-3 px-4 text-right text-emerald-700">Yes</th><th class="py-3 px-4 text-right text-rose-600">No</th>
-                            <th class="py-3 px-4 text-right">ประเมิน (Yes+No)</th>
+                            <th class="py-3 px-4 text-right text-emerald-700">รายงาน</th><th class="py-3 px-4 text-right text-rose-600">ไม่รายงาน</th>
+                            <th class="py-3 px-4 text-right">รวมประเมิน</th>
                             <th class="py-3 px-4 text-right text-teal-700">ร้อยละประสิทธิภาพ</th>
                             <th class="py-3 px-4 text-right">ตรวจพบเฉลี่ย (วัน)</th>
                         </tr></thead>
@@ -4541,9 +4541,9 @@
                 '<p class="text-xs text-slate-400 mt-1">' + sub + '</p></div>';
             const kw = document.getElementById('survKpis');
             if (kw) kw.innerHTML =
-                kpi('ร้อยละประสิทธิภาพ', effPct == null ? '-' : effPct.toFixed(1) + '%', 'Yes ' + yesN + ' / ประเมิน ' + evalN + ' (Yes+No)', 'text-teal-700') +
-                kpi('ประเมินประสิทธิภาพ (Yes)', yesN, 'ราย · มีประสิทธิภาพ', 'text-emerald-700') +
-                kpi('ไม่มีประสิทธิภาพ (No)', noN, 'ราย', 'text-rose-600') +
+                kpi('ร้อยละประสิทธิภาพ', effPct == null ? '-' : effPct.toFixed(1) + '%', 'รายงาน ' + yesN + ' / รวมประเมิน ' + evalN, 'text-teal-700') +
+                kpi('รายงาน', yesN, 'ราย · มีประสิทธิภาพ', 'text-emerald-700') +
+                kpi('ไม่รายงาน', noN, 'ราย', 'text-rose-600') +
                 kpi('ตรวจพบเฉลี่ย', avgD == null ? '-' : avgD.toFixed(1), 'วัน (event → sign, ' + dList.length + ' เคส)', 'text-amber-700');
             // ตารางกระจายค่า
             const distHtml = (body, data) => {
@@ -4552,7 +4552,9 @@
                     '<td class="py-2.5 px-4 text-right font-medium">' + d.n + '</td><td class="py-2.5 px-4 text-right text-slate-500">' + d.pct + '%</td></tr>').join('')
                     : '<tr><td colspan="3" class="py-8 text-center text-slate-400">— ไม่มีข้อมูล —</td></tr>';
             };
-            distHtml('survEffBody', survDist(cases, 'survEff'));
+            // แสดงผลประเมินด้วยคำ รายงาน/ไม่รายงาน
+            const effLabel = v => { const s = v.toLowerCase(); return s === 'yes' ? 'รายงาน' : s === 'no' ? 'ไม่รายงาน' : v; };
+            distHtml('survEffBody', survDist(cases, 'survEff').map(d => ({ k: effLabel(d.k), n: d.n, pct: d.pct })));
             distHtml('survBamrasBody', survDist(cases, 'bamras'));
             // ตารางรายหอ
             const wb = document.getElementById('survWardBody');
@@ -4571,7 +4573,7 @@
         function exportSurvCSV() {
             const q = v => '"' + (v == null ? '' : v.toString()).replace(/"/g, '""') + '"';
             const rows = survWardStats();
-            let csv = '﻿' + ['หอผู้ป่วย', 'เคส HAI', 'Yes', 'No', 'ประเมิน(Yes+No)', 'ร้อยละประสิทธิภาพ', 'ตรวจพบเฉลี่ย(วัน)'].map(q).join(',') + '\n';
+            let csv = '﻿' + ['หอผู้ป่วย', 'เคส HAI', 'รายงาน', 'ไม่รายงาน', 'รวมประเมิน', 'ร้อยละประสิทธิภาพ', 'ตรวจพบเฉลี่ย(วัน)'].map(q).join(',') + '\n';
             rows.forEach(b => {
                 const ev = b.yes + b.no;
                 csv += [q(b.unit), b.n, b.yes, b.no, ev, (ev ? (b.yes / ev * 100).toFixed(1) : '') + (ev ? '%' : ''), (b.dN ? (b.dSum / b.dN).toFixed(1) : '')].join(',') + '\n';
