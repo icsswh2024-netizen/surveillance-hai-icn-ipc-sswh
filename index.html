@@ -6544,7 +6544,8 @@
                     '<span class="text-xs text-slate-400">อ่านรูปในเครื่อง (ไม่ส่งข้อมูลออก) แล้วกรอก เชื้อ/ผลไวต่อยา · HN/AN · ชื่อ-สกุล · อายุ · หอ · ดื้อยา (ESBL/CRE/MRSA→AMR/MDR) ให้ — โปรดตรวจทานก่อนบันทึก</span>' +
                     '<input id="recDropInput" type="file" accept="image/*" multiple class="hidden">' +
                 '</div>' +
-                '<p id="recOcrStatus" class="text-xs text-slate-400 mb-2"></p>' +
+                '<div class="flex items-center justify-between mb-2"><p id="recOcrStatus" class="text-xs text-slate-400"></p>' +
+                    '<button id="recClearAstDrop" type="button" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 py-1 px-2.5 rounded-lg font-medium whitespace-nowrap">🗑 ล้างข้อมูล</button></div>' +
                 // แผงเชื้อหลายตัว + ตารางผลไวต่อยา (สร้างโดย astRenderOrgs)
                 '<div id="recOrgWrap"></div>' +
                 // สรุปชื่อยา/กลุ่มยาของเชื้อหลัก (เติมอัตโนมัติจากคอลัมน์ "หลัก" ของตาราง)
@@ -6604,20 +6605,29 @@
             }));
             const add = wrap.querySelector('#recAddOrg'); if (add) add.addEventListener('click', () => { REC_AST_ORGS.push({ name: '', ast: {} }); astRenderOrgs(); recSaveDraft(); });
             const clr = wrap.querySelector('#recClearAst');
-            if (clr) clr.addEventListener('click', async () => {
-                if (!(await uiConfirm('ล้างข้อมูลเชื้อ/ผลไวต่อยา (AST) ทั้งหมด? (ไม่กระทบช่องอื่นในฟอร์ม)'))) return;
-                REC_AST_ORGS = [{ name: '', ast: {} }];
-                // ล้างช่องสรุปชื่อยา/กลุ่มยา และสถานะ OCR
-                document.querySelectorAll('#recFormFields [data-col^="ชื่อยา "], #recFormFields [data-col^="กลุ่มยา "]').forEach(e => e.value = '');
-                const os = document.getElementById('recOcrStatus'); if (os) { os.textContent = ''; os.className = 'text-xs text-slate-400 mb-2'; }
-                astRenderOrgs(); recomputeAst(); recSaveDraft();
-            });
+            if (clr) clr.addEventListener('click', () => recDoClearAst(true));
             wrap.querySelectorAll('.recDelOrg').forEach(b => b.addEventListener('click', () => { const k = +b.dataset.k; REC_AST_ORGS.splice(k, 1); if (!REC_AST_ORGS.length) REC_AST_ORGS = [{ name: '', ast: {} }]; astRenderOrgs(); recomputeAst(); recSaveDraft(); }));
         }
         // เติมสรุปชื่อยา/กลุ่มยา S/I/R ของเชื้อหลัก (REC_AST_ORGS[0]) ลงช่อง readonly
         function recomputeAst() {
             const cols = astMapToCols((REC_AST_ORGS[0] || { ast: {} }).ast || {});
             Object.keys(cols).forEach(col => { const e = document.querySelector('#recFormFields [data-col="' + col + '"]'); if (e) e.value = cols[col]; });
+        }
+        // ล้างข้อมูลเชื้อ/ผลไวต่อยา (AST) + ข้อมูลผู้ป่วยที่ OCR เติม (ไม่กระทบช่องอื่น)
+        function recClearAstFields() {
+            REC_AST_ORGS = [{ name: '', ast: {} }];
+            ['HN', 'AN', 'เพศ', 'อายุ', 'ชื่อ', 'สกุล', 'สิ่งส่ตรวจ1', 'AMR', 'MDR',
+                'ชื่อยา S', 'ชื่อยา I', 'ชื่อยา R', 'กลุ่มยา S', 'กลุ่มยา I', 'กลุ่มยา R'].forEach(col => {
+                const e = document.querySelector('#recFormFields [data-col="' + col + '"]'); if (e) e.value = '';
+            });
+            const de = document.querySelector('#recFormFields [data-col="Date of event"]');
+            if (de) { if (de._flatpickr) de._flatpickr.clear(); else de.value = ''; }
+        }
+        async function recDoClearAst(confirmFirst) {
+            if (confirmFirst && !(await uiConfirm('ล้างข้อมูลเชื้อ/ผลไวต่อยา (AST) และข้อมูลผู้ป่วยที่อ่านจากใบ (HN/ชื่อ/เพศ/อายุ/วันที่)? (ไม่กระทบ หอ/HAI/SITE)'))) return;
+            recClearAstFields();
+            const os = document.getElementById('recOcrStatus'); if (os) { os.textContent = ''; os.className = 'text-xs text-slate-400 mb-2'; }
+            astRenderOrgs(); recomputeAst(); recSaveDraft();
         }
         // ---- SSI Risk Index (NNIS) ----
         // เปอร์เซ็นไทล์ที่ 75 ของเวลาผ่าตัด (นาที) แยกตามชื่อหัตถการ จากข้อมูลจริง
@@ -6762,6 +6772,8 @@
             const files = [...fileList].filter(f => /^image\//.test(f.type));
             if (!files.length) { st.textContent = '⚠️ กรุณาเลือกไฟล์รูปภาพ'; st.className = 'text-xs text-rose-600 mt-1'; return; }
             st.textContent = 'กำลังเตรียมตัวอ่าน OCR...'; st.className = 'text-xs text-slate-500 mt-1';
+            // วางไฟล์ใหม่ = ล้างข้อมูลเก่าที่อ่านจากใบก่อน (เชื้อ/ยา + ข้อมูลผู้ป่วย) ให้แทนที่ด้วยไฟล์ใหม่
+            recClearAstFields();
             try {
                 await ensureTesseract();
                 const summary = [];
@@ -6915,6 +6927,8 @@
                 ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('border-emerald-400', 'bg-emerald-50/40'); }));
                 drop.addEventListener('drop', e => { const fs = e.dataTransfer && e.dataTransfer.files; if (fs && fs.length) recOcrFiles(fs); });
             }
+            const clrDrop = document.getElementById('recClearAstDrop');
+            if (clrDrop) clrDrop.addEventListener('click', () => recDoClearAst(true));
             if (!recListsLoaded) {
                 const setDl = (id, arr) => { const el = document.getElementById(id); if (el) el.innerHTML = arr.map(v => '<option value="' + recEsc(v) + '">').join(''); };
                 setDl('recdl_units', [...new Set(rawData.map(r => r.unit).filter(Boolean))].sort());
