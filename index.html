@@ -930,6 +930,7 @@
                                 <thead>
                                     <tr class="text-slate-500">
                                         <th class="text-left font-medium py-1 pr-2">หมวด</th>
+                                        <th class="text-left font-medium py-1 px-1">รหัสในหมวด</th>
                                         <th class="text-left font-medium py-1 px-1">เป้าหมาย</th>
                                         <th class="text-left font-medium py-1 px-1">วันที่อัปเดตเป้า</th>
                                         <th class="text-left font-medium py-1 px-1">คู่เทียบ</th>
@@ -3628,6 +3629,12 @@
             }
             return (r['เป้าหมาย'] || '').toString().trim();
         }
+        // รหัสตามหมวด — รองรับคอลัมน์ รหัส_NQA / รหัส_HA6 / รหัส_เขต / รหัส_สปสช. (fallback รหัสหลัก)
+        function indCode(r, cat) {
+            cat = cat || IND_CAT;
+            if (cat && cat !== 'ทั้งหมด') { const c = (r['รหัส_' + cat] || '').toString().trim(); if (c) return c; }
+            return (r['รหัส'] || '').toString().trim();
+        }
         // วันที่อัปเดตเป้า (DD/MM/YYYY) — รองรับแยกหมวด: วันที่อัปเดตเป้า_<หมวด> แล้วค่อย fallback
         function indTargetDate(r, cat) {
             cat = cat || IND_CAT;
@@ -3691,8 +3698,16 @@
                     }
                 }
                 const srcBadge = src === 'auto' ? 'bg-blue-50 text-blue-700' : src === 'external' ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700';
+                // รหัส: ตามหมวดที่เลือก; ถ้าดู "ทั้งหมด" และมีรหัสแยกหมวด → แสดงเพิ่มใต้รหัสหลัก
+                let codeCell = '<div class="font-medium text-slate-600">' + esc(indCode(r)) + '</div>';
+                if (IND_CAT === 'ทั้งหมด') {
+                    const perCode = cats.map(c => ({ c, v: (r['รหัส_' + c] || '').toString().trim() }))
+                        .filter(x => x.v && x.v !== (r['รหัส'] || '').toString().trim());
+                    if (perCode.length) codeCell += '<div class="text-[10px] text-slate-400 mt-0.5 space-y-0.5">' +
+                        perCode.map(x => '<div>' + esc(x.c) + ': <b class="text-slate-600">' + esc(x.v) + '</b></div>').join('') + '</div>';
+                }
                 return '<tr class="hover:bg-slate-50">' +
-                    '<td class="py-3 px-4 text-slate-500 whitespace-nowrap">' + esc(r['รหัส']) + '</td>' +
+                    '<td class="py-3 px-4 text-slate-500 whitespace-nowrap align-top">' + codeCell + '</td>' +
                     '<td class="py-3 px-4"><div class="font-medium text-slate-800">' + esc(r['ชื่อตัวชี้วัด']) + '</div><div class="text-[11px] text-slate-400">' + esc(r['นิยาม'] || ((r['ตัวตั้ง'] || '') + (r['ตัวหาร'] ? ' ÷ ' + r['ตัวหาร'] : ''))) + '</div></td>' +
                     '<td class="py-3 px-4 text-center whitespace-nowrap">' + targetCell + '</td>' +
                     '<td class="py-3 px-4 text-center whitespace-nowrap">' + valCell + '</td>' +
@@ -3719,6 +3734,7 @@
             { k: 'sss', label: 'สปสช.', suf: '_สปสช.' }
         ];
         const INDF_COLS = [
+            { c: 'code', col: 'รหัส', ph: 'รหัสในหมวดนี้' },
             { c: 'tg', col: 'เป้าหมาย', ph: 'เช่น <1.08' },
             { c: 'tgd', col: 'วันที่อัปเดตเป้า', ph: 'DD/MM/YYYY', date: true },
             { c: 'bm', col: 'คู่เทียบ', ph: 'เช่น ค่าเฉลี่ยเขต' },
@@ -3731,10 +3747,14 @@
                 const first = row.k === 'def';
                 const cells = INDF_COLS.map(cd => {
                     const id = 'indf_' + cd.c + '_' + row.k;
+                    // รหัสของแถว "ค่าเริ่มต้น" = รหัสหลัก (indf_code) ไม่ต้องกรอกซ้ำ
+                    if (cd.c === 'code' && first) {
+                        return '<td class="py-1 px-1 text-[11px] text-slate-400 whitespace-nowrap">= รหัสหลัก</td>';
+                    }
                     let v = r ? (r[cd.col + row.suf] || '') : '';
                     if (cd.date && v) v = fmtDMY(v);
                     else if (cd.date && !v && first && !r) v = riskTodayDMY(); // เพิ่มใหม่ ตั้งวันที่เป้าค่าเริ่มต้นเป็นวันนี้
-                    const ph = first ? cd.ph : (row.label);
+                    const ph = first ? cd.ph : (cd.c === 'code' ? ('รหัส ' + row.label) : row.label);
                     return '<td class="py-1 px-1"><input id="' + id + '" value="' + String(v).replace(/"/g, '&quot;') +
                         '" class="w-full border border-slate-200 rounded px-2 py-1 text-xs" placeholder="' + ph + '"></td>';
                 }).join('');
@@ -3778,6 +3798,7 @@
             };
             // เป้าหมาย / คู่เทียบ + วันที่อัปเดต (ค่าเริ่มต้น + แยกหมวด)
             INDF_ROWS.forEach(row => INDF_COLS.forEach(cd => {
+                if (cd.c === 'code' && row.k === 'def') return; // รหัสค่าเริ่มต้น = รหัสหลัก (ตั้งไว้แล้ว)
                 let v = indFval('indf_' + cd.c + '_' + row.k).trim();
                 if (cd.date) v = v ? dOnly(v) : '';
                 rec[cd.col + row.suf] = v;
