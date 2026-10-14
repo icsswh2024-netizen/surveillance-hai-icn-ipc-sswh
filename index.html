@@ -6395,7 +6395,7 @@
         function astPanelHtml() {
             const ro = (col, label) => '<div><label class="block text-[11px] font-medium text-slate-500 mb-0.5">' + label + '</label>' +
                 '<input data-col="' + col + '" readonly class="w-full border border-slate-100 bg-slate-50 rounded-xl px-2 py-1.5 text-xs text-slate-600"></div>';
-            return '<div class="col-span-2 sm:col-span-3 lg:col-span-4 rounded-lg border border-slate-200 p-3">' +
+            return '<div class="col-span-1 sm:col-span-2 lg:col-span-3 rounded-lg border border-slate-200 p-3">' +
                 '<div id="recDrop" class="border-2 border-dashed border-slate-300 rounded-xl p-3 mb-3 text-center text-sm text-slate-500 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors">' +
                     '📄 ลากรูป <b>ใบผลเพาะเชื้อ/AST</b> มาวาง (ลากได้<b>หลายใบ</b>) — ถ้าใบเดียวพบ<b>หลายเชื้อ</b> (คอลัมน์ 1-2-3) ระบบแยกเป็นเชื้อหลัก + เชื้อเพิ่มให้<br>' +
                     '<span class="text-xs text-slate-400">อ่านรูปในเครื่อง (ไม่ส่งข้อมูลออก) แล้วกรอก เชื้อ/ผลไวต่อยา · HN/AN · ชื่อ-สกุล · อายุ · หอ · ดื้อยา (ESBL/CRE/MRSA→AMR/MDR) ให้ — โปรดตรวจทานก่อนบันทึก</span>' +
@@ -6617,8 +6617,8 @@
             }
         }
         function recFieldHtml(f) {
-            const base = 'w-full border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400 transition-colors';
-            const lab = '<label class="block text-xs font-medium text-slate-500 mb-1">' + recEsc(f.label) + (f.req ? ' *' : '') + '</label>';
+            const base = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400 transition-colors';
+            const lab = '<label class="block text-sm font-medium text-slate-600 mb-1">' + recEsc(f.label) + (f.req ? ' *' : '') + '</label>';
             const lkey = recListKey(f.col);           // คีย์ใน REC_LISTS ที่จับคู่ได้ (ตรง/alias)
             const listVals = lkey ? REC_LISTS[lkey] : null;
             let input;
@@ -6658,7 +6658,7 @@
                 const p = REC_GROUP_PALETTE[gi % REC_GROUP_PALETTE.length];
                 const card = 'rounded-2xl border ' + p.bd + ' bg-gradient-to-br ' + p.grad + ' to-white p-4 shadow-sm';
                 const head = '<span class="inline-block w-1.5 h-4 rounded-full ' + p.bar + '"></span>';
-                const grid = '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">' + g.fields.map(recFieldHtml).join('') + '</div>';
+                const grid = '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">' + g.fields.map(recFieldHtml).join('') + '</div>';
                 if (g.optional) {
                     return '<details class="' + card + '"><summary class="flex items-center gap-2 text-sm font-semibold ' + p.tx + ' cursor-pointer select-none">' + head + recEsc(g.group) + '</summary><div class="mt-3">' + grid + '</div></details>';
                 }
