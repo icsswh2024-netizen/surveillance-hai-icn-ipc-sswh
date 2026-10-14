@@ -6262,7 +6262,9 @@
                 { col: 'Post-dx', label: 'Post-dx', type: 'text' },
                 { col: 'Admit', label: 'วันรับไว้ (Admit)', type: 'date' },
                 { col: 'Discharge', label: 'วันจำหน่าย (Discharge)', type: 'date' },
-                { col: 'CC', label: 'อาการสำคัญ (CC)', type: 'text' }
+                { col: 'CC', label: 'อาการสำคัญ (CC)', type: 'text' },
+                { col: 'Date of event', label: 'วันที่เกิดเหตุการณ์ (Date of event)', type: 'date' },
+                { col: 'Date Sign', label: 'วันที่เริ่มมีอาการ (Date Sign)', type: 'date' }
             ] },
             { group: 'การติดเชื้อ', fields: [
                 { col: 'HAI', label: 'สถานะ HAI', type: 'select', opts: ['hai', 'no'], req: 1 },
@@ -6322,9 +6324,7 @@
             ] },
             { group: 'เฝ้าระวัง (ถ้ามี)', optional: 1, fields: [
                 { col: 'บำราศ', label: 'บำราศ', type: 'text' },
-                { col: 'ประสิทธิภาพ', label: 'ประสิทธิภาพการเฝ้าระวัง', type: 'text' },
-                { col: 'Date of event', label: 'วันที่เกิดเหตุการณ์ (Date of event)', type: 'date' },
-                { col: 'Date Sign', label: 'วันที่เริ่มมีอาการ (Date Sign)', type: 'date' }
+                { col: 'ประสิทธิภาพ', label: 'ประสิทธิภาพการเฝ้าระวัง', type: 'text' }
             ] }
         ];
         const REC_COLS = REC_GROUPS.reduce((a, g) => a.concat(g.fields.map(f => f.col)), []);
