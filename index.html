@@ -6538,6 +6538,10 @@
             if ((m = flat.match(/\bA\.?\s*N\.?\s*[:：]?\s*([0-9]{6,})/i))) r.an = m[1];
             if ((m = flat.match(/SEX\s*[:：]?\s*([MF])/i))) r.sex = m[1].toUpperCase() === 'M' ? 'male' : 'female';
             if ((m = flat.match(/SPECIMEN\s*[:：]?\s*([A-Za-z]+)/i))) r.specimen = m[1].toLowerCase();
+            // วันที่เก็บสิ่งส่งตรวจ (COLLECTED) รูปแบบ วัน-เดือน-ปี(พ.ศ.) เช่น 05-10-2569 → เก็บเป็น dd/mm/yyyy (พ.ศ.)
+            if ((m = flat.match(/COLLECT(?:ED)?\s*(?:DATE)?\s*[:：]?\s*(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{3,4})/i))) {
+                r.collected = String(m[1]).padStart(2, '0') + '/' + String(m[2]).padStart(2, '0') + '/' + m[3];
+            }
             // อายุ (Age 72 Y / อายุ 72 ปี)
             if ((m = flat.match(/(?:AGE|อายุ)\s*[:：]?\s*(\d{1,3})\s*(?:Y|YR|YEARS?|ปี)?/i))) r.age = m[1];
             // ชื่อ-สกุล (NAME: นายสมชาย ใจดี  หรือ  Name: ...) — เก็บทั้งข้อความแล้วแยกคำ
@@ -6594,6 +6598,10 @@
                         if (r.surname) recSetColIfEmpty('สกุล', r.surname);
                         if (r.ward) recSetColIfEmpty('Unit', r.ward);
                         if (r.specimen) recSetColIfEmpty('สิ่งส่ตรวจ1', r.specimen);
+                        if (r.collected) {
+                            const de = document.querySelector('#recFormFields [data-col="Date of event"]');
+                            if (de && !de.value) { if (de._flatpickr) de._flatpickr.setDate(r.collected, true); else de.value = r.collected; }
+                        }
                         if (r.amr) recSetColIfEmpty('AMR', r.amr);
                         if (r.mdrFlags && r.mdrFlags.length) recSetColIfEmpty('MDR', r.mdrFlags.join(', '));
                         headerDone = true; hdr = r;
@@ -6619,6 +6627,7 @@
                     if (hdr.an) hParts.push('AN ' + hdr.an);
                     if (hdr.age) hParts.push('อายุ ' + hdr.age);
                     if (hdr.ward) hParts.push('หอ ' + hdr.ward);
+                    if (hdr.collected) hParts.push('เก็บสิ่งส่งตรวจ ' + hdr.collected);
                     if (hdr.mdrFlags && hdr.mdrFlags.length) hParts.push('ดื้อยา ' + hdr.mdrFlags.join('/').toUpperCase());
                 }
                 const hTxt = hParts.length ? ('<br><span class="text-slate-500">ข้อมูลผู้ป่วย: ' + hParts.join(' · ') + '</span>') : '';
