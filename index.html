@@ -4555,7 +4555,9 @@
             // แสดงผลประเมินด้วยคำ รายงาน/ไม่รายงาน
             const effLabel = v => { const s = v.toLowerCase(); return s === 'yes' ? 'รายงาน' : s === 'no' ? 'ไม่รายงาน' : v; };
             distHtml('survEffBody', survDist(cases, 'survEff').map(d => ({ k: effLabel(d.k), n: d.n, pct: d.pct })));
-            distHtml('survBamrasBody', survDist(cases, 'bamras'));
+            // บำราศ: Yes=บันทึก, No=ไม่บันทึก
+            const bamLabel = v => { const s = v.toLowerCase(); return s === 'yes' ? 'บันทึก' : s === 'no' ? 'ไม่บันทึก' : v; };
+            distHtml('survBamrasBody', survDist(cases, 'bamras').map(d => ({ k: bamLabel(d.k), n: d.n, pct: d.pct })));
             // ตารางรายหอ
             const wb = document.getElementById('survWardBody');
             const rows = survWardStats();
@@ -6424,7 +6426,7 @@
                 { col: 'การจำหนาย', label: 'ผลการจำหน่าย', type: 'text', ph: 'improved, death, ...' },
                 { col: 'ประเภทการจำหนาย', label: 'ประเภทการจำหน่าย', type: 'text' },
                 { col: 'สาเหตุ Death', label: 'สาเหตุการเสียชีวิต', type: 'text' },
-                { col: 'บำราศ', label: 'บำราศ', type: 'select', opts: ['บันทึก', 'ไม่บันทึก'] },
+                { col: 'บำราศ', label: 'บำราศ (Yes=บันทึก / No=ไม่บันทึก)', type: 'select', opts: ['Yes', 'No'] },
                 { col: 'ประสิทธิภาพ', label: 'ประสิทธิภาพการเฝ้าระวัง', type: 'select', opts: ['Yes', 'No'] }
             ] },
             { group: 'เชื้อ / ยา / ผลไวต่อยา (AST)', fields: [
