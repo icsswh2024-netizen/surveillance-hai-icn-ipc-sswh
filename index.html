@@ -177,6 +177,10 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                 วิเคราะห์ผู้ป่วย
             </button>
+            <button id="menuSurv" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                ประสิทธิภาพการเฝ้าระวัง
+            </button>
             <button id="menuSpecial" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
                 เฝ้าระวังหน่วยพิเศษ
@@ -1128,6 +1132,44 @@
             </div>
         </div><!-- /viewPatient -->
 
+        <!-- ===================== VIEW: ประสิทธิภาพการเฝ้าระวัง ===================== -->
+        <div id="viewSurv" class="space-y-6" hidden>
+            <div class="rounded-2xl bg-teal-50 border border-teal-100 p-4 text-sm text-teal-800">
+                <b>ประสิทธิภาพการเฝ้าระวัง:</b> สรุปจากคอลัมน์ <b>ประสิทธิภาพ</b> · <b>บำราศ</b> และความทันเวลา (Date of event → Date Sign) ในทะเบียน-1 ตามตัวกรอง
+            </div>
+            <div id="survKpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            <div class="grid lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100"><h3 class="text-lg font-semibold text-slate-800">ผลประเมินประสิทธิภาพ</h3><p class="text-xs text-slate-400 mt-1">กระจายตามค่าที่บันทึกในคอลัมน์ "ประสิทธิภาพ"</p></div>
+                    <div class="overflow-x-auto"><table class="w-full text-left text-sm text-slate-600"><thead class="bg-slate-50 text-slate-700 font-semibold"><tr><th class="py-3 px-4">ผลประเมิน</th><th class="py-3 px-4 text-right">จำนวน</th><th class="py-3 px-4 text-right">%</th></tr></thead><tbody id="survEffBody" class="divide-y divide-slate-100"></tbody></table></div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100"><h3 class="text-lg font-semibold text-slate-800">วิธีเฝ้าระวัง (บำราศ)</h3><p class="text-xs text-slate-400 mt-1">กระจายตามค่าที่บันทึกในคอลัมน์ "บำราศ"</p></div>
+                    <div class="overflow-x-auto"><table class="w-full text-left text-sm text-slate-600"><thead class="bg-slate-50 text-slate-700 font-semibold"><tr><th class="py-3 px-4">วิธี</th><th class="py-3 px-4 text-right">จำนวน</th><th class="py-3 px-4 text-right">%</th></tr></thead><tbody id="survBamrasBody" class="divide-y divide-slate-100"></tbody></table></div>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">ประสิทธิภาพการเฝ้าระวังรายหอผู้ป่วย</h3>
+                        <p class="text-xs text-slate-400 mt-1">%ประเมินประสิทธิภาพ · %บันทึกวันที่ครบ · ระยะเวลาตรวจพบเฉลี่ย (วัน)</p>
+                    </div>
+                    <button id="btnExportSurv" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold"><tr>
+                            <th class="py-3 px-4">หอผู้ป่วย</th><th class="py-3 px-4 text-right">เคส HAI</th>
+                            <th class="py-3 px-4 text-right">ประเมินแล้ว</th><th class="py-3 px-4 text-right">%ประเมิน</th>
+                            <th class="py-3 px-4 text-right">บันทึกวันที่ครบ</th><th class="py-3 px-4 text-right">%ครบ</th>
+                            <th class="py-3 px-4 text-right">ตรวจพบเฉลี่ย (วัน)</th>
+                        </tr></thead>
+                        <tbody id="survWardBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div><!-- /viewSurv -->
+
         <!-- ===================== VIEW: เฝ้าระวังหน่วยพิเศษ ===================== -->
         <div id="viewSpecial" class="space-y-6" hidden>
             <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-800">
@@ -1910,7 +1952,12 @@
                     dOnset: parseAnyDate(pick(r, ['วันที่มีอาการ', 'onset', 'date_onset'])),
                     dOnVen: parseAnyDate(pick(r, ['Day On Ven', 'DayOnVen'])),
                     dOnCath: parseAnyDate(pick(r, ['Day On Cath', 'DayOnCath'])),
-                    dOnLine: parseAnyDate(pick(r, ['Day On Line', 'DayOnLine']))
+                    dOnLine: parseAnyDate(pick(r, ['Day On Line', 'DayOnLine'])),
+                    // ---- ประสิทธิภาพการเฝ้าระวัง ----
+                    survEff: pick(r, ['ประสิทธิภาพ']).toString().trim(),         // ผลการประเมินประสิทธิภาพการเฝ้าระวัง
+                    bamras: pick(r, ['บำราศ']).toString().trim(),                // วิธีเฝ้าระวัง/บำราศ
+                    dEvent: parseAnyDate(pick(r, ['Date of event', 'Dateofevent'])),
+                    dSign: parseAnyDate(pick(r, ['Date Sign', 'DateSign']))
                     // หมายเหตุ: ไม่เก็บ ชื่อ/สกุล/AN เพื่อความเป็นส่วนตัวตาม PDPA
                 };
             });
@@ -4445,6 +4492,85 @@
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
             a.download = 'patient_analysis.csv'; a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }
+
+        /* ===================== เมนู: ประสิทธิภาพการเฝ้าระวัง ===================== */
+        // ระยะเวลาตรวจพบ (วัน) = Date Sign − Date of event
+        function survDetectDays(c) {
+            if (!c.dEvent || !c.dSign) return null;
+            const d = (c.dSign - c.dEvent) / 86400000;
+            return (isFinite(d) && d >= 0 && d < 400) ? d : null;
+        }
+        function survDist(cases, field) {
+            const cnt = {};
+            cases.forEach(c => { const v = (c[field] || '').toString().trim() || '(ไม่ระบุ)'; cnt[v] = (cnt[v] || 0) + 1; });
+            const tot = cases.length;
+            return Object.keys(cnt).map(k => ({ k, n: cnt[k], pct: tot ? Math.round(cnt[k] / tot * 100) : 0 }))
+                .sort((a, b) => b.n - a.n);
+        }
+        function survWardStats() {
+            const cases = getFilteredCases();
+            const by = {};
+            cases.forEach(c => {
+                const u = c.unit || '(ไม่ระบุ)';
+                const b = by[u] || (by[u] = { unit: u, n: 0, eff: 0, dateOk: 0, dSum: 0, dN: 0 });
+                b.n++;
+                if ((c.survEff || '').toString().trim()) b.eff++;
+                if (c.dEvent && c.dSign) b.dateOk++;
+                const d = survDetectDays(c); if (d != null) { b.dSum += d; b.dN++; }
+            });
+            return Object.values(by).sort((a, b) => b.n - a.n);
+        }
+        function updateSurvView() {
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            const cases = getFilteredCases();
+            const n = cases.length;
+            const effN = cases.filter(c => (c.survEff || '').toString().trim()).length;
+            const dateN = cases.filter(c => c.dEvent && c.dSign).length;
+            const dList = cases.map(survDetectDays).filter(d => d != null);
+            const avgD = dList.length ? (dList.reduce((a, b) => a + b, 0) / dList.length) : null;
+            const kpi = (label, val, sub, tint) => '<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">' +
+                '<p class="text-xs text-slate-400">' + label + '</p><p class="text-2xl font-bold ' + tint + ' mt-1">' + val + '</p>' +
+                '<p class="text-xs text-slate-400 mt-1">' + sub + '</p></div>';
+            const kw = document.getElementById('survKpis');
+            if (kw) kw.innerHTML =
+                kpi('เคส HAI', n, 'ราย', 'text-emerald-700') +
+                kpi('ประเมินประสิทธิภาพ', (n ? Math.round(effN / n * 100) : 0) + '%', effN + ' / ' + n + ' เคส', 'text-teal-700') +
+                kpi('บันทึกวันที่ครบ', (n ? Math.round(dateN / n * 100) : 0) + '%', 'Date of event + Date Sign (' + dateN + ')', 'text-sky-700') +
+                kpi('ตรวจพบเฉลี่ย', avgD == null ? '-' : avgD.toFixed(1), 'วัน (event → sign, ' + dList.length + ' เคส)', 'text-amber-700');
+            // ตารางกระจายค่า
+            const distHtml = (body, data) => {
+                const el = document.getElementById(body); if (!el) return;
+                el.innerHTML = data.length ? data.map(d => '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4">' + esc(d.k) + '</td>' +
+                    '<td class="py-2.5 px-4 text-right font-medium">' + d.n + '</td><td class="py-2.5 px-4 text-right text-slate-500">' + d.pct + '%</td></tr>').join('')
+                    : '<tr><td colspan="3" class="py-8 text-center text-slate-400">— ไม่มีข้อมูล —</td></tr>';
+            };
+            distHtml('survEffBody', survDist(cases, 'survEff'));
+            distHtml('survBamrasBody', survDist(cases, 'bamras'));
+            // ตารางรายหอ
+            const wb = document.getElementById('survWardBody');
+            const rows = survWardStats();
+            if (wb) wb.innerHTML = rows.length ? rows.map(b =>
+                '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 font-medium text-slate-700">' + esc(b.unit) + '</td>' +
+                '<td class="py-2.5 px-4 text-right">' + b.n + '</td>' +
+                '<td class="py-2.5 px-4 text-right">' + b.eff + '</td>' +
+                '<td class="py-2.5 px-4 text-right ' + pdcPctClass(b.n ? b.eff / b.n * 100 : 0, true) + '">' + (b.n ? Math.round(b.eff / b.n * 100) : 0) + '%</td>' +
+                '<td class="py-2.5 px-4 text-right">' + b.dateOk + '</td>' +
+                '<td class="py-2.5 px-4 text-right ' + pdcPctClass(b.n ? b.dateOk / b.n * 100 : 0, true) + '">' + (b.n ? Math.round(b.dateOk / b.n * 100) : 0) + '%</td>' +
+                '<td class="py-2.5 px-4 text-right">' + (b.dN ? (b.dSum / b.dN).toFixed(1) : '-') + '</td></tr>'
+            ).join('') : '<tr><td colspan="7" class="py-8 text-center text-slate-400">— ไม่มีเคส HAI ตามตัวกรอง —</td></tr>';
+        }
+        function exportSurvCSV() {
+            const q = v => '"' + (v == null ? '' : v.toString()).replace(/"/g, '""') + '"';
+            const rows = survWardStats();
+            let csv = '﻿' + ['หอผู้ป่วย', 'เคส HAI', 'ประเมินแล้ว', '%ประเมิน', 'บันทึกวันที่ครบ', '%ครบ', 'ตรวจพบเฉลี่ย(วัน)'].map(q).join(',') + '\n';
+            rows.forEach(b => {
+                csv += [q(b.unit), b.n, b.eff, (b.n ? Math.round(b.eff / b.n * 100) : 0) + '%', b.dateOk, (b.n ? Math.round(b.dateOk / b.n * 100) : 0) + '%', (b.dN ? (b.dSum / b.dN).toFixed(1) : '')].join(',') + '\n';
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'surveillance_efficiency.csv'; a.click();
             setTimeout(() => URL.revokeObjectURL(a.href), 1000);
         }
 
@@ -7012,9 +7138,9 @@
         }
 
         function switchView(view) {
-            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', report: 'viewReport', org: 'viewOrg', patient: 'viewPatient', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord', listedit: 'viewListEdit' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', patient: 'menuPatient', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
-            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', report: 'สรุปรายงาน', org: 'เชื้อก่อโรค HAI', patient: 'วิเคราะห์ผู้ป่วย', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI', listedit: 'แก้ไข Dropdown (List)' };
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', report: 'viewReport', org: 'viewOrg', patient: 'viewPatient', surv: 'viewSurv', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord', listedit: 'viewListEdit' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', patient: 'menuPatient', surv: 'menuSurv', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', report: 'สรุปรายงาน', org: 'เชื้อก่อโรค HAI', patient: 'วิเคราะห์ผู้ป่วย', surv: 'ประสิทธิภาพการเฝ้าระวัง', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI', listedit: 'แก้ไข Dropdown (List)' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
@@ -7044,6 +7170,7 @@
             if (view === 'report') updateReportView();
             if (view === 'org') updateOrgView();
             if (view === 'patient') updatePatientView();
+            if (view === 'surv') updateSurvView();
             if (view === 'special') updateSpecialView();
             if (view === 'postdc') loadPostDC();
             if (view === 'control') updateControlView();
@@ -7059,6 +7186,7 @@
                 if (!document.getElementById('viewReport').hidden) updateReportView();
                 if (!document.getElementById('viewOrg').hidden) updateOrgView();
                 if (!document.getElementById('viewPatient').hidden) updatePatientView();
+                if (!document.getElementById('viewSurv').hidden) updateSurvView();
                 if (!document.getElementById('viewPostDC').hidden) loadPostDC(); // ให้ Post-discharge ตามปีบน
                 if (!document.getElementById('viewControl').hidden) updateControlView();
                 if (!document.getElementById('viewRisk').hidden) refreshRisk(); // Risk Analysis ตามปี/ไตรมาสบน
@@ -7100,6 +7228,8 @@
         document.getElementById('orgTopN').addEventListener('change', updateOrgView);
         document.getElementById('menuPatient').addEventListener('click', () => switchView('patient'));
         document.getElementById('btnExportPatient').addEventListener('click', exportPatientCSV);
+        document.getElementById('menuSurv').addEventListener('click', () => switchView('surv'));
+        document.getElementById('btnExportSurv').addEventListener('click', exportSurvCSV);
         document.getElementById('menuSpecial').addEventListener('click', () => switchView('special'));
         document.getElementById('btnExportSpecial').addEventListener('click', exportSpecialCSV);
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
