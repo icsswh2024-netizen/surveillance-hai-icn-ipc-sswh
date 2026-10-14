@@ -1954,6 +1954,10 @@
                     dOnVen: parseAnyDate(pick(r, ['Day On Ven', 'DayOnVen'])),
                     dOnCath: parseAnyDate(pick(r, ['Day On Cath', 'DayOnCath'])),
                     dOnLine: parseAnyDate(pick(r, ['Day On Line', 'DayOnLine'])),
+                    // ---- SSI Risk Index (NNIS): เวลาผ่าตัด/ชื่อหัตถการ/ASA ----
+                    opTime: num(pick(r, ['Total-time', 'Totaltime'])),            // เวลาผ่าตัด (นาที)
+                    opName: pick(r, ['ชื่อผ่าตัด1', 'ชื่อผ่าตัด']).toString().trim().toLowerCase(),
+                    asaN: (function () { var m = String(pick(r, ['ASA'])).match(/[1-5]/); return m ? +m[0] : null; })(),
                     // ---- ประสิทธิภาพการเฝ้าระวัง ----
                     survEff: pick(r, ['ประสิทธิภาพ']).toString().trim(),         // ผลการประเมินประสิทธิภาพการเฝ้าระวัง
                     bamras: pick(r, ['บำราศ']).toString().trim(),                // วิธีเฝ้าระวัง/บำราศ
@@ -6460,7 +6464,8 @@
                 { col: 'Bs', label: 'Bs', type: 'text' },
                 { col: 'dtx', label: 'DTX', type: 'text' },
                 { col: 'ครั้งที่ผ่าแล้วพบ SSI', label: 'ครั้งที่ผ่าแล้วพบ SSI', type: 'text' },
-                { col: 'ASA', label: 'ASA class', type: 'text' }
+                { col: 'ASA', label: 'ASA class', type: 'select', opts: ['1', '2', '3', '4', '5'] },
+                { type: 'ssiRisk' }
             ] },
             ];
         const REC_COLS = REC_GROUPS.reduce((a, g) => a.concat(g.fields.map(f => f.col)), []);
@@ -6613,6 +6618,44 @@
         function recomputeAst() {
             const cols = astMapToCols((REC_AST_ORGS[0] || { ast: {} }).ast || {});
             Object.keys(cols).forEach(col => { const e = document.querySelector('#recFormFields [data-col="' + col + '"]'); if (e) e.value = cols[col]; });
+        }
+        // ---- SSI Risk Index (NNIS) ----
+        // เปอร์เซ็นไทล์ที่ 75 ของเวลาผ่าตัด (นาที) แยกตามชื่อหัตถการ จากข้อมูลจริง
+        function recPercentile(arr, p) {
+            const a = arr.filter(x => x > 0).slice().sort((x, y) => x - y);
+            if (!a.length) return null;
+            const idx = p * (a.length - 1), lo = Math.floor(idx), hi = Math.ceil(idx);
+            return lo === hi ? a[lo] : a[lo] + (a[hi] - a[lo]) * (idx - lo);
+        }
+        function recOpP75(opName) {
+            const nm = (opName || '').toString().trim().toLowerCase();
+            let sample = nm ? rawData.filter(r => r.opName === nm && r.opTime > 0).map(r => r.opTime) : [];
+            // ข้อมูลหัตถการนี้น้อยเกินไป → ใช้ P75 รวมทุกหัตถการแทน
+            if (sample.length < 4) sample = rawData.filter(r => r.opTime > 0).map(r => r.opTime);
+            return { p75: recPercentile(sample, 0.75), n: sample.length, byName: nm && rawData.filter(r => r.opName === nm && r.opTime > 0).length >= 4 };
+        }
+        function recComputeSsiRisk() {
+            const scoreEl = document.getElementById('recSsiRiskScore'), detEl = document.getElementById('recSsiRiskDetail');
+            if (!scoreEl) return;
+            const val = c => { const e = document.querySelector('#recFormFields [data-col="' + c + '"]'); return e ? (e.value || '').toString().trim() : ''; };
+            const asaM = val('ASA').match(/[1-5]/); const asa = asaM ? +asaM[0] : null;
+            const woundClass = ssiClassOf({ ssiType: val('ชนิดSSI'), w1: 0, w2: 0, w3: 0, w4: 0 });
+            const tmin = parseFloat(val('Total-time')) || 0;
+            const op = val('ชื่อผ่าตัด1');
+            const parts = [], hints = [];
+            const pAsa = asa != null && asa >= 3; if (pAsa) parts.push('ASA≥3'); if (asa != null && !pAsa) hints.push('ASA ' + asa);
+            const pWound = woundClass >= 3; if (pWound) parts.push('แผล' + (woundClass === 4 ? 'สกปรก' : 'ปนเปื้อน'));
+            let pTime = false, p75 = null;
+            if (tmin > 0) { const r = recOpP75(op); p75 = r.p75; pTime = p75 != null && tmin > p75; if (pTime) parts.push('เวลา>' + Math.round(p75) + 'น.'); }
+            // แสดงผลเฉพาะเมื่อมีข้อมูลผ่าตัดบ้าง
+            const hasOp = asa != null || woundClass > 0 || tmin > 0 || op;
+            if (!hasOp) { scoreEl.textContent = '–'; detEl.textContent = 'คำนวณอัตโนมัติจาก ASA ≥3 · แผลปนเปื้อน/สกปรก · เวลาผ่าตัด > P75 ของหัตถการ (0–3 คะแนน)'; scoreEl.className = 'text-2xl font-bold text-amber-700'; return; }
+            const score = (pAsa ? 1 : 0) + (pWound ? 1 : 0) + (pTime ? 1 : 0);
+            scoreEl.textContent = score + ' / 3';
+            scoreEl.className = 'text-2xl font-bold ' + (score >= 3 ? 'text-rose-700' : score === 2 ? 'text-orange-600' : score === 1 ? 'text-amber-600' : 'text-emerald-600');
+            detEl.innerHTML = 'ปัจจัยที่เข้าเกณฑ์: ' + (parts.length ? '<b>' + parts.join(' · ') + '</b>' : 'ไม่มี') +
+                (tmin > 0 && p75 != null ? ' · T-point(P75)=' + Math.round(p75) + ' นาที' + (recOpP75(op).byName ? '' : ' (รวมทุกหัตถการ)') : '') +
+                (score >= 3 ? ' — เสี่ยงสูงสุด' : '');
         }
         // ---- OCR ใบ AST (อ่านในเครื่องด้วย Tesseract.js) ----
         // รูปแบบคำที่พบในใบแล็บ → ดัชนีใน ANTIBIOTICS
@@ -6781,6 +6824,12 @@
             const listVals = lkey ? REC_LISTS[lkey] : null;
             let input;
             if (f.type === 'ast') { return astPanelHtml(); }
+            if (f.type === 'ssiRisk') {
+                return '<div class="col-span-1 sm:col-span-2 lg:col-span-3 rounded-xl border border-amber-200 bg-amber-50/50 p-3">' +
+                    '<div class="flex items-center justify-between"><span class="text-sm font-semibold text-amber-800">SSI Risk Index (NNIS)</span>' +
+                    '<span id="recSsiRiskScore" class="text-2xl font-bold text-amber-700">–</span></div>' +
+                    '<p id="recSsiRiskDetail" class="text-[11px] text-slate-500 mt-1">คำนวณอัตโนมัติจาก ASA ≥3 · แผลปนเปื้อน/สกปรก · เวลาผ่าตัด &gt; P75 ของหัตถการ (0–3 คะแนน)</p></div>';
+            }
             if (f.col === 'Year') {
                 const cur = new Date().getFullYear() + 543;
                 const opts = (listVals && listVals.length) ? listVals : [String(cur + 1), String(cur), String(cur - 1), String(cur - 2)];
@@ -6829,6 +6878,7 @@
             if (monthSel) monthSel.addEventListener('change', () => { const q = recQuarterOfMonth(monthSel.value); const qe = document.getElementById('rec_quarter'); if (qe) qe.value = q || ''; });
             const y = document.querySelector('#recFormFields [data-col="Year"]'); if (y && !y.value) y.value = String(new Date().getFullYear() + 543);
             astRenderOrgs(); // วาดแผงเชื้อหลายตัว + ตารางผลไวต่อยา
+            recComputeSsiRisk(); // คำนวณ SSI Risk Index ตั้งต้น
             // ปฏิทินพรีเมียม (flatpickr) สำหรับช่องวันที่ — เก็บค่าเป็น วว/ดด/ปปปป (พ.ศ.) ตรงกับชีต
             if (typeof flatpickr !== 'undefined') {
                 document.querySelectorAll('#recFormFields .recdate').forEach(el => {
@@ -6918,6 +6968,8 @@
                 const ff = document.getElementById('recFormFields');
                 ff.addEventListener('input', recSaveDraft);
                 ff.addEventListener('change', recSaveDraft);
+                ff.addEventListener('input', recComputeSsiRisk);
+                ff.addEventListener('change', recComputeSsiRisk);
                 recInited = true;
             }
             buildRecordForm();
