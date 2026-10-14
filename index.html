@@ -6445,7 +6445,9 @@
                 '<p class="text-xs text-slate-500 my-2">S=ไว · I=ปานกลาง · R=ดื้อ · N=nonsusceptible — เชื้อหลักเติม “ชื่อยา/กลุ่มยา” ให้อัตโนมัติ; เชื้อเพิ่มบันทึกเป็นบรรทัดต่อ (N รวมกับ R)</p>' +
                 '<div class="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-2"><div class="overflow-x-auto">' + tbl(0, half) + '</div><div class="overflow-x-auto">' + tbl(half, ANTIBIOTICS.length) + '</div></div></details>';
             wrap.innerHTML = '<div class="flex items-center justify-between mb-2"><h4 class="text-sm font-semibold text-slate-600">เชื้อก่อโรค (รองรับหลายเชื้อ)</h4>' +
-                '<button id="recAddOrg" type="button" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1 px-2.5 rounded-lg font-medium">➕ เพิ่มเชื้อ</button></div>' +
+                '<div class="flex gap-2">' +
+                '<button id="recClearAst" type="button" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 py-1 px-2.5 rounded-lg font-medium">🗑 ล้างข้อมูล</button>' +
+                '<button id="recAddOrg" type="button" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1 px-2.5 rounded-lg font-medium">➕ เพิ่มเชื้อ</button></div></div>' +
                 '<div class="space-y-2">' + names + '</div>' + grid +
                 '<p class="text-[11px] text-slate-400 mt-1">เชื้อเพิ่มแต่ละตัวบันทึกเป็นอีก 1 บรรทัด ใช้ Unit/HN/SITE เดิม เว้น HAI/ชื่อ จึง<b>ไม่นับซ้ำเป็นเคส</b> แต่นับเป็นเชื้อของไซต์นั้น</p>';
             // ผูก event
@@ -6458,6 +6460,15 @@
                 recSaveDraft();
             }));
             const add = wrap.querySelector('#recAddOrg'); if (add) add.addEventListener('click', () => { REC_AST_ORGS.push({ name: '', ast: {} }); astRenderOrgs(); recSaveDraft(); });
+            const clr = wrap.querySelector('#recClearAst');
+            if (clr) clr.addEventListener('click', async () => {
+                if (!(await uiConfirm('ล้างข้อมูลเชื้อ/ผลไวต่อยา (AST) ทั้งหมด? (ไม่กระทบช่องอื่นในฟอร์ม)'))) return;
+                REC_AST_ORGS = [{ name: '', ast: {} }];
+                // ล้างช่องสรุปชื่อยา/กลุ่มยา และสถานะ OCR
+                document.querySelectorAll('#recFormFields [data-col^="ชื่อยา "], #recFormFields [data-col^="กลุ่มยา "]').forEach(e => e.value = '');
+                const os = document.getElementById('recOcrStatus'); if (os) { os.textContent = ''; os.className = 'text-xs text-slate-400 mb-2'; }
+                astRenderOrgs(); recomputeAst(); recSaveDraft();
+            });
             wrap.querySelectorAll('.recDelOrg').forEach(b => b.addEventListener('click', () => { const k = +b.dataset.k; REC_AST_ORGS.splice(k, 1); if (!REC_AST_ORGS.length) REC_AST_ORGS = [{ name: '', ast: {} }]; astRenderOrgs(); recomputeAst(); recSaveDraft(); }));
         }
         // เติมสรุปชื่อยา/กลุ่มยา S/I/R ของเชื้อหลัก (REC_AST_ORGS[0]) ลงช่อง readonly
