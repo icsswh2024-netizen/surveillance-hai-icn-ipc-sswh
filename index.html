@@ -1160,8 +1160,9 @@
                     <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
                         <thead class="bg-slate-50 text-slate-700 font-semibold"><tr>
                             <th class="py-3 px-4">หอผู้ป่วย</th><th class="py-3 px-4 text-right">เคส HAI</th>
-                            <th class="py-3 px-4 text-right">ประเมินแล้ว</th><th class="py-3 px-4 text-right">%ประเมิน</th>
-                            <th class="py-3 px-4 text-right">บันทึกวันที่ครบ</th><th class="py-3 px-4 text-right">%ครบ</th>
+                            <th class="py-3 px-4 text-right text-emerald-700">Yes</th><th class="py-3 px-4 text-right text-rose-600">No</th>
+                            <th class="py-3 px-4 text-right">ประเมิน (Yes+No)</th>
+                            <th class="py-3 px-4 text-right text-teal-700">ร้อยละประสิทธิภาพ</th>
                             <th class="py-3 px-4 text-right">ตรวจพบเฉลี่ย (วัน)</th>
                         </tr></thead>
                         <tbody id="survWardBody" class="divide-y divide-slate-100"></tbody>
@@ -4509,15 +4510,17 @@
             return Object.keys(cnt).map(k => ({ k, n: cnt[k], pct: tot ? Math.round(cnt[k] / tot * 100) : 0 }))
                 .sort((a, b) => b.n - a.n);
         }
+        // Yes/No ของประสิทธิภาพ (ไม่สนตัวพิมพ์)
+        function survYes(c) { return (c.survEff || '').toString().trim().toLowerCase() === 'yes'; }
+        function survNo(c) { return (c.survEff || '').toString().trim().toLowerCase() === 'no'; }
         function survWardStats() {
             const cases = getFilteredCases();
             const by = {};
             cases.forEach(c => {
                 const u = c.unit || '(ไม่ระบุ)';
-                const b = by[u] || (by[u] = { unit: u, n: 0, eff: 0, dateOk: 0, dSum: 0, dN: 0 });
+                const b = by[u] || (by[u] = { unit: u, n: 0, yes: 0, no: 0, dSum: 0, dN: 0 });
                 b.n++;
-                if ((c.survEff || '').toString().trim()) b.eff++;
-                if (c.dEvent && c.dSign) b.dateOk++;
+                if (survYes(c)) b.yes++; else if (survNo(c)) b.no++;
                 const d = survDetectDays(c); if (d != null) { b.dSum += d; b.dN++; }
             });
             return Object.values(by).sort((a, b) => b.n - a.n);
@@ -4526,7 +4529,10 @@
             const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
             const cases = getFilteredCases();
             const n = cases.length;
-            const effN = cases.filter(c => (c.survEff || '').toString().trim()).length;
+            const yesN = cases.filter(survYes).length;
+            const noN = cases.filter(survNo).length;
+            const evalN = yesN + noN;                       // ประเมินแล้ว (มี Yes หรือ No)
+            const effPct = evalN ? (yesN / evalN * 100) : null;   // ร้อยละประสิทธิภาพ = Yes / (Yes+No)
             const dateN = cases.filter(c => c.dEvent && c.dSign).length;
             const dList = cases.map(survDetectDays).filter(d => d != null);
             const avgD = dList.length ? (dList.reduce((a, b) => a + b, 0) / dList.length) : null;
@@ -4535,9 +4541,9 @@
                 '<p class="text-xs text-slate-400 mt-1">' + sub + '</p></div>';
             const kw = document.getElementById('survKpis');
             if (kw) kw.innerHTML =
-                kpi('เคส HAI', n, 'ราย', 'text-emerald-700') +
-                kpi('ประเมินประสิทธิภาพ', (n ? Math.round(effN / n * 100) : 0) + '%', effN + ' / ' + n + ' เคส', 'text-teal-700') +
-                kpi('บันทึกวันที่ครบ', (n ? Math.round(dateN / n * 100) : 0) + '%', 'Date of event + Date Sign (' + dateN + ')', 'text-sky-700') +
+                kpi('ร้อยละประสิทธิภาพ', effPct == null ? '-' : effPct.toFixed(1) + '%', 'Yes ' + yesN + ' / ประเมิน ' + evalN + ' (Yes+No)', 'text-teal-700') +
+                kpi('ประเมินประสิทธิภาพ (Yes)', yesN, 'ราย · มีประสิทธิภาพ', 'text-emerald-700') +
+                kpi('ไม่มีประสิทธิภาพ (No)', noN, 'ราย', 'text-rose-600') +
                 kpi('ตรวจพบเฉลี่ย', avgD == null ? '-' : avgD.toFixed(1), 'วัน (event → sign, ' + dList.length + ' เคส)', 'text-amber-700');
             // ตารางกระจายค่า
             const distHtml = (body, data) => {
@@ -4551,22 +4557,24 @@
             // ตารางรายหอ
             const wb = document.getElementById('survWardBody');
             const rows = survWardStats();
-            if (wb) wb.innerHTML = rows.length ? rows.map(b =>
-                '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 font-medium text-slate-700">' + esc(b.unit) + '</td>' +
+            if (wb) wb.innerHTML = rows.length ? rows.map(b => {
+                const ev = b.yes + b.no; const pct = ev ? b.yes / ev * 100 : null;
+                return '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 font-medium text-slate-700">' + esc(b.unit) + '</td>' +
                 '<td class="py-2.5 px-4 text-right">' + b.n + '</td>' +
-                '<td class="py-2.5 px-4 text-right">' + b.eff + '</td>' +
-                '<td class="py-2.5 px-4 text-right ' + pdcPctClass(b.n ? b.eff / b.n * 100 : 0, true) + '">' + (b.n ? Math.round(b.eff / b.n * 100) : 0) + '%</td>' +
-                '<td class="py-2.5 px-4 text-right">' + b.dateOk + '</td>' +
-                '<td class="py-2.5 px-4 text-right ' + pdcPctClass(b.n ? b.dateOk / b.n * 100 : 0, true) + '">' + (b.n ? Math.round(b.dateOk / b.n * 100) : 0) + '%</td>' +
-                '<td class="py-2.5 px-4 text-right">' + (b.dN ? (b.dSum / b.dN).toFixed(1) : '-') + '</td></tr>'
-            ).join('') : '<tr><td colspan="7" class="py-8 text-center text-slate-400">— ไม่มีเคส HAI ตามตัวกรอง —</td></tr>';
+                '<td class="py-2.5 px-4 text-right text-emerald-700 font-medium">' + b.yes + '</td>' +
+                '<td class="py-2.5 px-4 text-right text-rose-600">' + b.no + '</td>' +
+                '<td class="py-2.5 px-4 text-right">' + ev + '</td>' +
+                '<td class="py-2.5 px-4 text-right ' + (pct == null ? 'text-slate-300' : pdcPctClass(pct, true)) + '">' + (pct == null ? '-' : pct.toFixed(1) + '%') + '</td>' +
+                '<td class="py-2.5 px-4 text-right">' + (b.dN ? (b.dSum / b.dN).toFixed(1) : '-') + '</td></tr>';
+            }).join('') : '<tr><td colspan="7" class="py-8 text-center text-slate-400">— ไม่มีเคส HAI ตามตัวกรอง —</td></tr>';
         }
         function exportSurvCSV() {
             const q = v => '"' + (v == null ? '' : v.toString()).replace(/"/g, '""') + '"';
             const rows = survWardStats();
-            let csv = '﻿' + ['หอผู้ป่วย', 'เคส HAI', 'ประเมินแล้ว', '%ประเมิน', 'บันทึกวันที่ครบ', '%ครบ', 'ตรวจพบเฉลี่ย(วัน)'].map(q).join(',') + '\n';
+            let csv = '﻿' + ['หอผู้ป่วย', 'เคส HAI', 'Yes', 'No', 'ประเมิน(Yes+No)', 'ร้อยละประสิทธิภาพ', 'ตรวจพบเฉลี่ย(วัน)'].map(q).join(',') + '\n';
             rows.forEach(b => {
-                csv += [q(b.unit), b.n, b.eff, (b.n ? Math.round(b.eff / b.n * 100) : 0) + '%', b.dateOk, (b.n ? Math.round(b.dateOk / b.n * 100) : 0) + '%', (b.dN ? (b.dSum / b.dN).toFixed(1) : '')].join(',') + '\n';
+                const ev = b.yes + b.no;
+                csv += [q(b.unit), b.n, b.yes, b.no, ev, (ev ? (b.yes / ev * 100).toFixed(1) : '') + (ev ? '%' : ''), (b.dN ? (b.dSum / b.dN).toFixed(1) : '')].join(',') + '\n';
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
