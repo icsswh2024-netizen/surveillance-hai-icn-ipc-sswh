@@ -4548,7 +4548,7 @@
                 kpi('ร้อยละประสิทธิภาพ', effPct == null ? '-' : effPct.toFixed(1) + '%', 'รายงาน ' + yesN + ' / รวมประเมิน ' + evalN, 'text-teal-700') +
                 kpi('รายงาน', yesN, 'ราย · มีประสิทธิภาพ', 'text-emerald-700') +
                 kpi('ไม่รายงาน', noN, 'ราย', 'text-rose-600') +
-                kpi('ตรวจพบเฉลี่ย', avgD == null ? '-' : avgD.toFixed(1), 'วัน (event → sign, ' + dList.length + ' เคส)', 'text-amber-700');
+                kpi('เคส HAI', n, 'ราย (ทั้งหมดตามตัวกรอง)', 'text-sky-700');
             // ตารางกระจายค่า
             const distHtml = (body, data) => {
                 const el = document.getElementById(body); if (!el) return;
