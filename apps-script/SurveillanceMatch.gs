@@ -1,105 +1,119 @@
 /**
  * จับคู่ "ประสิทธิภาพการเฝ้าระวัง" (Yes/No) ลงทะเบียน-1
  * ──────────────────────────────────────────────────────────────
- * หลักการ: มีแท็บอ้างอิง (รายชื่อที่ระบบเฝ้าระวังตรวจพบ) ในไฟล์เดียวกัน
- *   ถ้าเคสในทะเบียน-1 มี ชื่อ+สกุล+HN ตรงกับรายการในแท็บอ้างอิง → ประสิทธิภาพ = "Yes"
- *   ถ้าไม่ตรง (แต่เป็นเคสที่มีข้อมูล) → "No"
+ * หลักการ (sensitivity ของระบบเฝ้าระวัง):
+ *   มีแท็บอ้างอิง = ฟอร์มรายงานสงสัยติดเชื้อ (ICWN) อยู่ "คนละไฟล์"
+ *   ถ้าเคสในทะเบียน-1 ตรงกับรายการในฟอร์ม (จับด้วย HN หรือ ชื่อ+สกุล)
+ *     → ประสิทธิภาพ = "Yes"  (ระบบเฝ้าระวังตรวจพบ/มีการรายงาน)
+ *   ถ้าไม่ตรง → "No"
  *
  * ติดตั้ง (ครั้งเดียว):
- *   1) เปิดไฟล์ชีตข้อมูล (1KEK2bv...) → Extensions → Apps Script
+ *   1) เปิดไฟล์ชีตข้อมูลหลัก (ทะเบียน-1, 1KEK2bv...) → Extensions → Apps Script
  *   2) เพิ่มไฟล์นี้ (วางโค้ด) → บันทึก
- *   3) รีเฟรชหน้าชีต จะมีเมนู "IC Tools" โผล่บนแถบเมนู
- *   4) ตั้งชื่อแท็บอ้างอิง + ชื่อหัวคอลัมน์ ในส่วน CONFIG ด้านล่างให้ตรงกับชีตจริง
- *   5) เมนู IC Tools → "จับคู่ประสิทธิภาพเฝ้าระวัง (Yes/No)"
+ *   3) ครั้งแรกจะขอสิทธิ์เข้าถึง Spreadsheet (เพราะเปิดไฟล์ฟอร์มข้ามไฟล์) → อนุญาต
+ *      ** บัญชีที่รันต้องมีสิทธิ์เปิดไฟล์ฟอร์ม ICWN ด้วย **
+ *   4) รีเฟรชหน้าชีต → มีเมนู "IC Tools"
+ *   5) IC Tools → "จับคู่ประสิทธิภาพเฝ้าระวัง (Yes/No)"
  *
- * หมายเหตุ: จับคู่แบบไม่สนตัวพิมพ์/ช่องว่าง/จุด และ HN ตัดศูนย์นำหน้าออกให้เทียบได้
+ * จับคู่แบบ: ตัดคำนำหน้า (นาย/นาง/น.ส./ด.ช./ด.ญ./พระ) + ช่องว่าง/จุด,
+ *   HN ตัดศูนย์นำหน้า (0414052 = 414052). เข้าเงื่อนไขถ้า HN ตรง หรือ ชื่อ+สกุล ตรง.
  */
 
-// ========================= CONFIG (แก้ให้ตรงชีตจริง) =========================
-var SM_CONFIG = {
-  REC_SHEET: 'ทะเบียน-1',          // แท็บทะเบียนหลัก (ปลายทางที่จะเขียน Yes/No)
-  REF_SHEET: 'เฝ้าระวัง',           // << ชื่อแท็บอ้างอิง (รายชื่อที่เฝ้าระวังจับได้) — แก้ให้ตรง
-  // หัวคอลัมน์ในทะเบียน-1 (ปกติไม่ต้องแก้)
+// ========================= CONFIG =========================
+var SM = {
+  REC_SHEET: 'ทะเบียน-1',
   REC_NAME: 'ชื่อ', REC_SURNAME: 'สกุล', REC_HN: 'HN', REC_OUT: 'ประสิทธิภาพ',
-  // หัวคอลัมน์ในแท็บอ้างอิง — ถ้าชื่อหัวต่างกัน แก้ตรงนี้ (เว้นว่างได้ถ้าไม่มีคอลัมน์นั้น)
-  REF_NAME: 'ชื่อ', REF_SURNAME: 'สกุล', REF_HN: 'HN',
-  WRITE_NO: true                   // true = เขียน "No" ให้เคสที่ไม่ตรงด้วย (false = เว้นว่างไว้)
+  // แท็บอ้างอิง = ฟอร์มรายงานสงสัยติดเชื้อ ICWN (คนละไฟล์)
+  REF_FILE_ID: '1HU80TyjUXsvyiiBP8gI41qmTfqaLV2k72NbWJ6lh8FA',
+  REF_SHEET: 'การตอบแบบฟอร์ม 1',
+  REF_FULLNAME: 'ชื่อ-สกุลผู้ป่วย',   // ชื่อ+สกุล รวมช่องเดียว
+  REF_HN: 'HN',
+  // ตัวเลือก
+  REF_ONLY_HAI: false,   // true = นับเฉพาะแถวที่ "ผลการวินิจฉัย" = HAI (คอลัมน์ M)
+  REF_DX: 'ผลการวินิจฉัย',
+  WRITE_NO: true         // true = เขียน "No" ให้เคสที่ไม่ตรงด้วย
 };
-// ===========================================================================
+// =========================================================
 
 function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu('IC Tools')
+  SpreadsheetApp.getUi().createMenu('IC Tools')
     .addItem('จับคู่ประสิทธิภาพเฝ้าระวัง (Yes/No)', 'smMatchSurveillance')
     .addToUi();
 }
 
-function smNorm_(s) { return String(s == null ? '' : s).toLowerCase().replace(/[\s.\-]/g, ''); }
-// HN: ตัดศูนย์นำหน้า + ตัดอักขระไม่ใช่ตัวเลข เพื่อให้ 0012345 = 12345
+var SM_TITLES = /^(นาย|นางสาว|น\.?ส\.?|นาง|ด\.?ช\.?|ด\.?ญ\.?|เด็กชาย|เด็กหญิง|พระ|สามเณร|ว่าที่ร\.?ต\.?)/;
+function smName_(s) {
+  var t = String(s == null ? '' : s).trim();
+  // ตัดคำนำหน้าออก (วนเผื่อซ้อน เช่น "พระ ...") แล้วลบช่องว่าง/จุด
+  for (var i = 0; i < 2; i++) t = t.replace(SM_TITLES, '').trim();
+  return t.toLowerCase().replace(/[\s.\-]/g, '');
+}
 function smHn_(s) { return String(s == null ? '' : s).replace(/\D/g, '').replace(/^0+/, ''); }
-// กุญแจจับคู่: ชื่อ+สกุล+HN
-function smKey_(name, surname, hn) { return smNorm_(name) + '|' + smNorm_(surname) + '|' + smHn_(hn); }
 
 function smHeaderMap_(sheet) {
-  var lastCol = sheet.getLastColumn();
-  var hs = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var hs = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   var map = {};
-  hs.forEach(function (h, i) { var k = String(h).trim(); if (k) map[k] = i; map[smNorm_(h)] = i; });
+  hs.forEach(function (h, i) { var k = String(h).trim(); if (k) { map[k] = i; map[k.toLowerCase().replace(/[\s.]/g, '')] = i; } });
   return map;
 }
 function smCol_(map, header) {
-  if (header == null || header === '') return -1;
+  if (!header) return -1;
   if (map[header] !== undefined) return map[header];
-  var n = smNorm_(header);
+  var n = header.toLowerCase().replace(/[\s.]/g, '');
   return map[n] !== undefined ? map[n] : -1;
 }
 
 function smMatchSurveillance() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
   var ui = SpreadsheetApp.getUi();
-  var cfg = SM_CONFIG;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var rec = ss.getSheetByName(SM.REC_SHEET);
+  if (!rec) { ui.alert('ไม่พบแท็บ "' + SM.REC_SHEET + '"'); return; }
 
-  var ref = ss.getSheetByName(cfg.REF_SHEET);
-  if (!ref) { ui.alert('ไม่พบแท็บอ้างอิง "' + cfg.REF_SHEET + '" — แก้ชื่อใน CONFIG (REF_SHEET) ให้ตรง'); return; }
-  var rec = ss.getSheetByName(cfg.REC_SHEET);
-  if (!rec) { ui.alert('ไม่พบแท็บ "' + cfg.REC_SHEET + '"'); return; }
+  // ---- เปิดไฟล์ฟอร์มอ้างอิง (ข้ามไฟล์) ----
+  var refSS;
+  try { refSS = SpreadsheetApp.openById(SM.REF_FILE_ID); }
+  catch (e) { ui.alert('เปิดไฟล์ฟอร์มอ้างอิงไม่ได้ — ตรวจสอบว่าบัญชีนี้มีสิทธิ์เข้าถึงไฟล์\n' + e); return; }
+  var ref = refSS.getSheetByName(SM.REF_SHEET);
+  if (!ref) { ui.alert('ไม่พบแท็บ "' + SM.REF_SHEET + '" ในไฟล์ฟอร์ม'); return; }
 
-  // ----- สร้างชุดกุญแจจากแท็บอ้างอิง -----
+  // ---- สร้างชุดกุญแจจากฟอร์ม (HN + ชื่อ) ----
   var rMap = smHeaderMap_(ref);
-  var ciN = smCol_(rMap, cfg.REF_NAME), ciS = smCol_(rMap, cfg.REF_SURNAME), ciH = smCol_(rMap, cfg.REF_HN);
-  if (ciN < 0 && ciH < 0) { ui.alert('แท็บอ้างอิงไม่พบคอลัมน์ ชื่อ/HN — ตรวจ CONFIG (REF_NAME/REF_HN)'); return; }
-  var rLast = ref.getLastRow();
-  var keys = {};
+  var ciName = smCol_(rMap, SM.REF_FULLNAME), ciHn = smCol_(rMap, SM.REF_HN), ciDx = smCol_(rMap, SM.REF_DX);
+  if (ciName < 0 && ciHn < 0) { ui.alert('ฟอร์มไม่พบคอลัมน์ ชื่อ-สกุล/HN'); return; }
+  var rLast = ref.getLastRow(), keys = {}, refCnt = 0;
   if (rLast > 1) {
     var rData = ref.getRange(2, 1, rLast - 1, ref.getLastColumn()).getValues();
     rData.forEach(function (row) {
-      var nm = ciN >= 0 ? row[ciN] : '', su = ciS >= 0 ? row[ciS] : '', hn = ciH >= 0 ? row[ciH] : '';
-      if (smNorm_(nm) === '' && smHn_(hn) === '') return;
-      keys[smKey_(nm, su, hn)] = true;                 // คีย์เต็ม ชื่อ+สกุล+HN
-      if (smHn_(hn)) keys['hn:' + smHn_(hn)] = true;    // สำรอง: จับด้วย HN อย่างเดียว
+      if (SM.REF_ONLY_HAI && ciDx >= 0 && String(row[ciDx]).trim().toLowerCase().replace(/\s/g, '') !== 'hai') return;
+      var nm = ciName >= 0 ? smName_(row[ciName]) : '', hn = ciHn >= 0 ? smHn_(row[ciHn]) : '';
+      if (!nm && !hn) return;
+      if (hn) keys['hn:' + hn] = true;
+      if (nm) keys['nm:' + nm] = true;
+      refCnt++;
     });
   }
 
-  // ----- วนทะเบียน-1 เขียน Yes/No -----
+  // ---- วนทะเบียน-1 เขียน Yes/No ----
   var mMap = smHeaderMap_(rec);
-  var cN = smCol_(mMap, cfg.REC_NAME), cS = smCol_(mMap, cfg.REC_SURNAME), cH = smCol_(mMap, cfg.REC_HN), cOut = smCol_(mMap, cfg.REC_OUT);
-  if (cOut < 0) { ui.alert('ทะเบียน-1 ไม่พบคอลัมน์ "' + cfg.REC_OUT + '"'); return; }
+  var cN = smCol_(mMap, SM.REC_NAME), cS = smCol_(mMap, SM.REC_SURNAME), cH = smCol_(mMap, SM.REC_HN), cOut = smCol_(mMap, SM.REC_OUT);
+  if (cOut < 0) { ui.alert('ทะเบียน-1 ไม่พบคอลัมน์ "' + SM.REC_OUT + '"'); return; }
   var mLast = rec.getLastRow();
   if (mLast < 2) { ui.alert('ทะเบียน-1 ไม่มีข้อมูล'); return; }
 
   var mData = rec.getRange(2, 1, mLast - 1, rec.getLastColumn()).getValues();
   var out = [], yes = 0, no = 0, skip = 0;
   mData.forEach(function (row) {
-    var nm = cN >= 0 ? row[cN] : '', su = cS >= 0 ? row[cS] : '', hn = cH >= 0 ? row[cH] : '';
-    // ข้ามแถวที่ไม่มีทั้งชื่อและ HN (เช่น บรรทัดต่อของเชื้อเพิ่ม)
-    if (smNorm_(nm) === '' && smHn_(hn) === '') { out.push([row[cOut]]); skip++; return; }
-    var hit = keys[smKey_(nm, su, hn)] || (smHn_(hn) && keys['hn:' + smHn_(hn)]);
+    var nm = smName_((cN >= 0 ? row[cN] : '') + (cS >= 0 ? row[cS] : '')), hn = cH >= 0 ? smHn_(row[cH]) : '';
+    if (!nm && !hn) { out.push([row[cOut]]); skip++; return; }  // ข้ามบรรทัดต่อ
+    var hit = (hn && keys['hn:' + hn]) || (nm && keys['nm:' + nm]);
     if (hit) { out.push(['Yes']); yes++; }
-    else if (cfg.WRITE_NO) { out.push(['No']); no++; }
+    else if (SM.WRITE_NO) { out.push(['No']); no++; }
     else { out.push([row[cOut]]); }
   });
   rec.getRange(2, cOut + 1, out.length, 1).setValues(out);
 
-  ui.alert('จับคู่เสร็จแล้ว ✅\nYes: ' + yes + '  ·  No: ' + no + '  ·  ข้าม(บรรทัดต่อ): ' + skip +
-    '\nแท็บอ้างอิง: ' + cfg.REF_SHEET + '  ·  กุญแจ: ชื่อ+สกุล+HN (สำรอง HN)');
+  ui.alert('จับคู่เสร็จแล้ว ✅\nรายการในฟอร์ม: ' + refCnt +
+    '\nYes: ' + yes + '  ·  No: ' + no + '  ·  ข้าม(บรรทัดต่อ): ' + skip +
+    '\nกุญแจ: HN หรือ ชื่อ+สกุล (ตัดคำนำหน้า/ช่องว่าง)' +
+    (SM.REF_ONLY_HAI ? '\n(นับเฉพาะ ผลการวินิจฉัย = HAI)' : ''));
 }
