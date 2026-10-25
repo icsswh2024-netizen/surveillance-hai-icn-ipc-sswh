@@ -805,7 +805,7 @@
                         <div id="calDevice" class="space-y-3"></div>
                     </div>
                 </div>
-                <p id="calEmpty" class="text-xs text-slate-400 mt-3" hidden>ยังไม่มีข้อมูลวันที่ครบพอจะคำนวณ (ต้องมี Admit / Day On [อุปกรณ์] / วันที่มีอาการ)</p>
+                <p id="calEmpty" class="text-xs text-slate-400 mt-3"></p>
             </div>
 
             <!-- Ward service table -->
@@ -1822,10 +1822,17 @@
         function parseAnyDate(s) {
             s = (s || '').toString().trim();
             if (!s) return null;
-            let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/); // d/m/y
-            if (m) { let y = +m[3]; if (y > 2400) y -= 543; if (y < 100) y += 2000; return new Date(y, +m[2] - 1, +m[1]).getTime(); }
-            m = s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);       // y-m-d
-            if (m) { let y = +m[1]; if (y > 2400) y -= 543; return new Date(y, +m[2] - 1, +m[3]).getTime(); }
+            // y-m-d (ISO หรือมีเวลาต่อท้าย) — จับที่ใดก็ได้ในสตริง
+            let m = s.match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+            if (m) { let y = +m[1]; if (y > 2400) y -= 543; const d = new Date(y, +m[2] - 1, +m[3]); return isNaN(d) ? null : d.getTime(); }
+            // d/m/y (รองรับ พ.ศ./ค.ศ., 2 หลัก, มีข้อความ/เวลาปน) — จับ match แรก
+            m = s.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+            if (m) {
+                let dd = +m[1], mm = +m[2], y = +m[3];
+                if (dd > 31 || (mm > 12 && dd <= 12)) { const t = dd; dd = mm; mm = t; } // เผื่อสลับ d/m
+                if (y > 2400) y -= 543; else if (y < 100) y += (y > 50 ? 2500 - 543 : 2000); // 2 หลัก: >50=พ.ศ.ย่อ, ไม่งั้น ค.ศ.20xx
+                const d = new Date(y, mm - 1, dd); return isNaN(d) ? null : d.getTime();
+            }
             const t = Date.parse(s); return isNaN(t) ? null : t;
         }
         // จำนวนวันระหว่าง 2 วันที่ (b - a) เป็นวัน (คืน null ถ้าข้อมูลไม่ครบหรือค่าติดลบ)
@@ -3312,7 +3319,18 @@
                     if (dD != null) { devByType[c.siteType][dD] = (devByType[c.siteType][dD] || 0) + 1; any = true; }
                 }
             });
-            document.getElementById('calEmpty').hidden = any;
+            // วินิจฉัย: นับเคสที่มีวันที่แต่ละชนิด เพื่อบอกสาเหตุหากคำนวณไม่ได้
+            const cnt = { admit: 0, onset: 0, pair: 0, cath: 0, ven: 0, line: 0 };
+            cases.forEach(c => {
+                if (c.dAdmit != null) cnt.admit++;
+                if (c.dOnset != null) cnt.onset++;
+                if (c.dAdmit != null && c.dOnset != null) cnt.pair++;
+                if (c.dOnCath != null) cnt.cath++; if (c.dOnVen != null) cnt.ven++; if (c.dOnLine != null) cnt.line++;
+            });
+            const diag = document.getElementById('calEmpty');
+            if (diag) diag.innerHTML = 'ℹ️ จากเคส HAI ' + cases.length + ' ราย — มีวัน Admit <b>' + cnt.admit + '</b> · มีวันที่มีอาการ <b>' + cnt.onset + '</b> · ครบคู่คำนวณได้ <b>' + cnt.pair + '</b>' +
+                ' · วันคาสายปัสสาวะ ' + cnt.cath + ' · วันเครื่องช่วยหายใจ ' + cnt.ven + ' · วันคาสายหลอดเลือด ' + cnt.line +
+                (cnt.pair === 0 ? ' — <span class="text-amber-600">ยังคำนวณไม่ได้: ตรวจว่าคอลัมน์ Admit และ วันที่มีอาการ ในทะเบียน-1 มีค่าและเป็นรูปแบบวันที่</span>' : '');
 
             // สร้างแถวปฏิทิน 1 แถว: label + ช่องรายวัน (0..maxDay) ไล่เฉดสีตามจำนวน
             const buildRow = (label, color, dayMap) => {
