@@ -2460,7 +2460,7 @@
         }
 
         let lastByMonth = null, lastDen = null; // เก็บไว้ให้ตารางอัตราเลือก SITE ได้
-        const RATE_DEN_NAME = { patientDay: 'วันนอน', cathDay: 'วันคาสายปัสสาวะ', venDay: 'วันเครื่องช่วยหายใจ', lineDay: 'วันคาสายหลอดเลือด', op: 'จำนวนผ่าตัด' };
+        const RATE_DEN_NAME = { patientDay: 'วันนอน', cathDay: 'วันคาสายปัสสาวะ', venDay: 'วันเครื่องช่วยหายใจ', lineDay: 'วันคาสายหลอดเลือด', op: 'จำนวนผ่าตัด', liveBirth: 'เด็กเกิดมีชีพ' };
 
         // ตารางสถิติบริการรายเดือน + ตารางสรุปอัตรา (ตัวตั้ง/ตัวหาร/ตัวคูณ/อัตรา)
         function updateMonthlyTables(byMonth, den) {
@@ -2501,11 +2501,14 @@
             if (!lastByMonth || !lastDen) return;
             const rateBody = document.getElementById('rateMonthBody');
             rateBody.innerHTML = '';
-            const SITES = ['HAI', 'CAUTI', 'VAP', 'CLABSI', 'SSI'];
+            const SITES = ['HAI', 'CAUTI', 'VAP', 'CLABSI', 'SSI', 'HAP', 'UTI', 'BSI', 'Omphalitis', 'SSTI'];
             SITES.forEach(site => {
                 const meta = RATE_META[site] || RATE_META.HAI;
                 const denName = RATE_DEN_NAME[meta.den] || meta.den;
                 const factorTxt = meta.factor.toLocaleString();
+                // ข้ามชนิดที่ไม่มีเคสเลยในช่วงที่กรอง (ยกเว้น HAI ที่แสดงเสมอ)
+                const totCases = FISCAL_MONTHS.reduce((a, m) => a + (lastByMonth[m][site] || 0), 0);
+                if (site !== 'HAI' && totCases === 0) return;
                 const months = FISCAL_MONTHS.filter(m => (lastByMonth[m][site] || 0) > 0 || (lastDen[m] ? lastDen[m][meta.den] : 0) > 0);
                 const rows = months.length ? months : FISCAL_MONTHS;
                 let tN = 0, tD = 0;
