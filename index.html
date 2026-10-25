@@ -1121,7 +1121,7 @@
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="p-6 border-b border-slate-100">
                     <h3 class="text-lg font-semibold text-slate-800">Early vs Late onset — จำแนกปัจจัยเชื้อก่อโรค (Agent) และสิ่งแวดล้อม (Environment)</h3>
-                    <p class="text-xs text-slate-400 mt-1">แบ่งตามระยะเวลาตั้งแต่รับไว้จนเกิดอาการ: <b>Early ≤ 4 วัน</b> (มักเป็นเชื้อจากตัวผู้ป่วย/ชุมชน ดื้อยาน้อย) · <b>Late ≥ 5 วัน</b> (มักเป็นเชื้อในโรงพยาบาล ดื้อยาสูง สัมพันธ์อุปกรณ์/สิ่งแวดล้อม)</p>
+                    <p class="text-xs text-slate-400 mt-1">แบ่งตามระยะเวลาตั้งแต่รับไว้จนเกิดอาการ: <b>Early onset</b> (มักเป็นเชื้อจากตัวผู้ป่วย/ชุมชน ดื้อยาน้อย) · <b>Late onset</b> (มักเป็นเชื้อในโรงพยาบาล ดื้อยาสูง สัมพันธ์อุปกรณ์/สิ่งแวดล้อม)</p>
                 </div>
                 <div id="patientOnsetStrata" class="p-6"></div>
             </div>
@@ -4699,8 +4699,8 @@
                 '<div class="overflow-x-auto"><table class="w-full text-left text-sm">' +
                 '<thead><tr class="text-slate-700">' +
                 '<th class="py-3 px-4 font-semibold w-1/3">ปัจจัย</th>' +
-                '<th class="py-3 px-4 font-semibold"><span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>Early onset <span class="text-xs font-normal text-slate-400">≤ ' + ONSET_CUT + ' วัน</span></span></th>' +
-                '<th class="py-3 px-4 font-semibold"><span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>Late onset <span class="text-xs font-normal text-slate-400">≥ ' + (ONSET_CUT + 1) + ' วัน</span></span></th>' +
+                '<th class="py-3 px-4 font-semibold"><span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>Early onset</span></th>' +
+                '<th class="py-3 px-4 font-semibold"><span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>Late onset</span></th>' +
                 '</tr></thead><tbody>' +
                 row('จำนวนเคส', early.n + ' <span class="text-xs text-slate-400">(' + pct(early.n, tot) + '%)</span>', late.n + ' <span class="text-xs text-slate-400">(' + pct(late.n, tot) + '%)</span>') +
                 row('วันจนเกิดอาการ (เฉลี่ย)', early.avgD == null ? '-' : early.avgD.toFixed(1) + ' วัน', late.avgD == null ? '-' : late.avgD.toFixed(1) + ' วัน') +
