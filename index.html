@@ -1080,6 +1080,24 @@
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                     <div>
+                        <h3 class="text-lg font-semibold text-slate-800">เชื้อก่อโรคแยกตามหอผู้ป่วย</h3>
+                        <p class="text-xs text-slate-400 mt-1">แต่ละหอมีเชื้ออะไร กี่ชนิด จำนวน (ครั้ง) และร้อยละในหอ</p>
+                    </div>
+                    <button id="btnExportOrgWard" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="overflow-x-auto max-h-[36rem] overflow-y-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0"><tr>
+                            <th class="py-3 px-4">หอผู้ป่วย</th><th class="py-3 px-4">เชื้อก่อโรค</th>
+                            <th class="py-3 px-4 text-right">จำนวน</th><th class="py-3 px-4 text-right">% ในหอ</th>
+                        </tr></thead>
+                        <tbody id="orgByWardBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
                         <h3 class="text-lg font-semibold text-slate-800">ตารางสรุปเชื้อทั้งหมด</h3>
                         <p class="text-xs text-slate-400 mt-1">จำนวนและสัดส่วนของเชื้อแต่ละชนิด</p>
                     </div>
@@ -4385,6 +4403,52 @@
             });
             body.innerHTML = html;
         }
+        // เชื้อก่อโรคแยกตามหอผู้ป่วย → [{ward, orgs:[{org,n}], total, kinds}]
+        function orgByWardData() {
+            const rows = getFilteredRows();
+            const byWard = {};
+            rows.forEach(r => {
+                if (!r.organisms || !r.organisms.length) return;
+                const ward = r.unit || '(ไม่ระบุ)';
+                if (!byWard[ward]) byWard[ward] = {};
+                r.organisms.forEach(o => { const key = o.toString().trim(); if (!key) return; byWard[ward][key] = (byWard[ward][key] || 0) + 1; });
+            });
+            return Object.keys(byWard).map(ward => {
+                const orgs = Object.keys(byWard[ward]).map(o => ({ org: o, n: byWard[ward][o] })).sort((a, b) => b.n - a.n || a.org.localeCompare(b.org));
+                const total = orgs.reduce((a, x) => a + x.n, 0);
+                return { ward, orgs, total, kinds: orgs.length };
+            }).sort((a, b) => b.total - a.total || a.ward.localeCompare(b.ward));
+        }
+        function renderOrgByWard(bodyId) {
+            const body = document.getElementById(bodyId || 'orgByWardBody'); if (!body) return;
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            const data = orgByWardData();
+            if (!data.length) { body.innerHTML = '<tr><td colspan="4" class="py-8 text-center text-slate-400">— ไม่มีข้อมูลเชื้อก่อโรคตามตัวกรอง —</td></tr>'; return; }
+            let html = '';
+            data.forEach(w => {
+                w.orgs.forEach((o, i) => {
+                    html += '<tr class="hover:bg-slate-50">' +
+                        (i === 0 ? '<td class="py-2.5 px-4 font-semibold text-slate-700 align-top" rowspan="' + w.orgs.length + '">' + esc(w.ward) + '<br><span class="text-xs font-normal text-slate-400">' + w.kinds + ' ชนิด · ' + w.total + ' ครั้ง</span></td>' : '') +
+                        '<td class="py-2.5 px-4">' + esc(o.org) + '</td>' +
+                        '<td class="py-2.5 px-4 text-right font-medium">' + o.n + '</td>' +
+                        '<td class="py-2.5 px-4 text-right text-slate-500">' + (w.total ? Math.round(o.n / w.total * 100) : 0) + '%</td>' +
+                        '</tr>';
+                });
+            });
+            body.innerHTML = html;
+        }
+        function exportOrgByWardCSV() {
+            const data = orgByWardData();
+            const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
+            let csv = '﻿' + ['หอผู้ป่วย', 'จำนวนชนิดเชื้อ', 'เชื้อก่อโรค', 'จำนวน', '% ในหอ'].map(q).join(',') + '\n';
+            data.forEach(w => w.orgs.forEach(o => {
+                csv += [q(w.ward), w.kinds, q(o.org), o.n, (w.total ? Math.round(o.n / w.total * 100) : 0) + '%'].join(',') + '\n';
+            }));
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'org_by_ward.csv'; a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }
         function exportOrgBySiteCSV() {
             const data = orgBySiteData();
             let csv = '﻿' + ['ตำแหน่ง (SITE)', 'เชื้อก่อโรค', 'จำนวน', '% ในไซต์'].join(',') + '\n';
@@ -4451,6 +4515,8 @@
             ).join('') : '<tr><td colspan="4" class="py-8 text-center text-slate-400">— ไม่มีข้อมูลเชื้อก่อโรคตามตัวกรอง —</td></tr>';
             // ตารางเชื้อแยกตามไซต์ (ใช้ร่วมกับบทวิเคราะห์)
             renderOrgBySite('orgBySiteBody2');
+            // ตารางเชื้อแยกตามหอผู้ป่วย
+            renderOrgByWard('orgByWardBody');
             // กราฟ Top N (เลือกได้ 5/10/15/20/ทั้งหมด)
             const ctx = document.getElementById('orgTopChart');
             if (ctx) {
@@ -7559,6 +7625,7 @@
         window.addEventListener('resize', () => { if (document.getElementById('presentOverlay').classList.contains('show')) presentScale(); });
         document.getElementById('menuOrg').addEventListener('click', () => switchView('org'));
         document.getElementById('btnExportOrgSite2').addEventListener('click', exportOrgBySiteCSV);
+        document.getElementById('btnExportOrgWard').addEventListener('click', exportOrgByWardCSV);
         document.getElementById('btnExportOrgAll').addEventListener('click', exportOrgAllCSV);
         document.getElementById('orgTopN').addEventListener('change', updateOrgView);
         document.getElementById('menuPatient').addEventListener('click', () => switchView('patient'));
