@@ -1957,7 +1957,8 @@
                         .map(x => (x || '').toString().trim()).filter(Boolean),
                     // ---- วันที่สำหรับคำนวณ "กี่วันจึงเกิดอาการ" ----
                     dAdmit: parseAnyDate(pick(r, ['Admit', 'admit', 'วันนอน', 'date_admit'])),
-                    dOnset: parseAnyDate(pick(r, ['วันที่มีอาการ', 'onset', 'date_onset'])),
+                    // วันเริ่มมีอาการ: รองรับหัวที่เปลี่ยนชื่อเป็น Date Sign / Date of event
+                    dOnset: parseAnyDate(pick(r, ['วันที่มีอาการ', 'onset', 'date_onset', 'Date Sign', 'DateSign', 'Date of event', 'Dateofevent'])),
                     dOnVen: parseAnyDate(pick(r, ['Day On Ven', 'DayOnVen'])),
                     dOnCath: parseAnyDate(pick(r, ['Day On Cath', 'DayOnCath'])),
                     dOnLine: parseAnyDate(pick(r, ['Day On Line', 'DayOnLine'])),
