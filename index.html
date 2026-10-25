@@ -1102,11 +1102,17 @@
             <div id="patientKpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
             <!-- สามเหลี่ยมระบาดวิทยา: Host · Agent · Environment -->
             <div class="bg-gradient-to-r from-slate-50 to-white rounded-2xl border border-slate-100 p-5">
-                <div class="flex items-center gap-3">
-                    <span class="text-2xl">🔺</span>
-                    <div>
-                        <h3 class="text-lg font-semibold text-slate-800">วิเคราะห์ปัจจัยการเกิดโรคสามทาง (Epidemiologic Triad)</h3>
-                        <p class="text-xs text-slate-400 mt-0.5">วิเคราะห์ลักษณะการระบาดของการติดเชื้อตามปัจจัย <b>ผู้ป่วย (Host)</b> · <b>เชื้อก่อโรค (Agent)</b> · <b>สิ่งแวดล้อม (Environment)</b> — จากเคส HAI ตามตัวกรอง</p>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">🔺</span>
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-800">วิเคราะห์ปัจจัยการเกิดโรคสามทาง (Epidemiologic Triad)</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">วิเคราะห์ลักษณะการระบาดของการติดเชื้อตามปัจจัย <b>ผู้ป่วย (Host)</b> · <b>เชื้อก่อโรค (Agent)</b> · <b>สิ่งแวดล้อม (Environment)</b></p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <label for="patientTriadSite" class="text-xs font-medium text-slate-500">ตำแหน่งติดเชื้อ (SITE)</label>
+                        <select id="patientTriadSite" class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-200"></select>
                     </div>
                 </div>
             </div>
@@ -4503,10 +4509,11 @@
                 kpi('อายุเฉลี่ย', avgAge == null ? '-' : avgAge.toFixed(0), 'ปี (' + ages.length + ' ราย)', 'text-sky-700') +
                 kpi('ชาย : หญิง', male + ' : ' + female, (n ? Math.round(male / n * 100) : 0) + '% : ' + (n ? Math.round(female / n * 100) : 0) + '%', 'text-violet-700') +
                 kpi('วันจนเกิดอาการ (เฉลี่ย)', avgD == null ? '-' : avgD.toFixed(1), 'วัน (' + dList.length + ' ราย)', 'text-amber-700');
-            // สามเหลี่ยมระบาดวิทยา
-            renderPatientTriad(cases);
-            // Early vs Late onset
-            renderOnsetStrata(cases);
+            // สามเหลี่ยมระบาดวิทยา + Early/Late — กรองตาม SITE ที่เลือก
+            populateTriadSiteFilter(cases);
+            const triadCases = triadFilteredCases(cases);
+            renderPatientTriad(triadCases);
+            renderOnsetStrata(triadCases);
             // กราฟกลุ่มอายุ
             const grp = PATIENT_AGE_GROUPS.map(g => ages.filter(a => a >= g[0] && a <= g[1]).length);
             const ctxA = document.getElementById('patientAgeChart');
@@ -4545,6 +4552,21 @@
         // ---------- สามเหลี่ยมระบาดวิทยา (Host · Agent · Environment) ----------
         function triadTokens(s) { return (s || '').toString().split(/[,;\/]+/).map(x => x.trim()).filter(Boolean); }
         function triadTop(cnt, k) { return Object.keys(cnt).map(key => ({ k: key, n: cnt[key] })).sort((a, b) => b.n - a.n).slice(0, k); }
+        // ตัวกรอง SITE ของสามเหลี่ยมระบาด (เติม options + กรอง)
+        function populateTriadSiteFilter(cases) {
+            const sel = document.getElementById('patientTriadSite'); if (!sel) return;
+            const cnt = {}; cases.forEach(c => { const s = c.siteType || 'อื่น ๆ'; cnt[s] = (cnt[s] || 0) + 1; });
+            const cur = sel.value || 'ALL';
+            const opts = ['<option value="ALL">ทุกตำแหน่ง (' + cases.length + ')</option>']
+                .concat(Object.keys(cnt).sort().map(s => '<option value="' + s + '">' + s + ' (' + cnt[s] + ')</option>'));
+            sel.innerHTML = opts.join('');
+            sel.value = [...sel.options].some(o => o.value === cur) ? cur : 'ALL';
+        }
+        function triadFilteredCases(cases) {
+            const sel = document.getElementById('patientTriadSite');
+            const v = sel ? sel.value : 'ALL';
+            return (!v || v === 'ALL') ? cases : cases.filter(c => (c.siteType || 'อื่น ๆ') === v);
+        }
         function renderPatientTriad(cases) {
             const host = document.getElementById('patientTriad');
             if (!host) return;
@@ -7517,6 +7539,7 @@
         document.getElementById('orgTopN').addEventListener('change', updateOrgView);
         document.getElementById('menuPatient').addEventListener('click', () => switchView('patient'));
         document.getElementById('btnExportPatient').addEventListener('click', exportPatientCSV);
+        document.getElementById('patientTriadSite').addEventListener('change', updatePatientView);
         document.getElementById('menuSurv').addEventListener('click', () => switchView('surv'));
         document.getElementById('btnExportSurv').addEventListener('click', exportSurvCSV);
         document.getElementById('menuSpecial').addEventListener('click', () => switchView('special'));
