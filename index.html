@@ -1100,6 +1100,17 @@
         <!-- ===================== VIEW: วิเคราะห์ผู้ป่วย ===================== -->
         <div id="viewPatient" class="space-y-6" hidden>
             <div id="patientKpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            <!-- สามเหลี่ยมระบาดวิทยา: Host · Agent · Environment -->
+            <div class="bg-gradient-to-r from-slate-50 to-white rounded-2xl border border-slate-100 p-5">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🔺</span>
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">วิเคราะห์ปัจจัยการเกิดโรคสามทาง (Epidemiologic Triad)</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">วิเคราะห์ลักษณะการระบาดของการติดเชื้อตามปัจจัย <b>ผู้ป่วย (Host)</b> · <b>เชื้อก่อโรค (Agent)</b> · <b>สิ่งแวดล้อม (Environment)</b> — จากเคส HAI ตามตัวกรอง</p>
+                    </div>
+                </div>
+            </div>
+            <div id="patientTriad" class="grid gap-5 md:grid-cols-2 xl:grid-cols-3"></div>
             <div class="grid lg:grid-cols-2 gap-6">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-6 border-b border-slate-100"><h3 class="text-lg font-semibold text-slate-800">การกระจายตามกลุ่มอายุ</h3><p class="text-xs text-slate-400 mt-1">เคส HAI ตามตัวกรอง</p></div>
@@ -1952,6 +1963,9 @@
                     sex: pick(r, ['เพศ', 'sex']).toString().trim(),
                     age: pick(r, ['อายุ', 'age']).toString().trim(),
                     amr: pick(r, ['AMR']).toString().trim(),              // ชนิดผลดื้อยา (แสดงได้ ไม่ใช่ข้อมูลส่วนบุคคล)
+                    mdrType: pick(r, ['MDR']).toString().trim(),          // กลไก/ชนิดดื้อยา (mdr/cre/esbl/mrsa)
+                    ud: pick(r, ['UD', 'โรคประจำตัว', 'Underlying']).toString().trim(),       // โรคประจำตัว (Host)
+                    admitFrom: pick(r, ['การมา', 'แหล่งที่มา', 'Source', 'การมารพ']).toString().trim(), // แหล่งรับผู้ป่วย (Environment)
                     // ---- เชื้อก่อโรค (รองรับหลายเชื้อ: คอลัมน์ 1-3 + บรรทัดต่อที่ HAI ว่าง) ----
                     organisms: [pick(r, ['เชื้อก่อโรค']), pick(r, ['เชื้อก่อโรค2']), pick(r, ['เชื้อก่อโรค3'])]
                         .map(x => (x || '').toString().trim()).filter(Boolean),
@@ -4471,6 +4485,8 @@
                 kpi('อายุเฉลี่ย', avgAge == null ? '-' : avgAge.toFixed(0), 'ปี (' + ages.length + ' ราย)', 'text-sky-700') +
                 kpi('ชาย : หญิง', male + ' : ' + female, (n ? Math.round(male / n * 100) : 0) + '% : ' + (n ? Math.round(female / n * 100) : 0) + '%', 'text-violet-700') +
                 kpi('วันจนเกิดอาการ (เฉลี่ย)', avgD == null ? '-' : avgD.toFixed(1), 'วัน (' + dList.length + ' ราย)', 'text-amber-700');
+            // สามเหลี่ยมระบาดวิทยา
+            renderPatientTriad(cases);
             // กราฟกลุ่มอายุ
             const grp = PATIENT_AGE_GROUPS.map(g => ages.filter(a => a >= g[0] && a <= g[1]).length);
             const ctxA = document.getElementById('patientAgeChart');
@@ -4505,6 +4521,88 @@
                 '<td class="py-2.5 px-4 text-right">' + (b.dN ? (b.dSum / b.dN).toFixed(1) : '-') + '</td>' +
                 '<td class="py-2.5 px-4 text-right text-fuchsia-700">' + (b.n ? Math.round(b.mdr / b.n * 100) + '%' : '-') + '</td></tr>'
             ).join('') : '<tr><td colspan="7" class="py-8 text-center text-slate-400">— ไม่มีเคส HAI ตามตัวกรอง —</td></tr>';
+        }
+        // ---------- สามเหลี่ยมระบาดวิทยา (Host · Agent · Environment) ----------
+        function triadTokens(s) { return (s || '').toString().split(/[,;\/]+/).map(x => x.trim()).filter(Boolean); }
+        function triadTop(cnt, k) { return Object.keys(cnt).map(key => ({ k: key, n: cnt[key] })).sort((a, b) => b.n - a.n).slice(0, k); }
+        function renderPatientTriad(cases) {
+            const host = document.getElementById('patientTriad');
+            if (!host) return;
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            const n = cases.length;
+            // ===== HOST (ผู้ป่วย) =====
+            const ages = cases.map(c => parseFloat(c.age)).filter(a => isFinite(a));
+            const avgAge = ages.length ? (ages.reduce((a, b) => a + b, 0) / ages.length) : null;
+            const elderly = ages.filter(a => a >= 65).length;
+            const male = cases.filter(c => /^m/i.test(c.sex)).length;
+            const female = cases.filter(c => /^f/i.test(c.sex)).length;
+            const ageGrp = PATIENT_AGE_GROUPS.map(g => ({ k: g[2], n: ages.filter(a => a >= g[0] && a <= g[1]).length })).filter(x => x.n > 0);
+            const udCnt = {}; cases.forEach(c => triadTokens(c.ud).forEach(u => { const k = u.toLowerCase(); udCnt[k] = (udCnt[k] || 0) + 1; }));
+            const udTop = triadTop(udCnt, 5);
+            // ===== AGENT (เชื้อก่อโรค) =====
+            const orgCnt = {}; cases.forEach(c => (c.organisms || []).forEach(o => { const k = o.toLowerCase(); orgCnt[k] = (orgCnt[k] || 0) + 1; }));
+            const orgTop = triadTop(orgCnt, 5);
+            const distinctOrg = Object.keys(orgCnt).length;
+            const mdrN = cases.filter(c => c.isMDR).length;
+            const mdrPct = n ? Math.round(mdrN / n * 100) : 0;
+            // กลไก/ชนิดดื้อยา: ดึงจาก mdrType + amr + ชื่อเชื้อ (cre/esbl/mrsa/xdr/mdr)
+            const mechCnt = {};
+            const mechPats = [['CRE', /\bcre\b/i], ['ESBL', /esbl/i], ['MRSA', /mrsa/i], ['XDR', /\bxdr\b/i], ['VRE', /\bvre\b/i], ['MDR', /\bmdr\b/i]];
+            cases.forEach(c => {
+                if (!c.isMDR) return;
+                const blob = [c.mdrType, c.amr, (c.organisms || []).join(' ')].join(' ');
+                let tagged = false;
+                mechPats.forEach(([lbl, re]) => { if (re.test(blob)) { mechCnt[lbl] = (mechCnt[lbl] || 0) + 1; tagged = true; } });
+                if (!tagged) mechCnt['อื่น ๆ'] = (mechCnt['อื่น ๆ'] || 0) + 1;
+            });
+            const mechTop = triadTop(mechCnt, 5);
+            // ===== ENVIRONMENT (สิ่งแวดล้อม) =====
+            const unitCnt = {}; cases.forEach(c => { const u = c.unit || '(ไม่ระบุ)'; unitCnt[u] = (unitCnt[u] || 0) + 1; });
+            const unitTop = triadTop(unitCnt, 5);
+            const distinctUnit = Object.keys(unitCnt).filter(u => u !== '(ไม่ระบุ)').length;
+            const devSites = { CAUTI: 1, VAP: 1, CLABSI: 1 };
+            const devN = cases.filter(c => devSites[c.siteType]).length;
+            const devPct = n ? Math.round(devN / n * 100) : 0;
+            const srcCnt = {}; cases.forEach(c => { const s = c.admitFrom || '(ไม่ระบุ)'; srcCnt[s] = (srcCnt[s] || 0) + 1; });
+            const srcTop = triadTop(srcCnt, 4);
+            // ---- ตัวช่วยสร้าง HTML ----
+            const chip = (val, label, tint) => '<div class="flex-1 text-center px-1"><p class="text-xl font-bold ' + tint + ' leading-none">' + val + '</p><p class="text-[11px] text-slate-400 mt-1">' + label + '</p></div>';
+            const block = (title, arr, color) => {
+                const max = Math.max(1, ...arr.map(x => x.n));
+                return '<div class="mt-3"><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">' + title + '</p>' +
+                    (arr.length ? arr.map(x => '<div class="flex items-center gap-2 mb-1.5">' +
+                        '<span class="w-24 shrink-0 truncate text-xs text-slate-600" title="' + esc(x.k) + '">' + esc(x.k) + '</span>' +
+                        '<div class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full" style="width:' + Math.round(x.n / max * 100) + '%;background:' + color + '"></div></div>' +
+                        '<span class="w-6 text-right text-xs font-semibold text-slate-700">' + x.n + '</span></div>').join('') :
+                        '<p class="text-xs text-slate-300">—</p>') + '</div>';
+            };
+            const card = (vertex, thai, icon, accent, bar, chips, blocks) =>
+                '<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">' +
+                '<div class="px-5 py-4 text-white" style="background:' + accent + '"><div class="flex items-center gap-3">' +
+                '<span class="text-2xl leading-none">' + icon + '</span><div><p class="text-[11px] opacity-80 uppercase tracking-widest">' + vertex + '</p>' +
+                '<h4 class="text-lg font-bold leading-tight">' + thai + '</h4></div></div></div>' +
+                '<div class="p-5 flex flex-col flex-1">' +
+                '<div class="flex gap-1 pb-3 border-b border-slate-100">' + chips + '</div>' + blocks + '</div></div>';
+            if (!n) { host.innerHTML = '<div class="xl:col-span-3 md:col-span-2 bg-white rounded-2xl border border-slate-100 p-10 text-center text-slate-400">— ไม่มีเคส HAI ตามตัวกรอง —</div>'; return; }
+            host.innerHTML =
+                card('HOST', 'ผู้ป่วย', '🧑‍🦱', 'linear-gradient(135deg,#0284c7,#38bdf8)', '#0ea5e9',
+                    chip(avgAge == null ? '-' : avgAge.toFixed(0), 'อายุเฉลี่ย (ปี)', 'text-sky-700') +
+                    chip(elderly, 'สูงอายุ ≥65', 'text-sky-700') +
+                    chip(male + ':' + female, 'ชาย : หญิง', 'text-sky-700'),
+                    block('การกระจายตามกลุ่มอายุ', ageGrp, '#38bdf8') +
+                    block('โรคประจำตัวที่พบบ่อย', udTop, '#0ea5e9')) +
+                card('AGENT', 'เชื้อก่อโรค', '🦠', 'linear-gradient(135deg,#e11d48,#fb7185)', '#f43f5e',
+                    chip(distinctOrg, 'ชนิดเชื้อ', 'text-rose-600') +
+                    chip(mdrN, 'เคสดื้อยา', 'text-rose-600') +
+                    chip(mdrPct + '%', '% ดื้อยา', 'text-rose-600'),
+                    block('เชื้อก่อโรคที่พบบ่อย', orgTop, '#fb7185') +
+                    block('กลไก / ชนิดการดื้อยา', mechTop, '#e11d48')) +
+                card('ENVIRONMENT', 'สิ่งแวดล้อม', '🏥', 'linear-gradient(135deg,#059669,#34d399)', '#10b981',
+                    chip(distinctUnit, 'จำนวนหอผู้ป่วย', 'text-emerald-700') +
+                    chip(devN, 'สัมพันธ์อุปกรณ์', 'text-emerald-700') +
+                    chip(devPct + '%', '% จากอุปกรณ์', 'text-emerald-700'),
+                    block('หอผู้ป่วยที่พบบ่อย', unitTop, '#34d399') +
+                    block('แหล่งรับผู้ป่วย (การมา)', srcTop, '#059669'));
         }
         function exportPatientCSV() {
             const q = v => '"' + (v == null ? '' : v.toString()).replace(/"/g, '""') + '"';
