@@ -2346,6 +2346,25 @@
             return getFilteredRows().filter(d => d.isHAI);
         }
 
+        // เด็กเกิดมีชีพต่อเดือน (ตัวหาร Omphalitis) — เป็นค่าระดับ รพ./หอ OBE
+        // ไม่ผูกกับตัวกรอง "หอผู้ป่วย" เพราะรายงานเฉพาะหอ OBE เท่านั้น
+        // => เมื่อมีเคส Omphalitis ในหอใด ก็ยังดึงเด็กเกิดมีชีพของ OBE มาเป็นตัวหารได้
+        function liveBirthByMonthIgnoringWard() {
+            const y = document.getElementById('filterYear').value;
+            const q = document.getElementById('filterQuarter').value;
+            const p = document.getElementById('filterPCT').value;
+            const out = {};
+            FISCAL_MONTHS.forEach(m => out[m] = 0);
+            rawData.forEach(d => {
+                if (d.month == null || out[d.month] === undefined) return;
+                if (y !== 'ALL' && d.year !== y) return;
+                if (q !== 'ALL' && d.quarter !== q) return;
+                if (p !== 'ALL' && d.pct !== p) return;
+                out[d.month] += (d.liveBirth || 0);
+            });
+            return out;
+        }
+
         // รวมตัวหารต่อเดือน: วัน device-days / วันนอน / จำนวนผ่าตัด (จากทุกแถว)
         function aggregateDenominatorsByMonth(rows) {
             const den = {};
@@ -2361,8 +2380,10 @@
                 den[r.month].venN += r.venN;
                 den[r.month].lineN += r.lineN;
                 den[r.month].ivDay += (r.bsi2 || 0) + (r.bsi4 || 0);   // วันให้สารน้ำ + วัน NSS Lock (ตัวหาร BSI)
-                den[r.month].liveBirth += (r.liveBirth || 0);          // เด็กเกิดมีชีพ (ตัวหาร Omphalitis)
             });
+            // เด็กเกิดมีชีพ: ใช้ค่าระดับ รพ./OBE (ไม่สนตัวกรองหอผู้ป่วย) เป็นตัวหาร Omphalitis
+            const lb = liveBirthByMonthIgnoringWard();
+            FISCAL_MONTHS.forEach(m => { den[m].liveBirth = lb[m] || 0; });
             return den;
         }
 
