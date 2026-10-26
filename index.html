@@ -1267,7 +1267,23 @@
                         <tbody id="survQiBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
-                <p class="px-6 py-3 text-xs text-slate-400 border-t border-slate-100">* แถวอัตรา (HAI/CAUTI/VAP/CLABSI/SSI/Omph/MDR) เป็นการเฝ้าระวังแนวโน้ม ไม่กำหนดผ่าน/ไม่ผ่าน · ตัวชี้วัดความทันเวลา (24–48 ชม.) และความถูกต้อง รอกรอกคอลัมน์ Date Sign / สอบทาน จึงจะคำนวณได้</p>
+                <p class="px-6 py-3 text-xs text-slate-400 border-t border-slate-100">* แถวอัตรา (HAI/CAUTI/VAP/CLABSI/SSI/Omph/MDR) เป็นการเฝ้าระวังแนวโน้ม ไม่กำหนดผ่าน/ไม่ผ่าน · ความสมบูรณ์ใช้ช่องบังคับตามชนิดเคส (core + เงื่อนไข device/SSI/MDR) · ความทันเวลา (24–48 ชม.) และความถูกต้อง รอกรอก Date Sign / สอบทาน</p>
+            </div>
+            <!-- ช่องที่ขาดบ่อยสุด (วินิจฉัยความสมบูรณ์) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h3 class="text-lg font-semibold text-slate-800">ช่องที่บันทึกไม่ครบบ่อยสุด</h3>
+                    <p class="text-xs text-slate-400 mt-1">ช่วยชี้ว่าควรเร่งกรอกช่องใด (จากเคส HAI ทั้งหมดตามตัวกรอง) — <b>จำนวนที่ขาด / เคสที่ต้องกรอก</b></p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold"><tr>
+                            <th class="py-3 px-4">ช่องข้อมูล</th><th class="py-3 px-4 text-right">ขาด</th>
+                            <th class="py-3 px-4 text-right">ต้องกรอก</th><th class="py-3 px-4 text-right">% ที่ขาด</th>
+                        </tr></thead>
+                        <tbody id="survQiMissBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
             </div>
             <div class="grid lg:grid-cols-2 gap-6">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -2084,6 +2100,7 @@
                     age: pick(r, ['อายุ', 'age']).toString().trim(),
                     amr: pick(r, ['AMR']).toString().trim(),              // ชนิดผลดื้อยา (แสดงได้ ไม่ใช่ข้อมูลส่วนบุคคล)
                     mdrType: pick(r, ['MDR']).toString().trim(),          // กลไก/ชนิดดื้อยา (mdr/cre/esbl/mrsa)
+                    hasDrugR: !!pick(r, ['ชื่อยา R', 'ชื่อยาR', 'กลุ่มยา R', 'กลุ่มยาR']).toString().trim(), // มีบันทึกยาที่ดื้อ (R)
                     ud: pick(r, ['UD', 'โรคประจำตัว', 'Underlying']).toString().trim(),       // โรคประจำตัว (Host)
                     admitFrom: pick(r, ['การมา', 'แหล่งที่มา', 'Source', 'การมารพ']).toString().trim(), // แหล่งรับผู้ป่วย (Environment)
                     // ---- ตำแหน่ง/หอที่ใส่อุปกรณ์ต้นเหตุ (Environment): Tube=ท่อช่วยหายใจ FC=สายสวนปัสสาวะ CLine=สายหลอดเลือด ----
@@ -5152,21 +5169,60 @@
         function qiLiveBirth(Q) {
             return rawData.reduce((a, d) => a + ((d.quarter === Q && fPass('year', d.year) && fPass('pct', d.pct)) ? (d.liveBirth || 0) : 0), 0);
         }
-        // เคสถือว่า "บันทึกครบ" = มีช่องบังคับครบ: Admit · SITE · เชื้อก่อโรค · Date of event · หอผู้ป่วย
-        function qiComplete(c) { return !!(c.dAdmit && (c.rawSITE || c.siteType) && c.organisms && c.organisms.length && c.dEvent && c.unit); }
+        // ช่องบังคับแบบมีเงื่อนไขตามชนิดเคส → [{label, ok}]
+        function qiFieldSpec(c) {
+            const spec = [
+                { label: 'หอผู้ป่วย', ok: !!c.unit },
+                { label: 'กลุ่มงาน (PCT)', ok: !!c.pct },
+                { label: 'ปี', ok: !!c.year },
+                { label: 'เดือน', ok: c.month != null },
+                { label: 'เพศ', ok: !!(c.sex && c.sex.trim()) },
+                { label: 'อายุ', ok: isFinite(parseFloat(c.age)) },
+                { label: 'วันนอน (Admit)', ok: !!c.dAdmit },
+                { label: 'ตำแหน่ง (SITE)', ok: !!(c.rawSITE || c.siteType) },
+                { label: 'ผลดื้อยา (AMR)', ok: !!(c.amr && c.amr.trim()) },
+                { label: 'เชื้อก่อโรค', ok: !!(c.organisms && c.organisms.length) },
+                { label: 'Date of event', ok: !!c.dEvent }
+            ];
+            if (c.siteType === 'CAUTI') spec.push({ label: 'วันใส่สายปัสสาวะ', ok: !!c.dOnCath });
+            if (c.siteType === 'VAP') spec.push({ label: 'วันใส่ท่อช่วยหายใจ', ok: !!c.dOnVen });
+            if (c.siteType === 'CLABSI') spec.push({ label: 'วันใส่สายหลอดเลือด', ok: !!c.dOnLine });
+            if (c.siteType === 'SSI') {
+                spec.push({ label: 'ชื่อผ่าตัด', ok: !!c.opName });
+                spec.push({ label: 'เวลาผ่าตัด (Total-time)', ok: c.opTime > 0 });
+                spec.push({ label: 'ASA', ok: c.asaN != null });
+                spec.push({ label: 'ชนิดแผล/SSI', ok: !!(c.ssiType || c.w1 || c.w2 || c.w3 || c.w4) });
+            }
+            if (c.isMDR) spec.push({ label: 'ยาที่ดื้อ (R)', ok: !!c.hasDrugR });
+            return spec;
+        }
+        function qiComplete(c) { return qiFieldSpec(c).every(f => f.ok); }
+        // สรุปช่องที่ขาดบ่อยสุด (ระดับช่อง) จากเคส HAI
+        function qiMissingFields(hai) {
+            const agg = {};
+            hai.forEach(c => qiFieldSpec(c).forEach(f => {
+                const a = agg[f.label] || (agg[f.label] = { label: f.label, applicable: 0, missing: 0 });
+                a.applicable++; if (!f.ok) a.missing++;
+            }));
+            return Object.values(agg).filter(a => a.missing > 0)
+                .map(a => ({ ...a, pct: a.applicable ? Math.round(a.missing / a.applicable * 100) : 0 }))
+                .sort((x, y) => y.missing - x.missing);
+        }
         function qiStatsForRows(rows) {
             const hai = rows.filter(r => r.isHAI);
             const n = hai.length;
             const yes = hai.filter(survYes).length, no = hai.filter(survNo).length, ev = yes + no;
-            const complete = hai.filter(qiComplete).length;
+            let complete = 0, cellFilled = 0, cellTotal = 0;
+            hai.forEach(c => { const sp = qiFieldSpec(c); let all = true; sp.forEach(f => { cellTotal++; if (f.ok) cellFilled++; else all = false; }); if (all) complete++; });
             const den = { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0 };
             rows.forEach(r => { den.patientDay += r.patientDay || 0; den.cathDay += r.cathDay || 0; den.venDay += r.venDay || 0; den.lineDay += r.lineDay || 0; den.op += r.op || 0; });
             const site = { CAUTI: 0, VAP: 0, CLABSI: 0, SSI: 0, Omphalitis: 0 };
             hai.forEach(c => { if (site[c.siteType] !== undefined) site[c.siteType]++; });
             const mdr = hai.filter(c => c.isMDR).length;
-            return { n, yes, no, ev, complete, den, site, mdr,
+            return { n, yes, no, ev, complete, den, site, mdr, cellFilled, cellTotal,
                 sens: ev ? yes / ev * 100 : null,
                 compPct: n ? complete / n * 100 : null,
+                cellPct: cellTotal ? cellFilled / cellTotal * 100 : null,
                 mdrPct: n ? mdr / n * 100 : null };
         }
         function qiData() {
@@ -5195,8 +5251,10 @@
             let html = '';
             // 1 ความไว
             html += '<tr class="hover:bg-slate-50">' + labelCell('1. ความไวของระบบเฝ้าระวัง', 'รายงาน ÷ (รายงาน+ไม่รายงาน)') + tgt('≥ 80%') + get(s => pctCell(s.sens, 80, s.yes, s.ev, 'ครั้ง')).join('') + '</tr>';
-            // 2 ความครบถ้วน
-            html += '<tr class="hover:bg-slate-50">' + labelCell('2. ความครบถ้วนของการบันทึก', 'กรอกครบ: Admit·SITE·เชื้อ·Date of event·หอ') + tgt('≥ 90%') + get(s => pctCell(s.compPct, 90, s.complete, s.n, 'เคส')).join('') + '</tr>';
+            // 2 ความสมบูรณ์ ระดับเคส (ช่องบังคับตามชนิดเคส)
+            html += '<tr class="hover:bg-slate-50">' + labelCell('2. ความสมบูรณ์ของการบันทึก (ระดับเคส)', 'เคสที่กรอกครบทุกช่องบังคับตามชนิดเคส') + tgt('≥ 90%') + get(s => pctCell(s.compPct, 90, s.complete, s.n, 'เคส')).join('') + '</tr>';
+            // 2b ความสมบูรณ์ ระดับช่อง (เซลล์)
+            html += '<tr class="hover:bg-slate-50">' + labelCell('2b. ความสมบูรณ์รายช่อง (เซลล์)', 'เซลล์บังคับที่กรอก ÷ เซลล์บังคับทั้งหมด') + tgt('≥ 95%') + get(s => pctCell(s.cellPct, 95, s.cellFilled, s.cellTotal, 'ช่อง')).join('') + '</tr>';
             // คั่นกลุ่มผลลัพธ์
             html += '<tr class="bg-slate-50"><td colspan="7" class="py-2 px-4 text-[11px] font-bold uppercase tracking-wider text-slate-500">อัตราผลลัพธ์ (เฝ้าระวังแนวโน้ม)</td></tr>';
             // 5 HAI /1000 วันนอน
@@ -5213,6 +5271,18 @@
             // แถวจำนวนเคส HAI อ้างอิง
             html += '<tr class="bg-slate-50/60 text-slate-500">' + labelCell('จำนวนเคส HAI (อ้างอิง)', '') + '<td></td>' + get(s => s.n).map(v => '<td class="py-2.5 px-4 text-right">' + v + '</td>').join('') + '</tr>';
             body.innerHTML = html;
+            // ตารางช่องที่ขาดบ่อยสุด (จากเคส HAI ทั้งปีตามตัวกรอง)
+            const miss = document.getElementById('survQiMissBody');
+            if (miss) {
+                const hai = qiBaseRows().filter(r => r.isHAI);
+                const mf = qiMissingFields(hai);
+                const esc2 = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+                miss.innerHTML = mf.length ? mf.map(a => '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 text-slate-700">' + esc2(a.label) + '</td>' +
+                    '<td class="py-2.5 px-4 text-right font-semibold ' + (a.pct >= 50 ? 'text-rose-600' : a.pct >= 20 ? 'text-amber-600' : 'text-slate-600') + '">' + a.missing + '</td>' +
+                    '<td class="py-2.5 px-4 text-right text-slate-500">' + a.applicable + '</td>' +
+                    '<td class="py-2.5 px-4 text-right ' + (a.pct >= 50 ? 'text-rose-600' : a.pct >= 20 ? 'text-amber-600' : 'text-slate-500') + '">' + a.pct + '%</td></tr>').join('')
+                    : '<tr><td colspan="4" class="py-8 text-center text-emerald-600">✓ ข้อมูลครบทุกช่องบังคับ</td></tr>';
+            }
         }
         function exportQiCSV() {
             const d = qiData();
@@ -5224,7 +5294,8 @@
             let csv = '﻿' + [q('ตัวชี้วัด'), q('เป้าหมาย'), q('Q1'), q('Q2'), q('Q3'), q('Q4'), q('รวมทั้งปี')].join(',') + '\n';
             const line = (label, target, vals) => { csv += [q(label), q(target), ...vals.map(q)].join(',') + '\n'; };
             line('1. ความไวของระบบเฝ้าระวัง', '≥80%', g(s => pc(s.sens, s.yes, s.ev)));
-            line('2. ความครบถ้วนของการบันทึก', '≥90%', g(s => pc(s.compPct, s.complete, s.n)));
+            line('2. ความสมบูรณ์การบันทึก (ระดับเคส)', '≥90%', g(s => pc(s.compPct, s.complete, s.n)));
+            line('2b. ความสมบูรณ์รายช่อง (เซลล์)', '≥95%', g(s => pc(s.cellPct, s.cellFilled, s.cellTotal)));
             line('5. อัตรา HAI /1000 วันนอน', 'แนวโน้ม', g(s => rate(s.n, s.den.patientDay, 1000)));
             line('6. CAUTI /1000 วันคาสายปัสสาวะ', 'แนวโน้ม', g(s => rate(s.site.CAUTI, s.den.cathDay, 1000)));
             line('6. VAP /1000 วันเครื่องช่วยหายใจ', 'แนวโน้ม', g(s => rate(s.site.VAP, s.den.venDay, 1000)));
