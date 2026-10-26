@@ -1316,6 +1316,27 @@
                     </table>
                 </div>
             </div>
+            <!-- สัดส่วนการพัฒนาระบบ รายไตรมาส -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">สัดส่วนการพัฒนาระบบ รายไตรมาส</h3>
+                        <p class="text-xs text-slate-400 mt-1">ความคืบหน้าการพัฒนา (เฟสโครงการ) · ตัวหาร = ฟังก์ชันทั้งหมด 22 รายการ · เกณฑ์: ดีมาก ≥90% · ดี 75–89% · พอใช้ 60–74%</p>
+                    </div>
+                    <button id="btnExportDev" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold"><tr>
+                            <th class="py-3 px-4">ไตรมาส</th><th class="py-3 px-4">งานหลัก (เฟส)</th>
+                            <th class="py-3 px-4 text-right">ในไตรมาส</th><th class="py-3 px-4 text-right">สะสม</th>
+                            <th class="py-3 px-4 text-center">เกณฑ์สะสม</th><th class="py-3 px-4 min-w-[9rem]">% สะสม</th><th class="py-3 px-4 text-center">ผล</th>
+                        </tr></thead>
+                        <tbody id="survDevBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+                <p class="px-6 py-3 text-xs text-slate-400 border-t border-slate-100">* เป็น "ความคืบหน้าการพัฒนาสะสม (เฟสงาน)" ตามแผนโครงการ ไม่ใช่สัดส่วนบรรทัดโค้ดต่อไตรมาส</p>
+            </div>
         </div><!-- /viewSurv -->
 
         <!-- ===================== VIEW: เฝ้าระวังหน่วยพิเศษ ===================== -->
@@ -5159,6 +5180,49 @@
             }).join('') : '<tr><td colspan="7" class="py-8 text-center text-slate-400">— ไม่มีเคส HAI ตามตัวกรอง —</td></tr>';
             // ตารางตัวชี้วัดคุณภาพรายไตรมาส
             renderSurvQi();
+            // สัดส่วนการพัฒนาระบบรายไตรมาส
+            renderSurvDev();
+        }
+
+        /* ---------- สัดส่วนการพัฒนาระบบ รายไตรมาส (เฟสโครงการ) ---------- */
+        const DEV_TOTAL = 22;
+        const DEV_PHASES = [
+            { q: 'Q1', phase: 'วางแผน/ออกแบบ + บันทึกข้อมูล', add: 4, target: 15 },
+            { q: 'Q2', phase: 'พัฒนาเมนูหลัก', add: 7, target: 45 },
+            { q: 'Q3', phase: 'วิเคราะห์เชิงลึก', add: 7, target: 75 },
+            { q: 'Q4', phase: 'ทดสอบ + ใช้งานจริง', add: 4, target: 100 }
+        ];
+        function devRows() {
+            let cum = 0;
+            return DEV_PHASES.map(p => { cum += p.add; return { ...p, cum, cumPct: +(cum / DEV_TOTAL * 100).toFixed(1), addPct: +(p.add / DEV_TOTAL * 100).toFixed(1) }; });
+        }
+        function renderSurvDev() {
+            const body = document.getElementById('survDevBody'); if (!body) return;
+            const rows = devRows();
+            body.innerHTML = rows.map(r => {
+                const pass = r.cumPct >= r.target;
+                return '<tr class="hover:bg-slate-50">' +
+                    '<td class="py-2.5 px-4 font-semibold text-slate-700">' + r.q + '</td>' +
+                    '<td class="py-2.5 px-4 text-slate-600">' + r.phase + '</td>' +
+                    '<td class="py-2.5 px-4 text-right">' + r.add + '/' + DEV_TOTAL + ' <span class="text-xs text-slate-400">(' + r.addPct + '%)</span></td>' +
+                    '<td class="py-2.5 px-4 text-right font-medium">' + r.cum + '/' + DEV_TOTAL + '</td>' +
+                    '<td class="py-2.5 px-4 text-center text-xs text-slate-500">≥ ' + r.target + '%</td>' +
+                    '<td class="py-2.5 px-4"><div class="flex items-center gap-2"><div class="flex-1 h-2.5 rounded-full bg-slate-100 overflow-hidden min-w-[4rem]"><div class="h-full rounded-full bg-emerald-500" style="width:' + r.cumPct + '%"></div></div><span class="w-12 text-right text-xs font-semibold text-slate-700">' + r.cumPct + '%</span></div></td>' +
+                    '<td class="py-2.5 px-4 text-center">' + (pass ? '<span class="text-emerald-600 font-semibold">✓ ผ่าน</span>' : '<span class="text-rose-600 font-semibold">✗</span>') + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+        function exportDevCSV() {
+            const rows = devRows();
+            const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
+            let csv = '﻿' + ['ไตรมาส', 'งานหลัก', 'ในไตรมาส', 'สัดส่วนไตรมาส', 'สะสม', '% สะสม', 'เกณฑ์สะสม', 'ผล'].map(q).join(',') + '\n';
+            rows.forEach(r => {
+                csv += [q(r.q), q(r.phase), r.add + '/' + DEV_TOTAL, r.addPct + '%', r.cum + '/' + DEV_TOTAL, r.cumPct + '%', '≥' + r.target + '%', (r.cumPct >= r.target ? 'ผ่าน' : 'ไม่ผ่าน')].join(',') + '\n';
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'development_progress.csv'; a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
         }
 
         /* ---------- ตัวชี้วัดคุณภาพระบบเฝ้าระวัง รายไตรมาส ---------- */
@@ -8047,6 +8111,7 @@
         document.getElementById('menuSurv').addEventListener('click', () => switchView('surv'));
         document.getElementById('btnExportSurv').addEventListener('click', exportSurvCSV);
         document.getElementById('btnExportQi').addEventListener('click', exportQiCSV);
+        document.getElementById('btnExportDev').addEventListener('click', exportDevCSV);
         document.getElementById('menuSpecial').addEventListener('click', () => switchView('special'));
         document.getElementById('btnExportSpecial').addEventListener('click', exportSpecialCSV);
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
