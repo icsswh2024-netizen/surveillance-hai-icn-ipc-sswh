@@ -227,27 +227,37 @@
         <!-- Filter Controls -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
+                <div class="ms-filter relative" data-key="year">
                     <label class="block text-sm font-semibold text-slate-700 mb-2">ปี งบประมาณ (พ.ศ.)</label>
-                    <select id="filterYear" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"></select>
+                    <button type="button" class="ms-btn w-full rounded-lg border-slate-300 border px-3 py-2 text-left text-slate-700 bg-white flex items-center justify-between gap-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                        <span class="ms-label truncate">ทุกปี</span>
+                        <svg class="w-4 h-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="ms-pop hidden absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-64 overflow-y-auto p-2"></div>
                 </div>
-                <div>
+                <div class="ms-filter relative" data-key="quarter">
                     <label class="block text-sm font-semibold text-slate-700 mb-2">ไตรมาส</label>
-                    <select id="filterQuarter" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors">
-                        <option value="ALL">ทุกไตรมาส</option>
-                        <option value="Q1">ไตรมาส 1 (ต.ค. - ธ.ค.)</option>
-                        <option value="Q2">ไตรมาส 2 (ม.ค. - มี.ค.)</option>
-                        <option value="Q3">ไตรมาส 3 (เม.ย. - มิ.ย.)</option>
-                        <option value="Q4">ไตรมาส 4 (ก.ค. - ก.ย.)</option>
-                    </select>
+                    <button type="button" class="ms-btn w-full rounded-lg border-slate-300 border px-3 py-2 text-left text-slate-700 bg-white flex items-center justify-between gap-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                        <span class="ms-label truncate">ทุกไตรมาส</span>
+                        <svg class="w-4 h-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="ms-pop hidden absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-64 overflow-y-auto p-2"></div>
                 </div>
-                <div>
+                <div class="ms-filter relative" data-key="unit">
                     <label class="block text-sm font-semibold text-slate-700 mb-2">หอผู้ป่วย (Unit)</label>
-                    <select id="filterUnit" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"></select>
+                    <button type="button" class="ms-btn w-full rounded-lg border-slate-300 border px-3 py-2 text-left text-slate-700 bg-white flex items-center justify-between gap-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                        <span class="ms-label truncate">ทุกหอผู้ป่วย</span>
+                        <svg class="w-4 h-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="ms-pop hidden absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-64 overflow-y-auto p-2"></div>
                 </div>
-                <div>
+                <div class="ms-filter relative" data-key="pct">
                     <label class="block text-sm font-semibold text-slate-700 mb-2">กลุ่มงาน (PCT)</label>
-                    <select id="filterPCT" class="w-full rounded-lg border-slate-300 border px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"></select>
+                    <button type="button" class="ms-btn w-full rounded-lg border-slate-300 border px-3 py-2 text-left text-slate-700 bg-white flex items-center justify-between gap-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                        <span class="ms-label truncate">ทุกกลุ่มงาน</span>
+                        <svg class="w-4 h-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="ms-pop hidden absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-64 overflow-y-auto p-2"></div>
                 </div>
             </div>
         </div>
@@ -2384,33 +2394,74 @@
         }
 
         // เติมตัวเลือกใน dropdown จากค่าจริงในข้อมูล
+        // ===================== ตัวกรองหลายค่า (multi-select, union) =====================
+        // set ว่าง = เลือกทั้งหมด (ALL)
+        const FILTER_SEL = { year: new Set(), quarter: new Set(), unit: new Set(), pct: new Set() };
+        const FILTER_ALLTXT = { year: 'ทุกปี', quarter: 'ทุกไตรมาส', unit: 'ทุกหอผู้ป่วย', pct: 'ทุกกลุ่มงาน' };
+        let FILTER_OPTS = { year: [], quarter: [], unit: [], pct: [] }; // [{v,label}]
+        const QUARTER_OPTS = [
+            { v: 'Q1', label: 'ไตรมาส 1 (ต.ค. - ธ.ค.)' }, { v: 'Q2', label: 'ไตรมาส 2 (ม.ค. - มี.ค.)' },
+            { v: 'Q3', label: 'ไตรมาส 3 (เม.ย. - มิ.ย.)' }, { v: 'Q4', label: 'ไตรมาส 4 (ก.ค. - ก.ย.)' }
+        ];
+        // ผ่านตัวกรองไหม (set ว่าง = ผ่านทุกค่า)
+        function fPass(key, v) { const s = FILTER_SEL[key]; return !s || s.size === 0 || s.has(v); }
+        function fValues(key) { return [...FILTER_SEL[key]]; }
+        // ค่าที่เลือกเดี่ยว (ใช้กับส่วนที่ต้องการค่าเดียว): 0 หรือ >1 = 'ALL'
+        function fOne(key) { const s = FILTER_SEL[key]; return (s && s.size === 1) ? [...s][0] : 'ALL'; }
+        // ป้ายสรุปตัวเลือก
+        function fLabel(key) { const s = FILTER_SEL[key]; if (!s || !s.size) return FILTER_ALLTXT[key]; const a = [...s]; return a.length <= 2 ? a.join(', ') : (a.length + ' รายการ'); }
+
+        function fRenderPop(key) {
+            const box = document.querySelector('.ms-filter[data-key="' + key + '"]'); if (!box) return;
+            const pop = box.querySelector('.ms-pop'), lbl = box.querySelector('.ms-label');
+            const sel = FILTER_SEL[key], opts = FILTER_OPTS[key];
+            const allChecked = sel.size === 0;
+            let html = '<label class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-50 cursor-pointer text-sm font-medium text-slate-700 border-b border-slate-100 mb-1">' +
+                '<input type="checkbox" class="ms-all accent-emerald-600" ' + (allChecked ? 'checked' : '') + '><span>' + FILTER_ALLTXT[key] + '</span></label>';
+            html += opts.map(o => '<label class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-50 cursor-pointer text-sm text-slate-600">' +
+                '<input type="checkbox" class="ms-opt accent-emerald-600" value="' + o.v.replace(/"/g, '&quot;') + '" ' + (sel.has(o.v) ? 'checked' : '') + '><span>' + o.label + '</span></label>').join('');
+            pop.innerHTML = html;
+            if (lbl) lbl.textContent = fLabel(key);
+            pop.querySelector('.ms-all').addEventListener('change', e => { if (e.target.checked) sel.clear(); fRenderPop(key); applyFilters(); });
+            pop.querySelectorAll('.ms-opt').forEach(cb => cb.addEventListener('change', () => {
+                if (cb.checked) sel.add(cb.value); else sel.delete(cb.value);
+                fRenderPop(key); applyFilters();
+            }));
+        }
+        function setupMultiFilters() {
+            document.querySelectorAll('.ms-filter').forEach(box => {
+                const btn = box.querySelector('.ms-btn'), pop = box.querySelector('.ms-pop');
+                btn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const open = !pop.classList.contains('hidden');
+                    document.querySelectorAll('.ms-pop').forEach(p => p.classList.add('hidden'));
+                    if (!open) pop.classList.remove('hidden');
+                });
+            });
+            document.addEventListener('click', () => document.querySelectorAll('.ms-pop').forEach(p => p.classList.add('hidden')));
+        }
         function populateFilters() {
             // รวมปีจากทะเบียน-1 กับปีที่มีแท็บ Post-discharge (เผื่อบางปีมีเฉพาะข้อมูลติดตามหลังจำหน่าย)
             const years = [...new Set([...rawData.map(d => d.year).filter(Boolean), ...Object.keys(POSTDC_YEARS)])].sort().reverse();
             const units = [...new Set(rawData.map(d => d.unit).filter(Boolean))].sort();
             const pcts  = [...new Set(rawData.map(d => d.pct).filter(Boolean))].sort();
-
-            const fill = (id, values, allLabel) => {
-                const sel = document.getElementById(id);
-                sel.innerHTML = '<option value="ALL">' + allLabel + '</option>' +
-                    values.map(v => '<option value="' + v + '">' + v + '</option>').join('');
-            };
-            fill('filterYear', years, 'ทุกปี');
-            fill('filterUnit', units, 'ทุกหอผู้ป่วย');
-            fill('filterPCT', pcts, 'ทุกกลุ่มงาน');
+            FILTER_OPTS.year = years.map(v => ({ v, label: v }));
+            FILTER_OPTS.quarter = QUARTER_OPTS.slice();
+            FILTER_OPTS.unit = units.map(v => ({ v, label: v }));
+            FILTER_OPTS.pct = pcts.map(v => ({ v, label: v }));
+            // ตัดค่าที่เลือกไว้ซึ่งไม่มีในข้อมูลแล้วออก
+            ['year', 'quarter', 'unit', 'pct'].forEach(k => {
+                const valid = new Set(FILTER_OPTS[k].map(o => o.v));
+                [...FILTER_SEL[k]].forEach(v => { if (!valid.has(v)) FILTER_SEL[k].delete(v); });
+                fRenderPop(k);
+            });
         }
 
         // แถวที่ผ่านตัวกรอง (ทุกแถว — ใช้เป็นตัวหารสำหรับอัตราการติดเชื้อ)
         function getFilteredRows() {
-            const y = document.getElementById('filterYear').value;
-            const q = document.getElementById('filterQuarter').value;
-            const u = document.getElementById('filterUnit').value;
-            const p = document.getElementById('filterPCT').value;
             return rawData.filter(d =>
-                (y === 'ALL' || d.year === y) &&
-                (q === 'ALL' || d.quarter === q) &&
-                (u === 'ALL' || d.unit === u) &&
-                (p === 'ALL' || d.pct === p)
+                fPass('year', d.year) && fPass('quarter', d.quarter) &&
+                fPass('unit', d.unit) && fPass('pct', d.pct)
             );
         }
 
@@ -2423,16 +2474,11 @@
         // ไม่ผูกกับตัวกรอง "หอผู้ป่วย" เพราะรายงานเฉพาะหอ OBW เท่านั้น
         // => เมื่อมีเคส Omphalitis ในหอใด ก็ยังดึงเด็กเกิดมีชีพของ OBW มาเป็นตัวหารได้
         function liveBirthByMonthIgnoringWard() {
-            const y = document.getElementById('filterYear').value;
-            const q = document.getElementById('filterQuarter').value;
-            const p = document.getElementById('filterPCT').value;
             const out = {};
             FISCAL_MONTHS.forEach(m => out[m] = 0);
             rawData.forEach(d => {
                 if (d.month == null || out[d.month] === undefined) return;
-                if (y !== 'ALL' && d.year !== y) return;
-                if (q !== 'ALL' && d.quarter !== q) return;
-                if (p !== 'ALL' && d.pct !== p) return;
+                if (!fPass('year', d.year) || !fPass('quarter', d.quarter) || !fPass('pct', d.pct)) return;
                 out[d.month] += (d.liveBirth || 0);
             });
             return out;
@@ -3032,13 +3078,8 @@
         // ===================== สรุปรายหอผู้ป่วย =====================
         // แถวตามตัวกรอง ปี/ไตรมาส/PCT (ไม่สนตัวกรองหอผู้ป่วย เพราะตารางนี้แยกรายหออยู่แล้ว)
         function getRowsForWards() {
-            const y = document.getElementById('filterYear').value;
-            const q = document.getElementById('filterQuarter').value;
-            const p = document.getElementById('filterPCT').value;
             return rawData.filter(d =>
-                (y === 'ALL' || d.year === y) &&
-                (q === 'ALL' || d.quarter === q) &&
-                (p === 'ALL' || d.pct === p)
+                fPass('year', d.year) && fPass('quarter', d.quarter) && fPass('pct', d.pct)
             );
         }
 
@@ -3761,7 +3802,7 @@
                     case 'ssi_rate': { const r = siteCurrentRate('SSI'); return { v: r.rate, unit: r.unit }; }
                     case 'mdro_rate': { const r = siteCurrentRate('MDRO'); return { v: r.rate, unit: r.unit }; }
                     case 'mdr_pct': { const m = mdroPctOfHai(); return { v: m.pct, unit: '%' }; }
-                    case 'staff_sharp': { const y = document.getElementById('filterYear').value; const q = staffQuarterCounts(y); return { v: q.Q1 + q.Q2 + q.Q3 + q.Q4, unit: 'ครั้ง' }; }
+                    case 'staff_sharp': { const q = staffQuarterCounts(); return { v: q.Q1 + q.Q2 + q.Q3 + q.Q4, unit: 'ครั้ง' }; }
                     default: return { v: null, unit: '' };
                 }
             } catch (e) { return { v: null, unit: '' }; }
@@ -4043,7 +4084,7 @@
         let postdcRaw = null; // เก็บข้อมูลดิบปีล่าสุดที่โหลด ไว้ re-summarize เมื่อเปลี่ยนไตรมาส
         function loadPostDC(force) {
             const years = Object.keys(POSTDC_YEARS);          // ปีที่มีแท็บข้อมูล (ใหม่->เก่า)
-            const yv = document.getElementById('filterYear').value; // ค่าจากตัวกรองบน ('ALL' หรือ พ.ศ.)
+            const yv = fOne('year'); // ปีเดียวที่เลือก ('ALL' ถ้าเลือก 0 หรือหลายปี)
             // ถ้าเลือก "ทุกปี" หรือปีที่ยังไม่มีแท็บ -> ใช้ปีล่าสุดที่มีข้อมูล
             const useYear = POSTDC_YEARS[yv] ? yv : years[0];
             const changed = useYear !== postdcYearSel;
@@ -4364,7 +4405,6 @@
                     FISCAL_MONTHS.map(m => '<option value="' + m + '">' + MONTH_LABELS[m] + '</option>').join('');
             }
             // กรองไตรมาส+เดือน: ใช้ค่าของนัดคลินิกเดิม "ครั้งแรก" (proxy ช่วงผ่าตัด) — คงผู้ป่วยทั้งรายไว้
-            const qv = document.getElementById('filterQuarter').value;
             const mv = mSel.value;
             let arr = Object.values(g);
             arr.forEach(p => {
@@ -4376,7 +4416,7 @@
                 // Re-admit: มีนัดคลินิกเดิมที่ readmit=yes และอยู่ใน 30 วันหลังจำหน่าย · 1 ครั้งต่อ AN
                 p.readmit = rel.some(a => a.re);
             });
-            if (qv !== 'ALL') arr = arr.filter(p => p.cohortQ === qv);
+            if (FILTER_SEL.quarter.size) arr = arr.filter(p => fPass('quarter', p.cohortQ));
             if (mv !== 'ALL') arr = arr.filter(p => String(p.cohortM) === mv);
 
             // เก็บกลุ่มผู้ป่วยไว้ให้ตารางครั้งที่นัดเรียกใช้ (กรองตามชนิดผ่าตัดได้)
@@ -4897,13 +4937,11 @@
         };
         // แถวพื้นฐาน: ใช้ตัวกรองบน ยกเว้นมิติที่กำลังเปรียบเทียบ
         function cmpBaseRows(dim) {
-            const y = document.getElementById('filterYear').value, q = document.getElementById('filterQuarter').value;
-            const u = document.getElementById('filterUnit').value, p = document.getElementById('filterPCT').value;
             return rawData.filter(d =>
-                (dim === 'year' || y === 'ALL' || d.year === y) &&
-                (dim === 'quarter' || q === 'ALL' || d.quarter === q) &&
-                (dim === 'unit' || u === 'ALL' || d.unit === u) &&
-                (dim === 'pct' || p === 'ALL' || d.pct === p));
+                (dim === 'year' || fPass('year', d.year)) &&
+                (dim === 'quarter' || fPass('quarter', d.quarter)) &&
+                (dim === 'unit' || fPass('unit', d.unit)) &&
+                (dim === 'pct' || fPass('pct', d.pct)));
         }
         function cmpDimValues(dim, rows) {
             const set = [...new Set(rows.map(CMP_DIM_GET[dim]).filter(Boolean))];
@@ -5169,11 +5207,9 @@
         const repSsiCases = o => Object.keys(o.cases).reduce((a, k) => a + (k.indexOf('SSI') === 0 ? o.cases[k] : 0), 0);
         function updateReportView() {
             const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-            const y = document.getElementById('filterYear').value, q = document.getElementById('filterQuarter').value;
-            const u = document.getElementById('filterUnit').value, p = document.getElementById('filterPCT').value;
             const per = document.getElementById('reportPeriod');
-            if (per) per.textContent = 'ปีงบ ' + (y === 'ALL' ? 'ทั้งหมด' : y) + ' · ' + (q === 'ALL' ? 'ทุกไตรมาส' : q) +
-                (u !== 'ALL' ? ' · หอ ' + u : '') + (p !== 'ALL' ? ' · กลุ่มงาน ' + p : '') + ' · พิมพ์เมื่อ ' + new Date().toLocaleString('th-TH');
+            if (per) per.textContent = 'ปีงบ ' + fLabel('year') + ' · ' + fLabel('quarter') +
+                (FILTER_SEL.unit.size ? ' · หอ ' + fLabel('unit') : '') + (FILTER_SEL.pct.size ? ' · กลุ่มงาน ' + fLabel('pct') : '') + ' · พิมพ์เมื่อ ' + new Date().toLocaleString('th-TH');
             const el = document.getElementById('reportContent'); if (!el) return;
             const fx = v => v == null ? '-' : v.toFixed(2);
             const nf = v => v ? v.toLocaleString() : '0';
@@ -5271,10 +5307,8 @@
         let presentSlides = [], presentIdx = 0, presentChartInst = null;
         function presentData() {
             const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-            const y = document.getElementById('filterYear').value, q = document.getElementById('filterQuarter').value;
-            const u = document.getElementById('filterUnit').value, p = document.getElementById('filterPCT').value;
-            const periodLabel = 'ปีงบ ' + (y === 'ALL' ? 'ทั้งหมด' : y) + ' · ' + (q === 'ALL' ? 'ทุกไตรมาส' : q) +
-                (u !== 'ALL' ? ' · หอ ' + u : '') + (p !== 'ALL' ? ' · กลุ่มงาน ' + p : '');
+            const periodLabel = 'ปีงบ ' + fLabel('year') + ' · ' + fLabel('quarter') +
+                (FILTER_SEL.unit.size ? ' · หอ ' + fLabel('unit') : '') + (FILTER_SEL.pct.size ? ' · กลุ่มงาน ' + fLabel('pct') : '');
             const cases = getFilteredCases();
             const den = aggregateDenominatorsByMonth(getFilteredRows());
             const denTot = {};
@@ -5311,7 +5345,7 @@
                 counts: months.map(mo => byMonth[mo].HAI),
                 rates: months.map(mo => { const d = den[mo] ? den[mo].patientDay : 0; return d ? +((byMonth[mo].HAI / d) * 1000).toFixed(2) : 0; })
             };
-            return { esc, periodLabel, y, q, siteRows, stat, wards, orgsTop, mdrOrgs, monthly };
+            return { esc, periodLabel, siteRows, stat, wards, orgsTop, mdrOrgs, monthly };
         }
         function presentBuild() {
             const d = presentData();
@@ -5473,9 +5507,7 @@
             const rVAP = dRate(siteCount.VAP || 0, denTot.venDay, 1000);
             const rCLABSI = dRate(siteCount.CLABSI || 0, denTot.lineDay, 1000);
 
-            const yv = document.getElementById('filterYear').value;
-            const qv = document.getElementById('filterQuarter').value;
-            const period = (yv === 'ALL' ? 'ทุกปีงบประมาณ' : 'ปีงบประมาณ ' + yv) + (qv === 'ALL' ? '' : ' ' + qv);
+            const period = (FILTER_SEL.year.size ? 'ปีงบประมาณ ' + fLabel('year') : 'ทุกปีงบประมาณ') + (FILTER_SEL.quarter.size ? ' ' + fLabel('quarter') : '');
 
             // ===== ประกอบบทวิเคราะห์ =====
             const fmt = v => v == null ? 'ไม่สามารถคำนวณได้ (ไม่มีตัวหาร)' : v;
@@ -5907,9 +5939,9 @@
             } catch (e) { console.warn('[staff] load fail', e); }
         }
         // นับเหตุการณ์บุคลากรรายไตรมาส ตามปีงบที่กรอง (ALL = รวมทุกปี)
-        function staffQuarterCounts(filterYear) {
+        function staffQuarterCounts() {
             const o = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
-            STAFF_ROWS.forEach(r => { if (filterYear === 'ALL' || r.year === filterYear) if (o[r.quarter] != null) o[r.quarter]++; });
+            STAFF_ROWS.forEach(r => { if (fPass('year', r.year)) if (o[r.quarter] != null) o[r.quarter]++; });
             return o;
         }
         // คีย์ site ของเคส: ใช้ชนิดที่จับได้ ถ้าไม่รู้จัก (Other) ใช้ค่า SITE ดิบ → รองรับ site ใหม่อัตโนมัติ
@@ -5935,12 +5967,9 @@
         const RISK_QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
         function computeRiskAnalysis() {
             // ใช้ตัวกรอง ปี/หอ/กลุ่มงาน แต่ไม่ผูกไตรมาส (แสดง Q1-Q4 เสมอ)
-            const y = document.getElementById('filterYear').value;
-            const u = document.getElementById('filterUnit').value;
-            const p = document.getElementById('filterPCT').value;
             const cases = rawData.filter(d => d.isHAI &&
-                (y === 'ALL' || d.year === y) && (u === 'ALL' || d.unit === u) && (p === 'ALL' || d.pct === p));
-            const staffQ = staffQuarterCounts(y);
+                fPass('year', d.year) && fPass('unit', d.unit) && fPass('pct', d.pct));
+            const staffQ = staffQuarterCounts();
             const out = [];
             activeRiskSites().forEach(s => {
                 const i = CONSEQUENCE_BY_SITE[s] || 3;
@@ -6035,9 +6064,8 @@
                 applyRiskConsOverrides();
                 renderRisk();
                 if (status) {
-                    const qv = document.getElementById('filterQuarter').value;
                     const n = RISK_DATA.length;
-                    status.textContent = 'คำนวณจากทะเบียน-1 · ' + (qv === 'ALL' ? 'แยกไตรมาส Q1–Q4' : qv) + ' · ' + n + ' รายการ (site × ไตรมาส ที่มีการเกิด)';
+                    status.textContent = 'คำนวณจากทะเบียน-1 · ' + (FILTER_SEL.quarter.size ? fLabel('quarter') : 'แยกไตรมาส Q1–Q4') + ' · ' + n + ' รายการ (site × ไตรมาส ที่มีการเกิด)';
                     status.className = 'text-xs text-slate-400 mt-1';
                 }
             } else {
@@ -6727,8 +6755,7 @@
         // อัตราการติดเชื้อปัจจุบันต่อ site (รวมช่วงที่กรอง)
         function siteCurrentRate(site) {
             if (site === STAFF_SITE) { // บุคลากร: นับจากชีตอุบัติเหตุ (แสดงเป็นจำนวนครั้ง ไม่มีตัวหาร)
-                const y = document.getElementById('filterYear').value;
-                const q = staffQuarterCounts(y); const n = q.Q1 + q.Q2 + q.Q3 + q.Q4;
+                const q = staffQuarterCounts(); const n = q.Q1 + q.Q2 + q.Q3 + q.Q4;
                 return { count: n, rate: null, unit: 'ครั้ง/ปี' };
             }
             const cases = getFilteredCases().filter(c => riskSiteMatch(c, site)).length;
@@ -6783,8 +6810,7 @@
         }
         // ปีจากตัวกรองบน (ใช้ช่วยเลือกคอลัมน์เป้าหมายให้ตรงปี)
         function riskFilterYear() {
-            const el = document.getElementById('filterYear');
-            const yv = el ? el.value : '';
+            const yv = fOne('year');
             return (yv && yv !== 'ALL') ? yv : '';
         }
         function renderRiskSiteCards() {
@@ -7723,12 +7749,14 @@
             if (pt) pt.textContent = titles[view] || '';
             // หน้า Post discharge ใช้ได้แค่ปี+ไตรมาส → ปิด Unit/PCT (ชีตนี้ไม่มีคอลัมน์นั้น)
             const pdcOnly = view === 'postdc';
-            ['filterUnit', 'filterPCT'].forEach(id => {
-                const el = document.getElementById(id);
-                el.disabled = pdcOnly;
-                el.classList.toggle('opacity-40', pdcOnly);
-                el.classList.toggle('cursor-not-allowed', pdcOnly);
-                el.title = pdcOnly ? 'ตัวกรองนี้ใช้ไม่ได้ในหน้า Post discharge (ชีตไม่มีข้อมูลหอผู้ป่วย/กลุ่มงาน)' : '';
+            ['unit', 'pct'].forEach(key => {
+                const box = document.querySelector('.ms-filter[data-key="' + key + '"]'); if (!box) return;
+                const btn = box.querySelector('.ms-btn');
+                btn.disabled = pdcOnly;
+                btn.classList.toggle('opacity-40', pdcOnly);
+                btn.classList.toggle('cursor-not-allowed', pdcOnly);
+                btn.title = pdcOnly ? 'ตัวกรองนี้ใช้ไม่ได้ในหน้า Post discharge (ชีตไม่มีข้อมูลหอผู้ป่วย/กลุ่มงาน)' : '';
+                if (pdcOnly) box.querySelector('.ms-pop').classList.add('hidden');
             });
             if (view === 'wards') updateWardTable();
             if (view === 'mdr') updateMdrView();
@@ -7749,19 +7777,21 @@
         }
 
         // Event listeners
-        ['filterYear', 'filterQuarter', 'filterUnit', 'filterPCT'].forEach(id =>
-            document.getElementById(id).addEventListener('change', () => {
-                updateDashboard(); updateWardTable(); updateMdrView(); updateServiceView(); updateAnalysisView(); updateSpecialView();
-                if (!document.getElementById('viewReport').hidden) updateReportView();
-                if (!document.getElementById('viewOrg').hidden) updateOrgView();
-                if (!document.getElementById('viewPatient').hidden) updatePatientView();
-                if (!document.getElementById('viewCompare').hidden) updateCompareView();
-                if (!document.getElementById('viewSurv').hidden) updateSurvView();
-                if (!document.getElementById('viewPostDC').hidden) loadPostDC(); // ให้ Post-discharge ตามปีบน
-                if (!document.getElementById('viewControl').hidden) updateControlView();
-                if (!document.getElementById('viewRisk').hidden) refreshRisk(); // Risk Analysis ตามปี/ไตรมาสบน
-                if (!document.getElementById('viewIndicator').hidden && indRegLoaded) renderIndicatorRegistry(); // ค่าตัวชี้วัด auto ตามตัวกรอง
-            }));
+        // เรียกเมื่อค่าตัวกรองหลายค่าเปลี่ยน (ถูกเรียกจากคอมโพเนนต์ ms-filter)
+        function applyFilters() {
+            updateDashboard(); updateWardTable(); updateMdrView(); updateServiceView(); updateAnalysisView(); updateSpecialView();
+            if (!document.getElementById('viewReport').hidden) updateReportView();
+            if (!document.getElementById('viewOrg').hidden) updateOrgView();
+            if (!document.getElementById('viewPatient').hidden) updatePatientView();
+            if (!document.getElementById('viewCompare').hidden) updateCompareView();
+            if (!document.getElementById('viewSurv').hidden) updateSurvView();
+            if (!document.getElementById('viewPostDC').hidden) loadPostDC(); // ให้ Post-discharge ตามปีบน
+            if (!document.getElementById('viewControl').hidden) updateControlView();
+            if (!document.getElementById('viewRisk').hidden) refreshRisk(); // Risk Analysis ตามปี/ไตรมาสบน
+            if (!document.getElementById('viewIndicator').hidden && indRegLoaded) renderIndicatorRegistry(); // ค่าตัวชี้วัด auto ตามตัวกรอง
+            if (typeof refreshNotes === 'function') setTimeout(refreshNotes, 50);
+        }
+        setupMultiFilters();
         document.getElementById('btnExport').addEventListener('click', exportCSV);
         document.getElementById('btnExportWards').addEventListener('click', exportWardsCSV);
         document.getElementById('btnWardSsi').addEventListener('click', () => { repSsiExpanded = !repSsiExpanded; updateWardTable(); });
@@ -8010,13 +8040,12 @@
         (function () {
             const fileSafe = s => (s || 'card').replace(/[\\/:*?"<>|\n]+/g, '_').replace(/\s+/g, ' ').trim().slice(0, 80);
             function filterNote() {
-                const val = id => { const e = document.getElementById(id); return e ? e.value : 'ALL'; };
-                const dis = id => { const e = document.getElementById(id); return !e || e.disabled; };
+                const dis = key => { const b = document.querySelector('.ms-filter[data-key="' + key + '"] .ms-btn'); return !b || b.disabled; };
                 const p = [];
-                p.push('ปีงบ: ' + (val('filterYear') !== 'ALL' ? val('filterYear') : 'ทั้งหมด'));
-                if (document.getElementById('filterQuarter')) p.push('ไตรมาส: ' + (val('filterQuarter') !== 'ALL' ? val('filterQuarter') : 'ทั้งหมด'));
-                if (!dis('filterUnit')) p.push('หอผู้ป่วย: ' + (val('filterUnit') !== 'ALL' ? val('filterUnit') : 'ทั้งหมด'));
-                if (!dis('filterPCT')) p.push('กลุ่มงาน: ' + (val('filterPCT') !== 'ALL' ? val('filterPCT') : 'ทั้งหมด'));
+                p.push('ปีงบ: ' + fLabel('year'));
+                p.push('ไตรมาส: ' + fLabel('quarter'));
+                if (!dis('unit')) p.push('หอผู้ป่วย: ' + fLabel('unit'));
+                if (!dis('pct')) p.push('กลุ่มงาน: ' + fLabel('pct'));
                 return 'กรองข้อมูล — ' + p.join(' · ') + ' · ณ ' + (window.fmtDMY ? fmtDMY(new Date().toISOString().slice(0, 10)) : new Date().toLocaleDateString('th-TH'));
             }
             function cardTitle(card) { const h = card.querySelector('h1,h2,h3,h4,h5,h6'); return h ? h.textContent.trim() : 'รายงาน'; }
