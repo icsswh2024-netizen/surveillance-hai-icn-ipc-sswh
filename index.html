@@ -1247,6 +1247,28 @@
                 <b>ประสิทธิภาพการเฝ้าระวัง:</b> สรุปจากคอลัมน์ <b>ประสิทธิภาพ</b> · <b>บำราศ</b> และความทันเวลา (Date of event → Date Sign) ในทะเบียน-1 ตามตัวกรอง
             </div>
             <div id="survKpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            <!-- ตารางตัวชี้วัดคุณภาพระบบเฝ้าระวัง รายไตรมาส -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">ตัวชี้วัดคุณภาพระบบเฝ้าระวัง (รายไตรมาส)</h3>
+                        <p class="text-xs text-slate-400 mt-1">คำนวณจากทะเบียน-1 ตามปี/หอ/กลุ่มงานที่กรอง · <span class="text-emerald-600 font-medium">เขียว=ผ่านเป้า</span> · <span class="text-rose-600 font-medium">แดง=ไม่ผ่าน</span> · NA=ยังไม่มีข้อมูล</p>
+                    </div>
+                    <button id="btnExportQi" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold"><tr>
+                            <th class="py-3 px-4">ตัวชี้วัด</th><th class="py-3 px-4 text-center">เป้าหมาย</th>
+                            <th class="py-3 px-4 text-right">Q1</th><th class="py-3 px-4 text-right">Q2</th>
+                            <th class="py-3 px-4 text-right">Q3</th><th class="py-3 px-4 text-right">Q4</th>
+                            <th class="py-3 px-4 text-right">รวมทั้งปี</th>
+                        </tr></thead>
+                        <tbody id="survQiBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+                <p class="px-6 py-3 text-xs text-slate-400 border-t border-slate-100">* แถวอัตรา (HAI/CAUTI/VAP/CLABSI/SSI/Omph/MDR) เป็นการเฝ้าระวังแนวโน้ม ไม่กำหนดผ่าน/ไม่ผ่าน · ตัวชี้วัดความทันเวลา (24–48 ชม.) และความถูกต้อง รอกรอกคอลัมน์ Date Sign / สอบทาน จึงจะคำนวณได้</p>
+            </div>
             <div class="grid lg:grid-cols-2 gap-6">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-6 border-b border-slate-100"><h3 class="text-lg font-semibold text-slate-800">ผลประเมินประสิทธิภาพ</h3><p class="text-xs text-slate-400 mt-1">กระจายตามค่าที่บันทึกในคอลัมน์ "ประสิทธิภาพ"</p></div>
@@ -5118,6 +5140,102 @@
                 '<td class="py-2.5 px-4 text-right ' + (pct == null ? 'text-slate-300' : pdcPctClass(pct, true)) + '">' + (pct == null ? '-' : pct.toFixed(1) + '%') + '</td>' +
                 '<td class="py-2.5 px-4 text-right">' + (b.dN ? (b.dSum / b.dN).toFixed(1) : '-') + '</td></tr>';
             }).join('') : '<tr><td colspan="7" class="py-8 text-center text-slate-400">— ไม่มีเคส HAI ตามตัวกรอง —</td></tr>';
+            // ตารางตัวชี้วัดคุณภาพรายไตรมาส
+            renderSurvQi();
+        }
+
+        /* ---------- ตัวชี้วัดคุณภาพระบบเฝ้าระวัง รายไตรมาส ---------- */
+        const QI_QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
+        // แถวที่ผ่านตัวกรอง ปี/หอ/กลุ่มงาน (ไม่ผูกไตรมาส — เพื่อแยกรายไตรมาสเอง)
+        function qiBaseRows() { return rawData.filter(d => fPass('year', d.year) && fPass('unit', d.unit) && fPass('pct', d.pct)); }
+        // เด็กเกิดมีชีพรายไตรมาส (ไม่ผูกหอ) สำหรับตัวหาร Omphalitis
+        function qiLiveBirth(Q) {
+            return rawData.reduce((a, d) => a + ((d.quarter === Q && fPass('year', d.year) && fPass('pct', d.pct)) ? (d.liveBirth || 0) : 0), 0);
+        }
+        // เคสถือว่า "บันทึกครบ" = มีช่องบังคับครบ: Admit · SITE · เชื้อก่อโรค · Date of event · หอผู้ป่วย
+        function qiComplete(c) { return !!(c.dAdmit && (c.rawSITE || c.siteType) && c.organisms && c.organisms.length && c.dEvent && c.unit); }
+        function qiStatsForRows(rows) {
+            const hai = rows.filter(r => r.isHAI);
+            const n = hai.length;
+            const yes = hai.filter(survYes).length, no = hai.filter(survNo).length, ev = yes + no;
+            const complete = hai.filter(qiComplete).length;
+            const den = { patientDay: 0, cathDay: 0, venDay: 0, lineDay: 0, op: 0 };
+            rows.forEach(r => { den.patientDay += r.patientDay || 0; den.cathDay += r.cathDay || 0; den.venDay += r.venDay || 0; den.lineDay += r.lineDay || 0; den.op += r.op || 0; });
+            const site = { CAUTI: 0, VAP: 0, CLABSI: 0, SSI: 0, Omphalitis: 0 };
+            hai.forEach(c => { if (site[c.siteType] !== undefined) site[c.siteType]++; });
+            const mdr = hai.filter(c => c.isMDR).length;
+            return { n, yes, no, ev, complete, den, site, mdr,
+                sens: ev ? yes / ev * 100 : null,
+                compPct: n ? complete / n * 100 : null,
+                mdrPct: n ? mdr / n * 100 : null };
+        }
+        function qiData() {
+            const base = qiBaseRows();
+            const byQ = {}; QI_QUARTERS.forEach(Q => { byQ[Q] = qiStatsForRows(base.filter(d => d.quarter === Q)); byQ[Q].liveBirth = qiLiveBirth(Q); });
+            const all = qiStatsForRows(base); all.liveBirth = QI_QUARTERS.reduce((a, Q) => a + byQ[Q].liveBirth, 0);
+            return { byQ, all };
+        }
+        function renderSurvQi() {
+            const body = document.getElementById('survQiBody'); if (!body) return;
+            const d = qiData();
+            const cols = [...QI_QUARTERS, 'all'];
+            const get = key => cols.map(c => key(c === 'all' ? d.all : d.byQ[c]));
+            // เซลล์ % พร้อมไฮไลต์ผ่าน/ไม่ผ่าน (good=ยิ่งมากยิ่งดี)
+            const pctCell = (v, target) => {
+                if (v == null) return '<td class="py-2.5 px-4 text-right text-slate-300">NA</td>';
+                const ok = v >= target;
+                return '<td class="py-2.5 px-4 text-right font-semibold ' + (ok ? 'text-emerald-700 bg-emerald-50/50' : 'text-rose-600 bg-rose-50/50') + '">' + v.toFixed(1) + '%</td>';
+            };
+            // เซลล์อัตรา (เฝ้าระวังแนวโน้ม ไม่ผ่าน/ไม่ผ่าน) — num/den*factor
+            const rateCell = (num, den, factor) => den ? '<td class="py-2.5 px-4 text-right">' + (num / den * factor).toFixed(2) + '</td>' : '<td class="py-2.5 px-4 text-right text-slate-300">NA</td>';
+            const cntCell = v => '<td class="py-2.5 px-4 text-right text-slate-500">' + v + '</td>';
+            const labelCell = (main, sub) => '<td class="py-2.5 px-4"><div class="font-medium text-slate-700">' + main + '</div>' + (sub ? '<div class="text-[11px] text-slate-400">' + sub + '</div>' : '') + '</td>';
+            const tgt = (t) => '<td class="py-2.5 px-4 text-center text-xs text-slate-500">' + t + '</td>';
+            let html = '';
+            // 1 ความไว
+            html += '<tr class="hover:bg-slate-50">' + labelCell('1. ความไวของระบบเฝ้าระวัง', 'รายงาน ÷ (รายงาน+ไม่รายงาน)') + tgt('≥ 80%') + get(s => pctCell(s.sens, 80)).join('') + '</tr>';
+            // 2 ความครบถ้วน
+            html += '<tr class="hover:bg-slate-50">' + labelCell('2. ความครบถ้วนของการบันทึก', 'กรอกครบ: Admit·SITE·เชื้อ·Date of event·หอ') + tgt('≥ 90%') + get(s => pctCell(s.compPct, 90)).join('') + '</tr>';
+            // คั่นกลุ่มผลลัพธ์
+            html += '<tr class="bg-slate-50"><td colspan="7" class="py-2 px-4 text-[11px] font-bold uppercase tracking-wider text-slate-500">อัตราผลลัพธ์ (เฝ้าระวังแนวโน้ม)</td></tr>';
+            // 5 HAI /1000 วันนอน
+            html += '<tr class="hover:bg-slate-50">' + labelCell('5. อัตรา HAI', '/1000 วันนอน') + tgt('แนวโน้ม') + get(s => rateCell(s.n, s.den.patientDay, 1000)).join('') + '</tr>';
+            // 6 device
+            html += '<tr class="hover:bg-slate-50">' + labelCell('6. CAUTI', '/1000 วันคาสายปัสสาวะ') + tgt('แนวโน้ม') + get(s => rateCell(s.site.CAUTI, s.den.cathDay, 1000)).join('') + '</tr>';
+            html += '<tr class="hover:bg-slate-50">' + labelCell('6. VAP', '/1000 วันเครื่องช่วยหายใจ') + tgt('แนวโน้ม') + get(s => rateCell(s.site.VAP, s.den.venDay, 1000)).join('') + '</tr>';
+            html += '<tr class="hover:bg-slate-50">' + labelCell('6. CLABSI', '/1000 วันคาสายหลอดเลือด') + tgt('แนวโน้ม') + get(s => rateCell(s.site.CLABSI, s.den.lineDay, 1000)).join('') + '</tr>';
+            // 7 MDR
+            html += '<tr class="hover:bg-slate-50">' + labelCell('7. สัดส่วนเชื้อดื้อยา (MDR)', 'MDR ÷ เคส HAI') + tgt('แนวโน้ม') + get(s => s.mdrPct == null ? '<td class="py-2.5 px-4 text-right text-slate-300">NA</td>' : '<td class="py-2.5 px-4 text-right">' + s.mdrPct.toFixed(1) + '%</td>').join('') + '</tr>';
+            // 8 SSI / Omph
+            html += '<tr class="hover:bg-slate-50">' + labelCell('8. อัตรา SSI', '/100 ผ่าตัด') + tgt('แนวโน้ม') + get(s => rateCell(s.site.SSI, s.den.op, 100)).join('') + '</tr>';
+            html += '<tr class="hover:bg-slate-50">' + labelCell('8. อัตรา Omphalitis', '/100 เด็กเกิดมีชีพ') + tgt('แนวโน้ม') + get(s => rateCell(s.site.Omphalitis, s.liveBirth, 100)).join('') + '</tr>';
+            // แถวจำนวนเคส HAI อ้างอิง
+            html += '<tr class="bg-slate-50/60 text-slate-500">' + labelCell('จำนวนเคส HAI (อ้างอิง)', '') + '<td></td>' + get(s => s.n).map(v => '<td class="py-2.5 px-4 text-right">' + v + '</td>').join('') + '</tr>';
+            body.innerHTML = html;
+        }
+        function exportQiCSV() {
+            const d = qiData();
+            const cols = [...QI_QUARTERS, 'all'];
+            const g = key => cols.map(c => key(c === 'all' ? d.all : d.byQ[c]));
+            const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
+            const rate = (num, den, f) => den ? (num / den * f).toFixed(2) : 'NA';
+            const pc = v => v == null ? 'NA' : v.toFixed(1) + '%';
+            let csv = '﻿' + [q('ตัวชี้วัด'), q('เป้าหมาย'), q('Q1'), q('Q2'), q('Q3'), q('Q4'), q('รวมทั้งปี')].join(',') + '\n';
+            const line = (label, target, vals) => { csv += [q(label), q(target), ...vals.map(q)].join(',') + '\n'; };
+            line('1. ความไวของระบบเฝ้าระวัง', '≥80%', g(s => pc(s.sens)));
+            line('2. ความครบถ้วนของการบันทึก', '≥90%', g(s => pc(s.compPct)));
+            line('5. อัตรา HAI /1000 วันนอน', 'แนวโน้ม', g(s => rate(s.n, s.den.patientDay, 1000)));
+            line('6. CAUTI /1000 วันคาสายปัสสาวะ', 'แนวโน้ม', g(s => rate(s.site.CAUTI, s.den.cathDay, 1000)));
+            line('6. VAP /1000 วันเครื่องช่วยหายใจ', 'แนวโน้ม', g(s => rate(s.site.VAP, s.den.venDay, 1000)));
+            line('6. CLABSI /1000 วันคาสายหลอดเลือด', 'แนวโน้ม', g(s => rate(s.site.CLABSI, s.den.lineDay, 1000)));
+            line('7. สัดส่วนเชื้อดื้อยา (MDR)', 'แนวโน้ม', g(s => pc(s.mdrPct)));
+            line('8. อัตรา SSI /100 ผ่าตัด', 'แนวโน้ม', g(s => rate(s.site.SSI, s.den.op, 100)));
+            line('8. อัตรา Omphalitis /100 เด็กเกิดมีชีพ', 'แนวโน้ม', g(s => rate(s.site.Omphalitis, s.liveBirth, 100)));
+            line('จำนวนเคส HAI (อ้างอิง)', '', g(s => s.n));
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'quality_indicators.csv'; a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
         }
         function exportSurvCSV() {
             const q = v => '"' + (v == null ? '' : v.toString()).replace(/"/g, '""') + '"';
@@ -7856,6 +7974,7 @@
         document.getElementById('patientTriadSite').addEventListener('change', updatePatientView);
         document.getElementById('menuSurv').addEventListener('click', () => switchView('surv'));
         document.getElementById('btnExportSurv').addEventListener('click', exportSurvCSV);
+        document.getElementById('btnExportQi').addEventListener('click', exportQiCSV);
         document.getElementById('menuSpecial').addEventListener('click', () => switchView('special'));
         document.getElementById('btnExportSpecial').addEventListener('click', exportSpecialCSV);
         document.getElementById('menuPostDC').addEventListener('click', () => switchView('postdc'));
