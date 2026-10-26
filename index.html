@@ -1197,6 +1197,7 @@
                         <select id="cmpDim" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                             <option value="unit">หอผู้ป่วย</option>
                             <option value="pct">กลุ่มงาน (PCT)</option>
+                            <option value="site">ตำแหน่งติดเชื้อ (SITE)</option>
                             <option value="year">ปี</option>
                             <option value="quarter">ไตรมาส</option>
                         </select>
@@ -4927,8 +4928,8 @@
 
         /* ===================== เมนู: เปรียบเทียบ ===================== */
         let cmpChartInstance = null;
-        const CMP_DIM_LABEL = { unit: 'หอผู้ป่วย', pct: 'กลุ่มงาน', year: 'ปี', quarter: 'ไตรมาส' };
-        const CMP_DIM_GET = { unit: d => d.unit, pct: d => d.pct, year: d => d.year, quarter: d => d.quarter };
+        const CMP_DIM_LABEL = { unit: 'หอผู้ป่วย', pct: 'กลุ่มงาน', site: 'ตำแหน่งติดเชื้อ', year: 'ปี', quarter: 'ไตรมาส' };
+        const CMP_DIM_GET = { unit: d => d.unit, pct: d => d.pct, site: d => d.siteType, year: d => d.year, quarter: d => d.quarter };
         const CMP_METRIC = {
             haiRate:    { label: 'อัตรา HAI /1000 วันนอน', color: '#10b981', fmt: v => v == null ? '-' : v.toFixed(2) },
             haiCount:   { label: 'จำนวนเคส HAI',           color: '#0ea5e9', fmt: v => (v || 0).toLocaleString() },
@@ -4944,6 +4945,8 @@
                 (dim === 'pct' || fPass('pct', d.pct)));
         }
         function cmpDimValues(dim, rows) {
+            // SITE: เอาเฉพาะตำแหน่งที่มีเคส HAI จริง
+            if (dim === 'site') return [...new Set(rows.filter(r => r.isHAI).map(r => r.siteType).filter(Boolean))].sort();
             const set = [...new Set(rows.map(CMP_DIM_GET[dim]).filter(Boolean))];
             if (dim === 'quarter') return ['Q1', 'Q2', 'Q3', 'Q4'].filter(q => set.includes(q));
             return set.sort();
@@ -4954,6 +4957,20 @@
             const pd = rows.reduce((a, r) => a + (r.patientDay || 0), 0);
             const mdr = hai.filter(r => r.isMDR).length;
             return { haiCount, patientDay: pd, haiRate: pd ? +(haiCount / pd * 1000).toFixed(2) : null, mdrPct: haiCount ? Math.round(mdr / haiCount * 100) : 0 };
+        }
+        // คำนวณตามมิติ (SITE ใช้ตัวหารเฉพาะตำแหน่งตาม RATE_META)
+        function cmpMetricsFor(dim, v, base) {
+            if (dim === 'site') {
+                const hai = base.filter(r => r.isHAI && r.siteType === v);
+                const haiCount = hai.length;
+                const mdr = hai.filter(r => r.isMDR).length;
+                const meta = RATE_META[v] || RATE_META.HAI;
+                const den = meta.den === 'liveBirth'
+                    ? FISCAL_MONTHS.reduce((a, m) => a + (liveBirthByMonthIgnoringWard()[m] || 0), 0)
+                    : base.reduce((a, r) => a + (r[meta.den] || 0), 0);
+                return { haiCount, patientDay: base.reduce((a, r) => a + (r.patientDay || 0), 0), haiRate: den ? +(haiCount / den * meta.factor).toFixed(2) : null, mdrPct: haiCount ? Math.round(mdr / haiCount * 100) : 0 };
+            }
+            return cmpMetricsOf(base.filter(d => CMP_DIM_GET[dim](d) === v));
         }
         function cmpPopulateValues() {
             const dim = document.getElementById('cmpDim').value;
@@ -4980,8 +4997,9 @@
             const meta = CMP_METRIC[metric];
             const base = cmpBaseRows(dim);
             const sel = cmpGetChecked();
-            const stats = sel.map(v => ({ v, m: cmpMetricsOf(base.filter(d => CMP_DIM_GET[dim](d) === v)) }));
-            document.getElementById('cmpChartTitle').textContent = 'กราฟเปรียบเทียบ: ' + meta.label + ' ตาม' + CMP_DIM_LABEL[dim];
+            const stats = sel.map(v => ({ v, m: cmpMetricsFor(dim, v, base) }));
+            const rateNote = (dim === 'site' && metric === 'haiRate') ? ' (อัตราเฉพาะตำแหน่ง)' : '';
+            document.getElementById('cmpChartTitle').textContent = 'กราฟเปรียบเทียบ: ' + meta.label + rateNote + ' ตาม' + CMP_DIM_LABEL[dim];
             // กราฟแท่ง
             const ctx = document.getElementById('cmpChart');
             if (cmpChartInstance) cmpChartInstance.destroy();
@@ -5013,7 +5031,7 @@
             const dim = document.getElementById('cmpDim').value;
             const base = cmpBaseRows(dim);
             const sel = cmpGetChecked();
-            const stats = sel.map(v => ({ v, m: cmpMetricsOf(base.filter(d => CMP_DIM_GET[dim](d) === v)) }));
+            const stats = sel.map(v => ({ v, m: cmpMetricsFor(dim, v, base) }));
             const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
             let csv = '﻿' + [q('ตัวชี้วัด'), ...stats.map(s => q(s.v))].join(',') + '\n';
             Object.keys(CMP_METRIC).forEach(mk => {
