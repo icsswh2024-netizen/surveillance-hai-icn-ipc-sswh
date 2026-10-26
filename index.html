@@ -5180,22 +5180,23 @@
             const d = qiData();
             const cols = [...QI_QUARTERS, 'all'];
             const get = key => cols.map(c => key(c === 'all' ? d.all : d.byQ[c]));
-            // เซลล์ % พร้อมไฮไลต์ผ่าน/ไม่ผ่าน (good=ยิ่งมากยิ่งดี)
-            const pctCell = (v, target) => {
+            const frac = (num, den, unit) => '<div class="text-[11px] font-normal text-slate-400">' + num + '/' + den + (unit ? ' ' + unit : '') + '</div>';
+            // เซลล์ % พร้อมตัวตั้ง/ตัวหาร + ไฮไลต์ผ่าน/ไม่ผ่าน (target=null → ไม่ไฮไลต์)
+            const pctCell = (v, target, num, den, unit) => {
                 if (v == null) return '<td class="py-2.5 px-4 text-right text-slate-300">NA</td>';
-                const ok = v >= target;
-                return '<td class="py-2.5 px-4 text-right font-semibold ' + (ok ? 'text-emerald-700 bg-emerald-50/50' : 'text-rose-600 bg-rose-50/50') + '">' + v.toFixed(1) + '%</td>';
+                const cls = target == null ? '' : (v >= target ? 'text-emerald-700 bg-emerald-50/50' : 'text-rose-600 bg-rose-50/50');
+                return '<td class="py-2.5 px-4 text-right font-semibold ' + cls + '">' + v.toFixed(1) + '%' + frac(num, den, unit) + '</td>';
             };
-            // เซลล์อัตรา (เฝ้าระวังแนวโน้ม ไม่ผ่าน/ไม่ผ่าน) — num/den*factor
-            const rateCell = (num, den, factor) => den ? '<td class="py-2.5 px-4 text-right">' + (num / den * factor).toFixed(2) + '</td>' : '<td class="py-2.5 px-4 text-right text-slate-300">NA</td>';
+            // เซลล์อัตรา (เฝ้าระวังแนวโน้ม) — num/den*factor + กำกับตัวตั้ง/ตัวหาร
+            const rateCell = (num, den, factor) => den ? '<td class="py-2.5 px-4 text-right font-medium text-slate-700">' + (num / den * factor).toFixed(2) + frac(num, Math.round(den)) + '</td>' : '<td class="py-2.5 px-4 text-right text-slate-300">NA</td>';
             const cntCell = v => '<td class="py-2.5 px-4 text-right text-slate-500">' + v + '</td>';
             const labelCell = (main, sub) => '<td class="py-2.5 px-4"><div class="font-medium text-slate-700">' + main + '</div>' + (sub ? '<div class="text-[11px] text-slate-400">' + sub + '</div>' : '') + '</td>';
             const tgt = (t) => '<td class="py-2.5 px-4 text-center text-xs text-slate-500">' + t + '</td>';
             let html = '';
             // 1 ความไว
-            html += '<tr class="hover:bg-slate-50">' + labelCell('1. ความไวของระบบเฝ้าระวัง', 'รายงาน ÷ (รายงาน+ไม่รายงาน)') + tgt('≥ 80%') + get(s => pctCell(s.sens, 80)).join('') + '</tr>';
+            html += '<tr class="hover:bg-slate-50">' + labelCell('1. ความไวของระบบเฝ้าระวัง', 'รายงาน ÷ (รายงาน+ไม่รายงาน)') + tgt('≥ 80%') + get(s => pctCell(s.sens, 80, s.yes, s.ev, 'ครั้ง')).join('') + '</tr>';
             // 2 ความครบถ้วน
-            html += '<tr class="hover:bg-slate-50">' + labelCell('2. ความครบถ้วนของการบันทึก', 'กรอกครบ: Admit·SITE·เชื้อ·Date of event·หอ') + tgt('≥ 90%') + get(s => pctCell(s.compPct, 90)).join('') + '</tr>';
+            html += '<tr class="hover:bg-slate-50">' + labelCell('2. ความครบถ้วนของการบันทึก', 'กรอกครบ: Admit·SITE·เชื้อ·Date of event·หอ') + tgt('≥ 90%') + get(s => pctCell(s.compPct, 90, s.complete, s.n, 'เคส')).join('') + '</tr>';
             // คั่นกลุ่มผลลัพธ์
             html += '<tr class="bg-slate-50"><td colspan="7" class="py-2 px-4 text-[11px] font-bold uppercase tracking-wider text-slate-500">อัตราผลลัพธ์ (เฝ้าระวังแนวโน้ม)</td></tr>';
             // 5 HAI /1000 วันนอน
@@ -5205,7 +5206,7 @@
             html += '<tr class="hover:bg-slate-50">' + labelCell('6. VAP', '/1000 วันเครื่องช่วยหายใจ') + tgt('แนวโน้ม') + get(s => rateCell(s.site.VAP, s.den.venDay, 1000)).join('') + '</tr>';
             html += '<tr class="hover:bg-slate-50">' + labelCell('6. CLABSI', '/1000 วันคาสายหลอดเลือด') + tgt('แนวโน้ม') + get(s => rateCell(s.site.CLABSI, s.den.lineDay, 1000)).join('') + '</tr>';
             // 7 MDR
-            html += '<tr class="hover:bg-slate-50">' + labelCell('7. สัดส่วนเชื้อดื้อยา (MDR)', 'MDR ÷ เคส HAI') + tgt('แนวโน้ม') + get(s => s.mdrPct == null ? '<td class="py-2.5 px-4 text-right text-slate-300">NA</td>' : '<td class="py-2.5 px-4 text-right">' + s.mdrPct.toFixed(1) + '%</td>').join('') + '</tr>';
+            html += '<tr class="hover:bg-slate-50">' + labelCell('7. สัดส่วนเชื้อดื้อยา (MDR)', 'MDR ÷ เคส HAI') + tgt('แนวโน้ม') + get(s => pctCell(s.mdrPct, null, s.mdr, s.n, 'เคส')).join('') + '</tr>';
             // 8 SSI / Omph
             html += '<tr class="hover:bg-slate-50">' + labelCell('8. อัตรา SSI', '/100 ผ่าตัด') + tgt('แนวโน้ม') + get(s => rateCell(s.site.SSI, s.den.op, 100)).join('') + '</tr>';
             html += '<tr class="hover:bg-slate-50">' + labelCell('8. อัตรา Omphalitis', '/100 เด็กเกิดมีชีพ') + tgt('แนวโน้ม') + get(s => rateCell(s.site.Omphalitis, s.liveBirth, 100)).join('') + '</tr>';
@@ -5218,17 +5219,17 @@
             const cols = [...QI_QUARTERS, 'all'];
             const g = key => cols.map(c => key(c === 'all' ? d.all : d.byQ[c]));
             const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
-            const rate = (num, den, f) => den ? (num / den * f).toFixed(2) : 'NA';
-            const pc = v => v == null ? 'NA' : v.toFixed(1) + '%';
+            const rate = (num, den, f) => den ? (num / den * f).toFixed(2) + ' (' + num + '/' + Math.round(den) + ')' : 'NA';
+            const pc = (v, num, den) => v == null ? 'NA' : v.toFixed(1) + '% (' + num + '/' + den + ')';
             let csv = '﻿' + [q('ตัวชี้วัด'), q('เป้าหมาย'), q('Q1'), q('Q2'), q('Q3'), q('Q4'), q('รวมทั้งปี')].join(',') + '\n';
             const line = (label, target, vals) => { csv += [q(label), q(target), ...vals.map(q)].join(',') + '\n'; };
-            line('1. ความไวของระบบเฝ้าระวัง', '≥80%', g(s => pc(s.sens)));
-            line('2. ความครบถ้วนของการบันทึก', '≥90%', g(s => pc(s.compPct)));
+            line('1. ความไวของระบบเฝ้าระวัง', '≥80%', g(s => pc(s.sens, s.yes, s.ev)));
+            line('2. ความครบถ้วนของการบันทึก', '≥90%', g(s => pc(s.compPct, s.complete, s.n)));
             line('5. อัตรา HAI /1000 วันนอน', 'แนวโน้ม', g(s => rate(s.n, s.den.patientDay, 1000)));
             line('6. CAUTI /1000 วันคาสายปัสสาวะ', 'แนวโน้ม', g(s => rate(s.site.CAUTI, s.den.cathDay, 1000)));
             line('6. VAP /1000 วันเครื่องช่วยหายใจ', 'แนวโน้ม', g(s => rate(s.site.VAP, s.den.venDay, 1000)));
             line('6. CLABSI /1000 วันคาสายหลอดเลือด', 'แนวโน้ม', g(s => rate(s.site.CLABSI, s.den.lineDay, 1000)));
-            line('7. สัดส่วนเชื้อดื้อยา (MDR)', 'แนวโน้ม', g(s => pc(s.mdrPct)));
+            line('7. สัดส่วนเชื้อดื้อยา (MDR)', 'แนวโน้ม', g(s => pc(s.mdrPct, s.mdr, s.n)));
             line('8. อัตรา SSI /100 ผ่าตัด', 'แนวโน้ม', g(s => rate(s.site.SSI, s.den.op, 100)));
             line('8. อัตรา Omphalitis /100 เด็กเกิดมีชีพ', 'แนวโน้ม', g(s => rate(s.site.Omphalitis, s.liveBirth, 100)));
             line('จำนวนเคส HAI (อ้างอิง)', '', g(s => s.n));
