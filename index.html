@@ -123,6 +123,19 @@
         .flatpickr-weekday { color: #94a3b8 !important; font-weight: 600; }
         /* อินพุตวันที่ให้ดูมนขึ้นเมื่อเป็น flatpickr */
         input.flatpickr-input { cursor: pointer; background: #fff; }
+        /* ===== แถบเมนูยุบ/ขยาย (รองรับ iPad เมนูล้นจอ) ===== */
+        #sidebarNav { -webkit-overflow-scrolling: touch; }
+        /* จอ ≥768px: ยุบเหลือแถบไอคอน */
+        @media (min-width: 768px) {
+            #sidebar[data-collapsed="1"] { width: 4.25rem; }
+            #sidebar[data-collapsed="1"] .nav-item { justify-content: center; padding-left: .5rem; padding-right: .5rem; font-size: 0; gap: 0; }
+            #sidebar[data-collapsed="1"] .brand-text { display: none; }
+            #sidebar[data-collapsed="1"] .brand-wrap { justify-content: center; }
+        }
+        /* จอ <768px (มือถือ/iPad แนวตั้งแคบ): ยุบ = ซ่อนรายการเมนู (เหลือหัวแถบ) */
+        @media (max-width: 767px) {
+            #sidebar[data-collapsed="1"] #sidebarNav { display: none; }
+        }
     </style>
 </head>
 <body class="text-slate-800 bg-slate-50">
@@ -130,17 +143,19 @@
   <div class="flex flex-col md:flex-row min-h-screen">
 
     <!-- Sidebar -->
-    <aside class="w-full md:w-64 md:shrink-0 md:h-screen md:sticky md:top-0 bg-white border-r border-slate-200 flex flex-col z-20">
+    <aside id="sidebar" class="w-full md:w-64 md:shrink-0 md:h-screen md:sticky md:top-0 bg-white border-r border-slate-200 flex flex-col z-20 transition-[width] duration-200">
         <!-- Brand -->
-        <div class="bg-gradient-to-br from-emerald-500 to-green-600 text-white p-5 flex items-center gap-3">
-            <svg class="w-8 h-8 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-            <div>
+        <div class="brand-wrap bg-gradient-to-br from-emerald-500 to-green-600 text-white p-5 flex items-center gap-3">
+            <button id="sidebarToggle" type="button" title="ยุบ/ขยายเมนู" aria-label="ยุบ/ขยายเมนู" class="shrink-0 p-1 -ml-1 rounded-lg hover:bg-white/20 transition-colors">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+            <div class="brand-text">
                 <h1 class="text-lg font-bold leading-tight">ระบบเฝ้าระวังการติดเชื้อในโรงพยาบาล (HAI)</h1>
                 <p class="text-xs text-emerald-50/90">Healthcare-Associated Infection Surveillance System</p>
             </div>
         </div>
         <!-- Nav -->
-        <nav class="p-3 space-y-1 flex-1">
+        <nav id="sidebarNav" class="p-3 space-y-1 flex-1 overflow-y-auto min-h-0">
             <button id="menuDashboard" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors bg-emerald-600 text-white shadow-sm">
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                 แดชบอร์ด
@@ -8101,6 +8116,17 @@
         document.getElementById('orgTopN').addEventListener('change', updateOrgView);
         document.getElementById('menuPatient').addEventListener('click', () => switchView('patient'));
         document.getElementById('menuCompare').addEventListener('click', () => switchView('compare'));
+        // ยุบ/ขยายแถบเมนู (จำสถานะไว้)
+        (function () {
+            const sb = document.getElementById('sidebar'), tg = document.getElementById('sidebarToggle');
+            if (!sb || !tg) return;
+            try { if (localStorage.getItem('sidebarCollapsed') === '1') sb.setAttribute('data-collapsed', '1'); } catch (e) {}
+            tg.addEventListener('click', () => {
+                const on = sb.getAttribute('data-collapsed') === '1';
+                if (on) sb.removeAttribute('data-collapsed'); else sb.setAttribute('data-collapsed', '1');
+                try { localStorage.setItem('sidebarCollapsed', on ? '0' : '1'); } catch (e) {}
+            });
+        })();
         document.getElementById('cmpDim').addEventListener('change', updateCompareView);
         document.getElementById('cmpMetric').addEventListener('change', cmpRender);
         document.getElementById('cmpAll').addEventListener('click', () => { document.querySelectorAll('#cmpValues .cmp-val').forEach(cb => cb.checked = true); cmpRender(); });
