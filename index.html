@@ -1357,7 +1357,7 @@
         <!-- ===================== VIEW: เฝ้าระวังหน่วยพิเศษ ===================== -->
         <div id="viewSpecial" class="space-y-6" hidden>
             <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-800">
-                <b>หน่วยพิเศษ:</b> <span id="specialUnitList">CAPD, HD</span> — จับจากคอลัมน์ <b>HAI = "ci"</b> · แยกกลุ่มด้วย <b>SITE</b> · ตัวหาร: CAPD ÷ ครั้ง CAPD, HD ÷ ครั้ง HD1
+                <b>หน่วยพิเศษ:</b> <span id="specialUnitList">CAPD, HD, Line</span> — จับจากคอลัมน์ <b>HAI = "ci"</b> · แยกกลุ่มด้วย <b>SITE</b> · ตัวหาร: CAPD ÷ ครั้ง CAPD, HD ÷ ครั้ง HD1, Line ÷ (Line+AVF,AVG+Perm+DLC)
             </div>
             <!-- Special summary cards -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1430,6 +1430,41 @@
                             </tr>
                         </thead>
                         <tbody id="hdTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ===== กลุ่ม Line (สายสวน/เส้นเลือดเทียม) ===== -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="kpi bg-gradient-to-r from-rose-400 to-pink-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">Line — เคส / MDR</h6>
+                    <h3 class="text-2xl font-bold z-10"><span id="lineN">0</span> <span class="text-sm font-normal">/ MDR <span id="lineMDR">0</span></span></h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10">Line — อัตรา/1000 (ครั้ง <span id="lineDen">0</span>)</h6>
+                    <h3 id="lineRate" class="text-2xl font-bold z-10">-</h3>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                    <div>
+                        <h3 class="text-lg font-semibold text-rose-700">Line — สายสวน/เส้นเลือดเทียม</h3>
+                        <p class="text-xs text-slate-400 mt-1">ตัวหาร = Line + AVF,AVG + Perm + DLC · อัตราต่อ 1,000 ครั้ง</p>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="py-3 px-4">ชนิดการติดเชื้อ (SITE)</th>
+                                <th class="py-3 px-4 text-right">จำนวนเคส</th>
+                                <th class="py-3 px-4 text-right">ครั้ง Line</th>
+                                <th class="py-3 px-4 text-right text-blue-700">อัตรา /1000</th>
+                                <th class="py-3 px-4 text-right text-fuchsia-700">MDR</th>
+                                <th class="py-3 px-4 text-right text-fuchsia-700">%MDR</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lineTableBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
             </div>
@@ -2115,6 +2150,8 @@
                     //   INFECT CAPD -> CAPD · CLABSI/EXSIT SITE/BSI (HD) -> HD1
                     capdN: num(pick(r, ['CAPD'])),   // จำนวนครั้งล้างไตทางช่องท้อง (CAPD)
                     hd1N: num(pick(r, ['HD1'])),     // จำนวนครั้งฟอกเลือด (HD)
+                    // ตัวหารกลุ่ม Line (สายสวน/เส้นเลือดเทียม) = Line + AVF,AVG + Perm + DLC
+                    lineAccN: num(pick(r, ['Line'])) + num(pick(r, ['AVF,AVG', 'AVF', 'AVG'])) + num(pick(r, ['Perm'])) + num(pick(r, ['DLC'])),
                     // ประเภทแผลผ่าตัด (Wound class) 1-4 + SSI แยกชนิดผ่าตัด
                     w1: num(pick(r, ['1'])), w2: num(pick(r, ['2'])), w3: num(pick(r, ['3'])), w4: num(pick(r, ['4'])),
                     ssiType: pick(r, ['ชนิดSSI', 'ชนิด SSI']).toString().trim(),  // ประเภทแผลผ่าตัด (1-4 หรือ clean/…)
@@ -2438,6 +2475,8 @@
         // หน่วยพิเศษ: เคสที่คอลัมน์ HAI = "ci" — หน่วยดูจากคอลัมน์ SITE (hdu / capd)
         function rowIsCI(d) { return (d.rawHAI || '').toString().toUpperCase() === 'CI'; }
         function specialUnitOf(d) { return (d.rawSITE || '').toString().toUpperCase() || '(ไม่ระบุ)'; }
+        // กลุ่ม Line (สายสวน/เส้นเลือดเทียม): จับจาก SITE ที่เกี่ยวกับสายหลอดเลือด/เส้นเลือดเทียม
+        function isLineUnit(u) { return /CLABSI|CVC|CENTRAL|\bLINE\b|EXIT|CATHETER|PERM|DLC|AVF|AVG|FISTULA|GRAFT|เส้นเลือด|สายสวนหลอด/i.test(u || ''); }
         const INDICATOR_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTj9sgM8ezxJ89owzZUnYwkQnzbNso4xZ3LQD6tH1gv7VSS2LY_CUi-Blc2MF1oGJOFWkeNumotrb54/pub?gid=1799512390&single=true&output=csv';
         let postdcChartInstance = null;
         let pdcCmpChartInstance = null;
@@ -5874,18 +5913,21 @@
         }
         function updateSpecialView() {
             const rows = getRowsForWards();
-            // ตัวหาร (จำนวนครั้ง) รวมจาก "ทุกแถว" แยกตามชนิดล้างไต
+            // ตัวหาร (จำนวนครั้ง) รวมจาก "ทุกแถว" แยกตามชนิด
             const totCAPD = rows.reduce((a, r) => a + r.capdN, 0);
             const totHD1 = rows.reduce((a, r) => a + r.hd1N, 0);
+            const totLine = rows.reduce((a, r) => a + (r.lineAccN || 0), 0);
             const allGroups = aggregateSpecial(rows);
             const isCapd = g => (g.unit || '').toUpperCase().includes('CAPD');
             const capdGroups = allGroups.filter(isCapd).sort((a, b) => b.n - a.n);
-            const hdGroups = allGroups.filter(g => !isCapd(g)).sort((a, b) => b.n - a.n);
+            const lineGroups = allGroups.filter(g => !isCapd(g) && isLineUnit(g.unit)).sort((a, b) => b.n - a.n);
+            const hdGroups = allGroups.filter(g => !isCapd(g) && !isLineUnit(g.unit)).sort((a, b) => b.n - a.n);
             document.getElementById('specialEmpty').hidden = allGroups.length > 0;
 
             // เติมกลุ่มลงตาราง + แถบสรุป
             fillSpecialGroup('capd', capdGroups, totCAPD, 'ครั้ง CAPD');
             fillSpecialGroup('hd', hdGroups, totHD1, 'ครั้ง HD');
+            fillSpecialGroup('line', lineGroups, totLine, 'ครั้ง Line');
 
             // กราฟรายเดือน: เส้นจำนวนเคส CI แยกตามชนิด
             const ciRows = rows.filter(rowIsCI);
@@ -5958,9 +6000,12 @@
             const allRows = getRowsForWards();
             const totCAPD = allRows.reduce((a, r) => a + r.capdN, 0);
             const totHD1 = allRows.reduce((a, r) => a + r.hd1N, 0);
+            const totLine = allRows.reduce((a, r) => a + (r.lineAccN || 0), 0);
             const groups = aggregateSpecial(allRows).map(g => {
                 const capd = (g.unit || '').toUpperCase().includes('CAPD');
-                return { ...g, grp: capd ? 'CAPD' : 'HD', den: capd ? totCAPD : totHD1 };
+                const line = !capd && isLineUnit(g.unit);
+                const grp = capd ? 'CAPD' : (line ? 'Line' : 'HD');
+                return { ...g, grp, den: capd ? totCAPD : (line ? totLine : totHD1) };
             }).sort((a, b) => a.grp.localeCompare(b.grp) || b.n - a.n);
             let csv = head.join(',') + '\n';
             groups.forEach(g => {
