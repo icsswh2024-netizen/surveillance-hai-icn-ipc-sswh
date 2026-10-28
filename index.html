@@ -7219,7 +7219,7 @@
                 { col: 'อายุ', label: 'อายุ (ปี)', type: 'number' }
             ] },
             { group: 'ข้อมูลคลินิก', fields: [
-                { col: 'UD', label: 'โรคประจำตัว (UD)', type: 'text' },
+                { col: 'UD', label: 'โรคประจำตัว (UD) — เลือก/พิมพ์ได้หลายโรค', type: 'chips', datalist: 'ud', ph: 'พิมพ์โรคแล้วกด Enter หรือเลือกจากรายการ' },
                 { col: 'Pre-dx', label: 'Pre-dx', type: 'text' },
                 { col: 'Post-dx', label: 'Post-dx', type: 'text' },
                 { col: 'Admit', label: 'วันรับไว้ (Admit)', type: 'date' },
@@ -7300,7 +7300,8 @@
             { grad: 'from-indigo-50', bd: 'border-indigo-100', bar: 'bg-indigo-500', tx: 'text-indigo-800' },
             { grad: 'from-fuchsia-50', bd: 'border-fuchsia-100', bar: 'bg-fuchsia-500', tx: 'text-fuchsia-800' }
         ];
-        const REC_DATALISTS = { units: [], pcts: [], org: [], titles: ['นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.'], site: ['cauti', 'vap', 'hap', 'clabsi', 'ssi', 'uti', 'bsi', 'omphalitis'], mdr: ['mdr', 'cre', 'esbl', 'xdr', 'vre', 'mrsa'] };
+        const REC_DATALISTS = { units: [], pcts: [], org: [], titles: ['นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.'], site: ['cauti', 'vap', 'hap', 'clabsi', 'ssi', 'uti', 'bsi', 'omphalitis'], mdr: ['mdr', 'cre', 'esbl', 'xdr', 'vre', 'mrsa'],
+            ud: ['HT', 'DM', 'DLP', 'CKD', 'ESRD', 'CAD', 'CHF', 'COPD', 'Asthma', 'Stroke', 'Cirrhosis', 'CA', 'HIV', 'TB', 'Gout', 'Thyroid', 'Dementia', 'BPH', 'Anemia', 'SLE', 'RA', 'Epilepsy', 'Parkinson', 'Bedridden', 'Obesity'] };
         // ค่าดรอปดาวน์อ่านสดจากแท็บ "List-ทะเบียน-1" (หัวคอลัมน์ = ชื่อฟิลด์, ค่าในคอลัมน์ = ตัวเลือก)
         const REC_LIST_SHEET = 'List-ทะเบียน-1';
         const REC_LIST_CSV_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(REC_LIST_SHEET);
@@ -7683,6 +7684,14 @@
                 const opts = (listVals && listVals.length) ? listVals : f.opts;
                 input = '<select data-col="' + recEsc(f.col) + '"' + (f.req ? ' data-req="1"' : '') + ' class="' + base + '"><option value=""></option>' +
                     opts.map(o => '<option value="' + recEsc(o) + '">' + recEsc(o) + '</option>').join('') + '</select>';
+            } else if (f.type === 'chips') {
+                const dl = (listVals && listVals.length) ? REC_LIST_IDS[lkey] : (f.datalist ? 'recdl_' + f.datalist : '');
+                const ph = f.ph ? recEsc(f.ph) : '';
+                input = '<div class="recchips ' + base + ' flex flex-wrap items-center gap-1 min-h-[2.5rem] py-1.5">' +
+                    '<span class="rc-tags flex flex-wrap gap-1"></span>' +
+                    '<input type="text" class="rc-input flex-1 min-w-[6rem] outline-none bg-transparent text-sm"' + (dl ? ' list="' + dl + '"' : '') + ' placeholder="' + ph + '">' +
+                    '<input type="hidden" data-col="' + recEsc(f.col) + '"' + (f.req ? ' data-req="1"' : '') + '>' +
+                    '</div>';
             } else {
                 const t = f.type === 'number' ? 'number' : 'text';
                 const list = (listVals && listVals.length) ? ' list="' + REC_LIST_IDS[lkey] + '"' : (f.datalist ? ' list="recdl_' + f.datalist + '"' : '');
@@ -7709,11 +7718,43 @@
                 return '<div class="' + card + '"><h4 class="flex items-center gap-2 text-sm font-semibold ' + p.tx + ' mb-3">' + head + recEsc(g.group) + '</h4>' + grid + '</div>';
             }).join('');
         }
+        // ช่องเลือกหลายค่า (chips) — เก็บค่าเป็นสตริงคั่น ", " ใน input[type=hidden][data-col]
+        // ตั้ง getter/setter บน value ของ hidden เพื่อให้โค้ด get/set เดิม (recAllRows/clear/OCR/ร่าง) ทำงานได้โดยไม่ต้องแก้
+        function recInitChips() {
+            document.querySelectorAll('#recFormFields .recchips').forEach(box => {
+                const tags = box.querySelector('.rc-tags');
+                const inp = box.querySelector('.rc-input');
+                const hid = box.querySelector('input[type="hidden"]');
+                if (!tags || !inp || !hid || hid._chips) return;
+                hid._chips = true;
+                let items = [];
+                const render = () => {
+                    tags.innerHTML = items.map((t, i) => '<span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-xs font-medium rounded-full pl-2 pr-1 py-0.5">' +
+                        recEsc(t) + '<button type="button" data-i="' + i + '" class="rc-x w-4 h-4 leading-none rounded-full hover:bg-emerald-200 text-emerald-700">×</button></span>').join('');
+                    tags.querySelectorAll('.rc-x').forEach(b => b.addEventListener('click', () => { items.splice(+b.dataset.i, 1); render(); }));
+                };
+                const add = raw => { (raw || '').toString().split(/[,;\/]+/).map(x => x.trim()).filter(Boolean).forEach(t => { if (!items.some(x => x.toLowerCase() === t.toLowerCase())) items.push(t); }); render(); };
+                Object.defineProperty(hid, 'value', {
+                    configurable: true,
+                    get() { return items.join(', '); },
+                    set(v) { items = (v || '').toString().split(/[,;\/]+/).map(x => x.trim()).filter(Boolean); render(); }
+                });
+                inp.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add(inp.value); inp.value = ''; }
+                    else if (e.key === 'Backspace' && !inp.value && items.length) { items.pop(); render(); }
+                });
+                inp.addEventListener('change', () => { if (inp.value) { add(inp.value); inp.value = ''; } }); // เลือกจาก datalist
+                inp.addEventListener('blur', () => { if (inp.value) { add(inp.value); inp.value = ''; } });
+                box.addEventListener('click', e => { if (e.target === box || e.target === tags) inp.focus(); });
+                render();
+            });
+        }
         // ผูก event หลังสร้างฟอร์มใหม่ทุกครั้ง (เดือน→ไตรมาส, ค่าปีตั้งต้น, fallback datalist)
         function bindRecordForm() {
             const monthSel = document.getElementById('rec_month');
             if (monthSel) monthSel.addEventListener('change', () => { const q = recQuarterOfMonth(monthSel.value); const qe = document.getElementById('rec_quarter'); if (qe) qe.value = q || ''; });
             const y = document.querySelector('#recFormFields [data-col="Year"]'); if (y && !y.value) y.value = String(new Date().getFullYear() + 543);
+            recInitChips(); // ช่องเลือกหลายโรค (UD)
             astRenderOrgs(); // วาดแผงเชื้อหลายตัว + ตารางผลไวต่อยา
             recComputeSsiRisk(); // คำนวณ SSI Risk Index ตั้งต้น
             // ปฏิทินพรีเมียม (flatpickr) สำหรับช่องวันที่ — เก็บค่าเป็น วว/ดด/ปปปป (พ.ศ.) ตรงกับชีต
