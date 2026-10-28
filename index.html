@@ -2487,6 +2487,18 @@
         // ป้ายสรุปตัวเลือก
         function fLabel(key) { const s = FILTER_SEL[key]; if (!s || !s.size) return FILTER_ALLTXT[key]; const a = [...s]; return a.length <= 2 ? a.join(', ') : (a.length + ' รายการ'); }
 
+        // ===== ตัวกรองแยกรายเมนู: จำค่าตัวกรองของแต่ละเมนูแยกกัน =====
+        const VIEW_FILTERS = {};
+        let CURRENT_FILTER_VIEW = 'dashboard';
+        function saveViewFilters(view) {
+            if (!view) return;
+            VIEW_FILTERS[view] = { year: [...FILTER_SEL.year], quarter: [...FILTER_SEL.quarter], unit: [...FILTER_SEL.unit], pct: [...FILTER_SEL.pct] };
+        }
+        function loadViewFilters(view) {
+            const s = VIEW_FILTERS[view] || { year: [], quarter: [], unit: [], pct: [] };
+            ['year', 'quarter', 'unit', 'pct'].forEach(k => { FILTER_SEL[k] = new Set(s[k] || []); fRenderPop(k); });
+        }
+
         function fRenderPop(key) {
             const box = document.querySelector('.ms-filter[data-key="' + key + '"]'); if (!box) return;
             const pop = box.querySelector('.ms-pop'), lbl = box.querySelector('.ms-label');
@@ -8027,6 +8039,8 @@
         }
 
         function switchView(view) {
+            // ตัวกรองแยกรายเมนู: บันทึกของเมนูเดิม แล้วโหลดของเมนูใหม่ ก่อนเรนเดอร์
+            if (view !== CURRENT_FILTER_VIEW) { saveViewFilters(CURRENT_FILTER_VIEW); loadViewFilters(view); CURRENT_FILTER_VIEW = view; }
             const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', report: 'viewReport', org: 'viewOrg', patient: 'viewPatient', compare: 'viewCompare', surv: 'viewSurv', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord', listedit: 'viewListEdit' };
             const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', patient: 'menuPatient', compare: 'menuCompare', surv: 'menuSurv', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
             const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', report: 'สรุปรายงาน', org: 'เชื้อก่อโรค HAI', patient: 'วิเคราะห์ผู้ป่วย', surv: 'ประสิทธิภาพการเฝ้าระวัง', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI', listedit: 'แก้ไข Dropdown (List)' };
@@ -8053,6 +8067,7 @@
                 btn.title = pdcOnly ? 'ตัวกรองนี้ใช้ไม่ได้ในหน้า Post discharge (ชีตไม่มีข้อมูลหอผู้ป่วย/กลุ่มงาน)' : '';
                 if (pdcOnly) box.querySelector('.ms-pop').classList.add('hidden');
             });
+            if (view === 'dashboard') updateDashboard();
             if (view === 'wards') updateWardTable();
             if (view === 'mdr') updateMdrView();
             if (view === 'service') updateServiceView();
