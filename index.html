@@ -1452,7 +1452,11 @@
                         <p class="text-xs text-slate-400 mt-1">ตัวหาร = Line + AVF,AVG + Perm + DLC · อัตราต่อ 1,000 ครั้ง</p>
                     </div>
                 </div>
-                <div class="overflow-x-auto">
+                <div class="px-6 pt-4">
+                    <p class="text-xs font-semibold text-slate-500 mb-2">สัดส่วนชนิดสาย (จากจำนวนครั้งทั้งหมด)</p>
+                    <div id="lineBreakdown" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+                </div>
+                <div class="overflow-x-auto mt-2">
                     <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
                         <thead class="bg-slate-50 text-slate-700 font-semibold">
                             <tr>
@@ -2150,7 +2154,11 @@
                     //   INFECT CAPD -> CAPD · CLABSI/EXSIT SITE/BSI (HD) -> HD1
                     capdN: num(pick(r, ['CAPD'])),   // จำนวนครั้งล้างไตทางช่องท้อง (CAPD)
                     hd1N: num(pick(r, ['HD1'])),     // จำนวนครั้งฟอกเลือด (HD)
-                    // ตัวหารกลุ่ม Line (สายสวน/เส้นเลือดเทียม) = Line + AVF,AVG + Perm + DLC
+                    // ตัวหารกลุ่ม Line (สายสวน/เส้นเลือดเทียม) แยกแต่ละชนิด + รวม
+                    accLine: num(pick(r, ['Line'])),
+                    accAVF: num(pick(r, ['AVF,AVG', 'AVF', 'AVG'])),
+                    accPerm: num(pick(r, ['Perm'])),
+                    accDLC: num(pick(r, ['DLC'])),
                     lineAccN: num(pick(r, ['Line'])) + num(pick(r, ['AVF,AVG', 'AVF', 'AVG'])) + num(pick(r, ['Perm'])) + num(pick(r, ['DLC'])),
                     // ประเภทแผลผ่าตัด (Wound class) 1-4 + SSI แยกชนิดผ่าตัด
                     w1: num(pick(r, ['1'])), w2: num(pick(r, ['2'])), w3: num(pick(r, ['3'])), w4: num(pick(r, ['4'])),
@@ -5928,6 +5936,26 @@
             fillSpecialGroup('capd', capdGroups, totCAPD, 'ครั้ง CAPD');
             fillSpecialGroup('hd', hdGroups, totHD1, 'ครั้ง HD');
             fillSpecialGroup('line', lineGroups, totLine, 'ครั้ง Line');
+            // สัดส่วนชนิดสาย (Line / AVF,AVG / Perm / DLC)
+            const lb = document.getElementById('lineBreakdown');
+            if (lb) {
+                const parts = [
+                    { k: 'Line', v: rows.reduce((a, r) => a + (r.accLine || 0), 0), c: '#f43f5e' },
+                    { k: 'AVF,AVG', v: rows.reduce((a, r) => a + (r.accAVF || 0), 0), c: '#f59e0b' },
+                    { k: 'Perm', v: rows.reduce((a, r) => a + (r.accPerm || 0), 0), c: '#8b5cf6' },
+                    { k: 'DLC', v: rows.reduce((a, r) => a + (r.accDLC || 0), 0), c: '#0ea5e9' }
+                ];
+                const tot = parts.reduce((a, p) => a + p.v, 0);
+                lb.innerHTML = parts.map(p => {
+                    const pct = tot ? Math.round(p.v / tot * 100) : 0;
+                    return '<div class="rounded-xl border border-slate-100 bg-slate-50/50 p-3">' +
+                        '<div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-600">' + p.k + '</span>' +
+                        '<span class="text-xs font-bold" style="color:' + p.c + '">' + pct + '%</span></div>' +
+                        '<div class="text-lg font-bold text-slate-800 mt-0.5">' + Math.round(p.v).toLocaleString() + '<span class="text-xs font-normal text-slate-400"> ครั้ง</span></div>' +
+                        '<div class="h-1.5 rounded-full bg-slate-200 mt-1.5 overflow-hidden"><div class="h-full rounded-full" style="width:' + pct + '%;background:' + p.c + '"></div></div>' +
+                        '</div>';
+                }).join('');
+            }
 
             // กราฟรายเดือน: เส้นจำนวนเคส CI แยกตามชนิด
             const ciRows = rows.filter(rowIsCI);
