@@ -714,6 +714,14 @@
                     <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">Re-Cath<br><span class="text-white/70">ใส่สายสวนปัสสาวะซ้ำ</span></h6>
                     <h3 id="svcReCath" class="text-2xl font-bold z-10">0</h3>
                 </div>
+                <div class="kpi bg-gradient-to-r from-cyan-400 to-sky-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">HD<br><span class="text-white/70">ครั้งฟอกเลือด</span></h6>
+                    <h3 id="svcHD" class="text-2xl font-bold z-10">0</h3>
+                </div>
+                <div class="kpi bg-gradient-to-r from-lime-400 to-emerald-500 rounded-2xl p-4 text-white shadow-md h-24 flex flex-col justify-between">
+                    <h6 class="text-xs font-medium text-white/90 z-10 leading-tight">CAPD<br><span class="text-white/70">ครั้งล้างไตช่องท้อง</span></h6>
+                    <h3 id="svcCAPD" class="text-2xl font-bold z-10">0</h3>
+                </div>
             </div>
 
             <!-- Per-person analysis -->
@@ -3708,6 +3716,8 @@
             document.getElementById('svcOp').textContent = Math.round(tot.op).toLocaleString();
             document.getElementById('svcReTube').textContent = Math.round(rows.reduce((a, r) => a + (r.reTube || 0), 0)).toLocaleString();
             document.getElementById('svcReCath').textContent = Math.round(rows.reduce((a, r) => a + (r.reCath || 0), 0)).toLocaleString();
+            document.getElementById('svcHD').textContent = Math.round(rows.reduce((a, r) => a + (r.hd1N || 0), 0)).toLocaleString();
+            document.getElementById('svcCAPD').textContent = Math.round(rows.reduce((a, r) => a + (r.capdN || 0), 0)).toLocaleString();
 
             // วิเคราะห์ต่อคน: วันคาอุปกรณ์เฉลี่ยต่อคน = วันรวม ÷ จำนวนคนใช้
             const per = (day, n) => n ? (day / n).toFixed(1) : '-';
