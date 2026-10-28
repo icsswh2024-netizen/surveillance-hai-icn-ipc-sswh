@@ -4579,7 +4579,7 @@
         }
         // เชื้อก่อโรคแยกตามหอผู้ป่วย → [{ward, orgs:[{org,n}], total, kinds}]
         // รหัสที่ไม่ใช่หอผู้ป่วยจริง (ชนิดผ่าตัด SSI / ล้างไต / ว่าง) — ตัดออกจากการจัดกลุ่มรายหอ
-        const NON_WARD_UNITS = new Set(['CAPD', 'HD', 'HDU', 'KNEE', 'HIP', 'GYN', 'EYE', 'LINE', 'AVF', 'AVG', 'AVF,AVG', 'PERM', 'DLC', 'OP', '(ไม่ระบุ)']);
+        const NON_WARD_UNITS = new Set(['CAPD', 'HD', 'HDU', 'KNEE', 'HIP', 'GYN', 'EYE', 'LINE', 'AVF', 'AVG', 'AVF,AVG', 'PERM', 'DLC', 'OP', 'COHORT', '(ไม่ระบุ)']);
         function isNonWard(u) { return !u || NON_WARD_UNITS.has(u.toString().trim().toUpperCase()); }
         function orgByWardData() {
             const rows = getFilteredRows();
