@@ -3211,6 +3211,7 @@
             const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
             const SITES = repSites();
             const wards = wardSiteAgg(getRowsForWards())
+                .filter(w => !isNonWard(w.unit))
                 .map(w => ({ ...w, HAIc: repTotalCases(w), rHAI: rate(repTotalCases(w), w.den.patientDay, 1000) }))
                 .sort((a, b) => (b.rHAI ?? -1) - (a.rHAI ?? -1) || b.HAIc - a.HAIc);
             // ปุ่มย่อ/ขยาย SSI
@@ -3292,6 +3293,7 @@
             SITES.forEach(s => head.push(s.key + ' ครั้ง', s.key + ' ' + (s.denLabel || 'ตัวหาร'), s.key + ' ' + s.rateLabel));
             head.push('MDR', '%MDR');
             const wards = wardSiteAgg(getRowsForWards())
+                .filter(w => !isNonWard(w.unit))
                 .sort((a, b) => (rate(repTotalCases(b), b.den.patientDay, 1000) ?? -1) - (rate(repTotalCases(a), a.den.patientDay, 1000) ?? -1));
             let csv = head.map(q).join(',') + '\n';
             wards.forEach(w => {
@@ -4577,7 +4579,7 @@
         }
         // เชื้อก่อโรคแยกตามหอผู้ป่วย → [{ward, orgs:[{org,n}], total, kinds}]
         // รหัสที่ไม่ใช่หอผู้ป่วยจริง (ชนิดผ่าตัด SSI / ล้างไต / ว่าง) — ตัดออกจากการจัดกลุ่มรายหอ
-        const NON_WARD_UNITS = new Set(['CAPD', 'HDU', 'KNEE', 'HIP', 'GYN', 'EYE', 'LINE', 'AVF', 'AVG', 'PERM', 'DLC', '(ไม่ระบุ)']);
+        const NON_WARD_UNITS = new Set(['CAPD', 'HD', 'HDU', 'KNEE', 'HIP', 'GYN', 'EYE', 'LINE', 'AVF', 'AVG', 'AVF,AVG', 'PERM', 'DLC', 'OP', '(ไม่ระบุ)']);
         function isNonWard(u) { return !u || NON_WARD_UNITS.has(u.toString().trim().toUpperCase()); }
         function orgByWardData() {
             const rows = getFilteredRows();
