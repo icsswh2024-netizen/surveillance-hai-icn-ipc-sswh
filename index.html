@@ -4576,11 +4576,15 @@
             body.innerHTML = html;
         }
         // เชื้อก่อโรคแยกตามหอผู้ป่วย → [{ward, orgs:[{org,n}], total, kinds}]
+        // รหัสที่ไม่ใช่หอผู้ป่วยจริง (ชนิดผ่าตัด SSI / ล้างไต / ว่าง) — ตัดออกจากการจัดกลุ่มรายหอ
+        const NON_WARD_UNITS = new Set(['CAPD', 'HDU', 'KNEE', 'HIP', 'GYN', 'EYE', 'LINE', 'AVF', 'AVG', 'PERM', 'DLC', '(ไม่ระบุ)']);
+        function isNonWard(u) { return !u || NON_WARD_UNITS.has(u.toString().trim().toUpperCase()); }
         function orgByWardData() {
             const rows = getFilteredRows();
             const byWard = {};
             rows.forEach(r => {
                 if (!r.organisms || !r.organisms.length) return;
+                if (isNonWard(r.unit)) return;   // ตัดรหัสที่ไม่ใช่หอผู้ป่วย
                 const ward = r.unit || '(ไม่ระบุ)';
                 if (!byWard[ward]) byWard[ward] = {};
                 r.organisms.forEach(o => { const key = o.toString().trim(); if (!key) return; byWard[ward][key] = (byWard[ward][key] || 0) + 1; });
@@ -5140,6 +5144,7 @@
             const cases = getFilteredCases();
             const by = {};
             cases.forEach(c => {
+                if (isNonWard(c.unit)) return;   // ตัดรหัสที่ไม่ใช่หอผู้ป่วย
                 const u = c.unit || '(ไม่ระบุ)';
                 const b = by[u] || (by[u] = { unit: u, n: 0, yes: 0, no: 0, dSum: 0, dN: 0 });
                 b.n++;
