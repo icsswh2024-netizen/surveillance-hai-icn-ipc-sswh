@@ -3222,10 +3222,10 @@
                 '<th rowspan="2" class="py-2 px-2 text-right">วันนอน</th>' +
                 '<th rowspan="2" class="py-2 px-2 text-right">HAI</th>' +
                 '<th rowspan="2" class="py-2 px-2 text-right text-blue-700">อัตรา/1000</th>';
-            SITES.forEach(s => { const ssi = s.key.indexOf('SSI') === 0; h1 += '<th colspan="2" class="py-2 px-2 text-center' + (ssi ? ' bg-violet-100 cursor-pointer repSsiToggleW' : '') + '">' + (s.key === 'SSI' ? 'SSI(รวม)▸' : s.key) + '</th>'; });
+            SITES.forEach(s => { const ssi = s.key.indexOf('SSI') === 0; h1 += '<th colspan="3" class="py-2 px-2 text-center' + (ssi ? ' bg-violet-100 cursor-pointer repSsiToggleW' : '') + '">' + (s.key === 'SSI' ? 'SSI(รวม)▸' : s.key) + '</th>'; });
             h1 += '<th rowspan="2" class="py-2 px-2 text-right text-fuchsia-700">MDR</th><th rowspan="2" class="py-2 px-2 text-right text-fuchsia-700">%MDR</th></tr>';
             let h2 = '<tr>';
-            SITES.forEach(s => { h2 += '<th class="py-1 px-2 text-right font-normal text-slate-400">ครั้ง</th><th class="py-1 px-2 text-right font-normal text-slate-400">' + s.rateLabel + '</th>'; });
+            SITES.forEach(s => { h2 += '<th class="py-1 px-2 text-right font-normal text-slate-400">ครั้ง</th><th class="py-1 px-2 text-right font-normal text-slate-400">' + (s.denLabel || 'ตัวหาร') + '</th><th class="py-1 px-2 text-right font-normal text-slate-400">' + s.rateLabel + '</th>'; });
             h2 += '</tr>';
             thead.innerHTML = h1 + h2;
             thead.querySelectorAll('.repSsiToggleW').forEach(el => el.addEventListener('click', () => { repSsiExpanded = !repSsiExpanded; updateWardTable(); }));
@@ -3240,9 +3240,10 @@
                     '<td class="py-2 px-2 text-right font-semibold">' + hc + '</td>' +
                     '<td class="py-2 px-2 text-right text-blue-700 font-semibold">' + fmtRate(rate(hc, o.den.patientDay, 1000)) + '</td>';
                 SITES.forEach(s => {
-                    const c = repCaseOf(o, s), r = repRate(o, s);
+                    const c = repCaseOf(o, s), dv = repDenOf(o, s), r = repRate(o, s);
                     const bg = s.key.indexOf('SSI') === 0 ? ' bg-violet-50/30' : '';
                     tr += '<td class="py-2 px-2 text-right' + bg + (c ? ' font-semibold text-slate-700' : ' text-slate-300') + '">' + c + '</td>' +
+                        '<td class="py-2 px-2 text-right text-slate-400' + bg + '">' + (dv ? Math.round(dv).toLocaleString() : '-') + '</td>' +
                         '<td class="py-2 px-2 text-right text-slate-500' + bg + '">' + fmtRate(r) + '</td>';
                 });
                 tr += '<td class="py-2 px-2 text-right text-fuchsia-700 font-semibold">' + o.MDR + '</td>' +
@@ -3288,7 +3289,7 @@
             const q = v => '"' + (v == null ? '' : v.toString()).replace(/"/g, '""') + '"';
             const SITES = repSites();
             const head = ['หอผู้ป่วย', 'วันนอน', 'HAI', 'อัตรา HAI/1000'];
-            SITES.forEach(s => head.push(s.key + ' ครั้ง', s.key + ' ' + s.rateLabel));
+            SITES.forEach(s => head.push(s.key + ' ครั้ง', s.key + ' ' + (s.denLabel || 'ตัวหาร'), s.key + ' ' + s.rateLabel));
             head.push('MDR', '%MDR');
             const wards = wardSiteAgg(getRowsForWards())
                 .sort((a, b) => (rate(repTotalCases(b), b.den.patientDay, 1000) ?? -1) - (rate(repTotalCases(a), a.den.patientDay, 1000) ?? -1));
@@ -3296,7 +3297,7 @@
             wards.forEach(w => {
                 const hc = repTotalCases(w);
                 const cells = [w.unit, Math.round(w.den.patientDay), hc, fmtRate(rate(hc, w.den.patientDay, 1000))];
-                SITES.forEach(s => cells.push(repCaseOf(w, s), fmtRate(repRate(w, s))));
+                SITES.forEach(s => { const dv = repDenOf(w, s); cells.push(repCaseOf(w, s), dv ? Math.round(dv) : '-', fmtRate(repRate(w, s))); });
                 cells.push(w.MDR, (hc ? Math.round(w.MDR / hc * 100) : 0) + '%');
                 csv += cells.map(q).join(',') + '\n';
             });
