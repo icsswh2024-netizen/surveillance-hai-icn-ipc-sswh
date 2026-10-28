@@ -190,11 +190,6 @@
             เข้าสู่ระบบ
           </button>
           <p id="loginStatus" class="text-xs text-center text-rose-600 min-h-[1rem]"></p>
-          <details class="text-xs text-slate-400 pt-1">
-            <summary class="cursor-pointer select-none">ตั้งค่า URL Apps Script (สำหรับผู้ดูแล)</summary>
-            <input id="loginUrlInput" type="text" placeholder="https://script.google.com/macros/s/.../exec" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-400">
-            <p class="mt-1">วาง URL ของ Apps Script Web App ที่วางโค้ด Login.gs แล้ว Deploy (บันทึกอัตโนมัติในเครื่องนี้)</p>
-          </details>
         </form>
       </div>
     </div>
@@ -8774,11 +8769,11 @@
             const lo = document.getElementById('btnLogout'); if (lo) lo.addEventListener('click', logout);
             const pt = document.getElementById('loginPassToggle'), pw = document.getElementById('loginPass');
             if (pt && pw) pt.addEventListener('click', () => { pw.type = pw.type === 'password' ? 'text' : 'password'; pw.focus(); });
-            const ui = document.getElementById('loginUrlInput');
-            if (ui) {
-                try { ui.value = localStorage.getItem('loginUrl') || ''; } catch (e) {}
-                ui.addEventListener('change', () => { try { localStorage.setItem('loginUrl', ui.value.trim()); } catch (e) {} });
-            }
+            // ตั้งค่า URL Apps Script ผ่านลิงก์พิเศษ (สำหรับผู้ดูแล): ...?loginurl=<url>
+            try {
+                const qp = new URLSearchParams(location.search).get('loginurl');
+                if (qp) { localStorage.setItem('loginUrl', qp.trim()); }
+            } catch (e) {}
             const s = readSession();
             if (s) applyAuth(s); else showLogin();
         }
