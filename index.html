@@ -140,6 +140,34 @@
 </head>
 <body class="text-slate-800 bg-slate-50">
 
+  <!-- ===================== หน้าเข้าสู่ระบบ ===================== -->
+  <div id="loginOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-gradient-to-br from-emerald-600 to-green-700 p-4">
+    <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden">
+      <div class="bg-gradient-to-br from-emerald-500 to-green-600 text-white p-6 text-center">
+        <svg class="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.1.9-2 2-2s2 .9 2 2M5 11h14a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2zm7 0V7a4 4 0 00-8 0"></path></svg>
+        <h1 class="text-lg font-bold leading-tight">ระบบเฝ้าระวังการติดเชื้อในโรงพยาบาล</h1>
+        <p class="text-xs text-emerald-50/90 mt-0.5">เข้าสู่ระบบเพื่อใช้งาน</p>
+      </div>
+      <form id="loginForm" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">ชื่อผู้ใช้ (Username)</label>
+          <input id="loginUser" type="text" autocomplete="username" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400" required>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">รหัสผ่าน (Password)</label>
+          <input id="loginPass" type="password" autocomplete="current-password" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400" required>
+        </div>
+        <button type="submit" id="loginBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg transition-colors">เข้าสู่ระบบ</button>
+        <p id="loginStatus" class="text-xs text-center text-rose-600 min-h-[1rem]"></p>
+        <details class="text-xs text-slate-400">
+          <summary class="cursor-pointer">ตั้งค่า URL Apps Script (สำหรับผู้ดูแล)</summary>
+          <input id="loginUrlInput" type="text" placeholder="https://script.google.com/macros/s/.../exec" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+          <p class="mt-1">วาง URL ของ Apps Script Web App ที่วางโค้ด Login.gs แล้ว Deploy (บันทึกอัตโนมัติในเครื่องนี้)</p>
+        </details>
+      </form>
+    </div>
+  </div>
+
   <div class="flex flex-col md:flex-row min-h-screen">
 
     <!-- Sidebar -->
@@ -221,6 +249,15 @@
                 แบบบันทึกผู้ป่วย HAI
             </button>
         </nav>
+        <div id="authBox" class="px-4 py-3 border-t border-slate-100 hidden">
+            <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-slate-700 truncate" id="authName">—</p>
+                    <p class="text-[11px] text-slate-400 truncate" id="authRole"></p>
+                </div>
+                <button id="btnLogout" class="shrink-0 text-xs font-medium bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600 py-1.5 px-2.5 rounded-lg transition-colors">ออกจากระบบ</button>
+            </div>
+        </div>
         <div class="p-4 border-t border-slate-100 text-xs text-slate-400">
             <p>สถานะ: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
             <p class="mt-1" id="debugInfo"></p>
@@ -8612,6 +8649,109 @@
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
             window.refreshCardNotes = refreshNotes;
         })();
+    </script>
+
+    <!-- ===================== ระบบเข้าสู่ระบบ (Login + สิทธิ์เมนู) ===================== -->
+    <script>
+    (function () {
+        const SALT = 'sswh-ic-2569';          // ใช้ร่วมกับ Login.gs — ถ้าเปลี่ยนต้องเปลี่ยนทั้งสองที่
+        const SESS_KEY = 'authSession';
+        const SESS_HOURS = 12;                 // อายุ session
+        // map view key -> ปุ่มเมนูใน nav
+        const MENU_BTN = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', patient: 'menuPatient', compare: 'menuCompare', surv: 'menuSurv', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
+        const ALL_VIEWS = Object.keys(MENU_BTN);
+
+        function loginUrl() {
+            let u = '';
+            try { u = localStorage.getItem('loginUrl') || ''; } catch (e) {}
+            if (!u && typeof REC_URL === 'string' && !REC_URL.includes('PASTE_')) u = REC_URL; // ใช้ตัวเดียวกับ record ได้ถ้าวาง Login ไว้สคริปต์เดียวกัน
+            return u;
+        }
+        async function sha256Hex(str) {
+            if (!(window.crypto && crypto.subtle)) throw new Error('เบราว์เซอร์ไม่รองรับการเข้ารหัส (ต้องใช้ https)');
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+            return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        function parseMenus(s) {
+            s = (s || '').toString().trim();
+            if (!s || s.toLowerCase() === 'all' || s === '*') return ['all'];
+            return s.split(/[,;\s]+/).map(x => x.trim()).filter(Boolean);
+        }
+        function applyMenuPermissions(menus) {
+            const all = menus.includes('all');
+            ALL_VIEWS.forEach(k => {
+                const b = document.getElementById(MENU_BTN[k]);
+                if (b) b.style.display = (all || menus.includes(k)) ? '' : 'none';
+            });
+            // ถ้าไม่ใช่สิทธิ์ทุกเมนู → เปิดเมนูแรกที่มีสิทธิ์ (กันอยู่หน้าที่ไม่มีสิทธิ์)
+            if (!all && typeof switchView === 'function') {
+                const first = ALL_VIEWS.find(k => menus.includes(k)) || 'dashboard';
+                switchView(first);
+            }
+        }
+        function saveSession(s) { try { localStorage.setItem(SESS_KEY, JSON.stringify(s)); } catch (e) {} }
+        function readSession() {
+            try {
+                const s = JSON.parse(localStorage.getItem(SESS_KEY) || 'null');
+                if (!s || !s.ts || (Date.now() - s.ts) > SESS_HOURS * 3600000) return null;
+                return s;
+            } catch (e) { return null; }
+        }
+        function applyAuth(s) {
+            document.getElementById('loginOverlay').classList.add('hidden');
+            document.getElementById('loginOverlay').classList.remove('flex');
+            const box = document.getElementById('authBox'); if (box) box.classList.remove('hidden');
+            const nm = document.getElementById('authName'); if (nm) nm.textContent = s.name || s.username;
+            const rl = document.getElementById('authRole'); if (rl) rl.textContent = (s.role ? s.role + ' · ' : '') + '@' + s.username;
+            applyMenuPermissions(parseMenus(s.menus));
+        }
+        function showLogin() {
+            const ov = document.getElementById('loginOverlay');
+            ov.classList.remove('hidden'); ov.classList.add('flex');
+            const box = document.getElementById('authBox'); if (box) box.classList.add('hidden');
+        }
+        function logout() { try { localStorage.removeItem(SESS_KEY); } catch (e) {} location.reload(); }
+
+        async function doLogin(ev) {
+            ev.preventDefault();
+            const st = document.getElementById('loginStatus');
+            const u = document.getElementById('loginUser').value.trim();
+            const pw = document.getElementById('loginPass').value;
+            const url = loginUrl();
+            if (!url) { st.textContent = '⚠️ ยังไม่ได้ตั้งค่า URL Apps Script (กดที่ "ตั้งค่า…" ด้านล่าง)'; return; }
+            if (!u || !pw) { st.textContent = 'กรอกชื่อผู้ใช้และรหัสผ่าน'; return; }
+            st.textContent = 'กำลังตรวจสอบ...'; st.className = 'text-xs text-center text-slate-500 min-h-[1rem]';
+            try {
+                const h = await sha256Hex(pw + SALT);
+                const res = await jsonpFrom(url, 'action=login&u=' + encodeURIComponent(u) + '&h=' + h);
+                if (res && res.ok) {
+                    const s = { username: res.username || u.toLowerCase(), name: res.name || u, role: res.role || '', menus: res.menus || 'all', ts: Date.now() };
+                    saveSession(s); applyAuth(s);
+                    document.getElementById('loginPass').value = '';
+                    st.textContent = '';
+                } else {
+                    st.className = 'text-xs text-center text-rose-600 min-h-[1rem]';
+                    st.textContent = (res && res.error) ? ('⚠️ ' + res.error) : 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+                }
+            } catch (e) {
+                st.className = 'text-xs text-center text-rose-600 min-h-[1rem]';
+                st.textContent = '⚠️ เชื่อมต่อไม่ได้: ' + e.message + ' (ตรวจ URL / การ Deploy)';
+            }
+        }
+        function initAuth() {
+            const form = document.getElementById('loginForm'); if (!form) return;
+            form.addEventListener('submit', doLogin);
+            const lo = document.getElementById('btnLogout'); if (lo) lo.addEventListener('click', logout);
+            const ui = document.getElementById('loginUrlInput');
+            if (ui) {
+                try { ui.value = localStorage.getItem('loginUrl') || ''; } catch (e) {}
+                ui.addEventListener('change', () => { try { localStorage.setItem('loginUrl', ui.value.trim()); } catch (e) {} });
+            }
+            const s = readSession();
+            if (s) applyAuth(s); else showLogin();
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAuth); else initAuth();
+    })();
     </script>
 </body>
 </html>
