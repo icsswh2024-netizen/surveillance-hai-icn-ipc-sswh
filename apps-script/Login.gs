@@ -42,9 +42,27 @@ var LOGIN_CFG = {
   SALT: 'sswh-ic-2569'   // ⚠️ ต้องตรงกับค่า SALT ในหน้าเว็บ (index.html)
 };
 
-// key เมนูทั้งหมด (ใช้เป็นหัวคอลัมน์ checkbox แบบ B)
+// key เมนูทั้งหมด + ชื่อเมนูจริง (ใช้เป็นหัวคอลัมน์ checkbox ได้ทั้ง "ชื่อไทย" หรือ "key")
 var LOGIN_MENU_KEYS = ['dashboard', 'wards', 'mdr', 'service', 'indicator', 'analysis',
   'report', 'org', 'patient', 'compare', 'surv', 'special', 'postdc', 'control', 'risk', 'record'];
+var LOGIN_MENU_LABELS = {
+  dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ',
+  indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', report: 'สรุปรายงาน', org: 'เชื้อก่อโรค HAI',
+  patient: 'วิเคราะห์ผู้ป่วย', compare: 'เปรียบเทียบ', surv: 'ประสิทธิภาพการเฝ้าระวัง',
+  special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart',
+  risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI'
+};
+// normalize หัวคอลัมน์เพื่อเทียบ (ตัดช่องว่าง/วงเล็บ/ขีด)
+function smNorm_(s) { return String(s == null ? '' : s).trim().toLowerCase().replace(/[\s()·\-–_.]/g, ''); }
+// แปลงหัวคอลัมน์ -> key เมนู (รับได้ทั้งชื่อไทยและ key); คืน 'all' หรือ null ถ้าไม่ใช่เมนู
+function smHeaderKey_(h) {
+  var n = smNorm_(h);
+  if (!n) return null;
+  if (n === 'all' || n === 'ทุกเมนู' || n === 'ทั้งหมด') return 'all';
+  if (LOGIN_MENU_KEYS.indexOf(n) >= 0) return n;
+  for (var k in LOGIN_MENU_LABELS) { if (smNorm_(LOGIN_MENU_LABELS[k]) === n) return k; }
+  return null;
+}
 
 // นับว่า "ติ๊ก/อนุญาต" ไหม (รองรับ checkbox TRUE, ✔, 1, yes, x)
 function smChecked_(v) {
@@ -110,21 +128,50 @@ function smLogin_(u, h) {
   return { ok: false }; // ไม่พบ username
 }
 
-// รวมสิทธิ์เมนู: คอลัมน์ "all" ติ๊ก → "all"; ไม่งั้นรวมคอลัมน์เมนูที่ติ๊ก;
-// ถ้าไม่มีคอลัมน์ checkbox เลย ใช้คอลัมน์ "menus" (ข้อความ) แทน
+// รวมสิทธิ์เมนู: สแกนทุกหัวคอลัมน์ (ชื่อไทยหรือ key) ที่เป็นเมนู แล้วดูว่าติ๊กไหม
+//   - ติ๊กคอลัมน์ "all/ทุกเมนู" → "all"
+//   - ไม่งั้นรวมเมนูที่ติ๊ก
+//   - ถ้าไม่มีคอลัมน์เมนูเลย → ใช้คอลัมน์ "menus" (ข้อความ) แทน
 function smResolveMenus_(hdr, row, ci) {
-  var allI = hdr.indexOf('all');
-  if (allI >= 0 && smChecked_(row[allI])) return 'all';
-  var allowed = [];
-  for (var k = 0; k < LOGIN_MENU_KEYS.length; k++) {
-    var key = LOGIN_MENU_KEYS[k];
-    var col = hdr.indexOf(key);
-    if (col >= 0 && smChecked_(row[col])) allowed.push(key);
+  var allowed = [], seen = {}, sawMenuCol = false;
+  for (var c = 0; c < hdr.length; c++) {
+    var key = smHeaderKey_(hdr[c]);
+    if (!key) continue;
+    sawMenuCol = true;
+    if (smChecked_(row[c])) {
+      if (key === 'all') return 'all';
+      if (!seen[key]) { seen[key] = true; allowed.push(key); }
+    }
   }
-  if (allowed.length) return allowed.join(',');
-  // ไม่มี checkbox → ใช้คอลัมน์ menus (ข้อความ) ถ้ามี
+  if (sawMenuCol) return allowed.join(',');  // มีคอลัมน์เมนู → ใช้ตามที่ติ๊ก (ว่าง = ไม่มีสิทธิ์)
   if (ci.menus >= 0) { var t = String(row[ci.menus] || '').trim(); if (t) return t; }
   return 'all';
+}
+
+/**
+ * รันครั้งเดียวจาก Apps Script editor (กด Run ที่ฟังก์ชันนี้)
+ * สร้าง/อัปเดตแท็บ "Users" ให้มีหัวคอลัมน์ชื่อเมนูจริง + ช่อง checkbox
+ * (ข้อมูลผู้ใช้เดิมไม่ถูกลบ — เพิ่ม/จัดหัวตารางและ checkbox ให้)
+ */
+function smCreateUsersTab() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(LOGIN_CFG.SHEET) || ss.insertSheet(LOGIN_CFG.SHEET);
+  // หัวคอลัมน์: ข้อมูลผู้ใช้ + "ทุกเมนู" + ชื่อเมนูจริงทั้งหมด (เพิ่มเมนูใหม่ได้โดยเติม label ใน LOGIN_MENU_LABELS)
+  var header = ['username', 'password', 'ชื่อ-สกุล', 'role', 'ทุกเมนู'];
+  for (var i = 0; i < LOGIN_MENU_KEYS.length; i++) header.push(LOGIN_MENU_LABELS[LOGIN_MENU_KEYS[i]] || LOGIN_MENU_KEYS[i]);
+  sh.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold').setBackground('#e2e8f0');
+  sh.setFrozenRows(1);
+  sh.setFrozenColumns(1);
+  // ใส่ checkbox ให้คอลัมน์เมนู (คอลัมน์ 5 = "ทุกเมนู" เป็นต้นไป) สำหรับ 200 แถว
+  var firstMenuCol = 5, menuCols = header.length - firstMenuCol + 1, rows = 200;
+  sh.getRange(2, firstMenuCol, rows, menuCols).insertCheckboxes();
+  // ตัวอย่าง admin (เฉพาะกรณียังไม่มีข้อมูล)
+  if (sh.getLastRow() < 2) {
+    sh.getRange(2, 1, 1, 4).setValues([['admin', '1234', 'ผู้ดูแลระบบ', 'admin']]);
+    sh.getRange(2, 5).setValue(true); // ติ๊ก "ทุกเมนู"
+  }
+  sh.autoResizeColumns(1, 4);
+  SpreadsheetApp.getUi && SpreadsheetApp.getActive().toast('สร้าง/อัปเดตแท็บ Users เรียบร้อย (ตัวอย่าง admin/1234)', 'IC Login', 5);
 }
 
 function sha256Hex_(s) {
