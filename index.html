@@ -249,15 +249,6 @@
                 แบบบันทึกผู้ป่วย HAI
             </button>
         </nav>
-        <div id="authBox" class="px-4 py-3 border-t border-slate-100 hidden">
-            <div class="flex items-center justify-between gap-2">
-                <div class="min-w-0">
-                    <p class="text-sm font-semibold text-slate-700 truncate" id="authName">—</p>
-                    <p class="text-[11px] text-slate-400 truncate" id="authRole"></p>
-                </div>
-                <button id="btnLogout" class="shrink-0 text-xs font-medium bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600 py-1.5 px-2.5 rounded-lg transition-colors">ออกจากระบบ</button>
-            </div>
-        </div>
         <div class="p-4 border-t border-slate-100 text-xs text-slate-400">
             <p>สถานะ: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
             <p class="mt-1" id="debugInfo"></p>
@@ -273,6 +264,13 @@
             <div>
                 <h2 class="text-2xl font-bold text-slate-800" id="pageTitle">แดชบอร์ด</h2>
                 <p class="text-slate-500 text-sm">จำนวนเคสติดเชื้อในโรงพยาบาล (HAI Case Surveillance)</p>
+            </div>
+            <div id="authBox" class="hidden items-center gap-3 self-start sm:self-auto bg-white border border-slate-100 rounded-xl shadow-sm px-3 py-2">
+                <div class="min-w-0 text-right">
+                    <p class="text-sm font-semibold text-slate-700 truncate max-w-[12rem]" id="authName">—</p>
+                    <p class="text-[11px] text-slate-400 truncate max-w-[12rem]" id="authRole"></p>
+                </div>
+                <button id="btnLogout" class="shrink-0 text-xs font-medium bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600 py-1.5 px-2.5 rounded-lg transition-colors">ออกจากระบบ</button>
             </div>
         </div>
 
@@ -8700,7 +8698,7 @@
         function applyAuth(s) {
             document.getElementById('loginOverlay').classList.add('hidden');
             document.getElementById('loginOverlay').classList.remove('flex');
-            const box = document.getElementById('authBox'); if (box) box.classList.remove('hidden');
+            const box = document.getElementById('authBox'); if (box) { box.classList.remove('hidden'); box.classList.add('flex'); }
             const nm = document.getElementById('authName'); if (nm) nm.textContent = s.name || s.username;
             const rl = document.getElementById('authRole'); if (rl) rl.textContent = (s.role ? s.role + ' · ' : '') + '@' + s.username;
             applyMenuPermissions(parseMenus(s.menus));
@@ -8708,7 +8706,7 @@
         function showLogin() {
             const ov = document.getElementById('loginOverlay');
             ov.classList.remove('hidden'); ov.classList.add('flex');
-            const box = document.getElementById('authBox'); if (box) box.classList.add('hidden');
+            const box = document.getElementById('authBox'); if (box) { box.classList.add('hidden'); box.classList.remove('flex'); }
         }
         function logout() { try { localStorage.removeItem(SESS_KEY); } catch (e) {} location.reload(); }
 
