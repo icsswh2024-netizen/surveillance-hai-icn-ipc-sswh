@@ -5812,83 +5812,166 @@
                 counts: months.map(mo => byMonth[mo].HAI),
                 rates: months.map(mo => { const d = den[mo] ? den[mo].patientDay : 0; return d ? +((byMonth[mo].HAI / d) * 1000).toFixed(2) : 0; })
             };
-            return { esc, periodLabel, siteRows, stat, wards, orgsTop, mdrOrgs, monthly };
+            // ---- ชุดข้อมูลเสริมสำหรับเด็ค 81 สไลด์ ----
+            const rowsW = getRowsForWards();
+            const wardAgg = wardSiteAgg(rowsW).filter(w => !isNonWard(w.unit));
+            const siteWardRows = key => { const meta = RATE_META[key] || RATE_META.HAI; return wardAgg.map(w => ({ name: REPORT_WARD_NAMES[w.unit] || w.unit, n: (w.cases[key] || 0), den: (w.den[meta.den] || 0), rate: (w.den[meta.den] ? (w.cases[key] || 0) / w.den[meta.den] * meta.factor : null) })).filter(x => x.n > 0 || x.den > 0).sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1)); };
+            const siteMonthly = (key, msSet) => { const meta = RATE_META[key] || RATE_META.HAI; const ms = msSet || FISCAL_MONTHS; return { labels: ms.map(mo => MONTH_LABELS[mo]), rates: ms.map(mo => { const num = byMonth[mo][key] || 0; const dd = den[mo] ? den[mo][meta.den] : 0; return dd ? +(num / dd * meta.factor).toFixed(2) : 0; }), counts: ms.map(mo => byMonth[mo][key] || 0) }; };
+            const orgsForSite = key => { const c2 = {}; cases.filter(c => c.siteType === key).forEach(c => (c.organisms || []).forEach(o => { const k = (o || '').toString().trim(); if (k) c2[k] = (c2[k] || 0) + 1; })); return Object.keys(c2).map(o => ({ org: o, n: c2[o] })).sort((a, b) => b.n - a.n); };
+            const H1 = [10, 11, 12, 1, 2, 3], H2 = [4, 5, 6, 7, 8, 9];
+            const perSite = {};
+            ['VAP', 'CAUTI', 'CLABSI', 'SSI', 'HAP', 'BSI', 'Omphalitis', 'SSTI', 'UTI'].forEach(k => {
+                const meta = RATE_META[k]; const dtot = denTot[meta.den];
+                perSite[k] = { n: cnt[k] || 0, rate: dtot ? (cnt[k] || 0) / dtot * meta.factor : null, unit: meta.unit, ward: siteWardRows(k), monthly: siteMonthly(k), mH1: siteMonthly(k, H1), mH2: siteMonthly(k, H2), orgs: orgsForSite(k) };
+            });
+            // MDR แยกตำแหน่ง + ตาม site เฉพาะ
+            const mdrCases = cases.filter(c => c.isMDR);
+            const mdrBySite = {}; mdrCases.forEach(c => { mdrBySite[c.siteType] = (mdrBySite[c.siteType] || 0) + 1; });
+            const mdrSiteRows = Object.keys(mdrBySite).map(k => ({ label: SITE_LABEL[k] || k, n: mdrBySite[k] })).sort((a, b) => b.n - a.n);
+            // อุปกรณ์ (เฉลี่ยวันคาต่อคน)
+            const devN = { ven: rowsW.reduce((a, r) => a + (r.venN || 0), 0), cath: rowsW.reduce((a, r) => a + (r.cathN || 0), 0), line: rowsW.reduce((a, r) => a + (r.lineN || 0), 0) };
+            const device = { venDay: denTot.venDay, cathDay: denTot.cathDay, lineDay: denTot.lineDay, venN: devN.ven, cathN: devN.cath, lineN: devN.line, venAvg: devN.ven ? denTot.venDay / devN.ven : null, cathAvg: devN.cath ? denTot.cathDay / devN.cath : null, lineAvg: devN.line ? denTot.lineDay / devN.line : null };
+            // เข็มทิ่มตำ (จากชีตบุคลากร)
+            let needle = null; try { const q = staffQuarterCounts(); needle = { total: q.Q1 + q.Q2 + q.Q3 + q.Q4, byQ: q }; } catch (e) {}
+            // SSI แยกประเภทแผล (wound class) + wound-class SSI cases
+            const ssiWound = [1, 2, 3, 4].map(w => ({ cls: w, op: denTot.op, cases: cases.filter(c => c.siteType === 'SSI' && ssiClassOf(c) === String(w)).length }));
+            // หอผู้ป่วยรวม (อัตรา HAI ทุกหอ)
+            const wardsAll = wardAgg.map(w => ({ name: REPORT_WARD_NAMES[w.unit] || w.unit, cases: repTotalCases(w), rate: w.den.patientDay ? repTotalCases(w) / w.den.patientDay * 1000 : null })).filter(w => w.cases > 0 || w.den.patientDay > 0).sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
+            // MDR รายเดือน (เทียบ HAI) + SSI แยกอวัยวะ
+            const mdrByMo = {}; FISCAL_MONTHS.forEach(mo => mdrByMo[mo] = 0); mdrCases.forEach(c => { if (c.month != null) mdrByMo[c.month] = (mdrByMo[c.month] || 0) + 1; });
+            const mdrMonthly = { labels: months.map(mo => MONTH_LABELS[mo]), haiCounts: months.map(mo => byMonth[mo].HAI), mdrCounts: months.map(mo => mdrByMo[mo] || 0) };
+            const ssiAnat = [['ตา (eye)', 'ssiEye'], ['สะโพก (hip)', 'ssiHip'], ['เข่า (knee)', 'ssiKnee'], ['นรีเวช (gyn)', 'ssiGyn']].map(([l, k]) => ({ label: l, n: rowsW.reduce((a, r) => a + (r[k] || 0), 0) }));
+            const mdrBy = k => mdrBySite[k] || 0;
+            return { esc, periodLabel, siteRows, stat, wards, orgsTop, mdrOrgs, monthly, perSite, mdrSiteRows, device, needle, ssiWound, wardsAll, denTot, mdrMonthly, ssiAnat, mdrBy };
         }
         function presentBuild() {
             const d = presentData();
             const foot = '<div class="p-foot"><span>' + HOSPITAL_NAME + '</span><span>' + d.periodLabel + '</span></div>';
             const fx = v => v == null ? '—' : v.toFixed(2);
+            const esc = d.esc;
             const slides = [];
-            // 1) ปก
-            slides.push({
-                html: '<div class="pslide dark"><div class="p-anim">' +
-                    '<div class="p-eyebrow">Healthcare-Associated Infection</div>' +
-                    '<h1 class="p-title" style="view-transition-name:pTitle">รายงานผลการเฝ้าระวัง<br>การติดเชื้อในโรงพยาบาล</h1>' +
-                    '<div class="p-accent" style="view-transition-name:pAccent"></div>' +
-                    '<div class="p-sub">' + HOSPITAL_NAME + ' · ' + d.periodLabel + '</div>' +
-                    '</div><div class="p-foot"><span>งานป้องกันและควบคุมการติดเชื้อ (IC)</span><span>' + new Date().toLocaleDateString('th-TH') + '</span></div></div>'
-            });
-            // 2) KPI
+            // ---------- ตัวช่วยสร้างสไลด์ ----------
+            const sec = (eye, title, body, chart, dark) => slides.push({ html: '<div class="pslide' + (dark ? ' dark' : '') + '"><div class="p-eyebrow">' + eye + '</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:36px">' + title + '</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' + body + foot + '</div>', chart });
+            const ph = (eye, title, note) => sec(eye, title, '<div class="p-anim" style="margin-top:34px;font-size:22px;opacity:.5;line-height:1.9">' + (note || '📄 หัวข้อนี้ไม่มีข้อมูลในระบบ — เว้นไว้เติมเนื้อหา/ภาพจากเด็ค Canva') + '</div>');
             const tile = (n, l, s, accent) => '<div class="pstat"><div class="n" style="color:' + accent + '">' + n + '</div><div class="l">' + l + '</div><div class="s">' + s + '</div></div>';
-            slides.push({
-                html: '<div class="pslide"><div class="p-eyebrow">ภาพรวม</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:44px">ตัวชี้วัดสำคัญ</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' +
-                    '<div class="p-anim" style="display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:18px">' +
-                    tile(d.stat.totCases, 'เคสติดเชื้อทั้งหมด', 'ราย', '#4f46e5') +
-                    tile(fx(d.stat.hospRate), 'อัตราติดเชื้อใน รพ.', '/1,000 วันนอน (' + (d.stat.pd || 0).toLocaleString() + ')', '#0ea5e9') +
-                    tile(d.stat.mdr, 'เชื้อดื้อยา (MDR)', d.stat.mdrPct + '% · ' + fx(d.stat.mdrRate) + '/1,000', '#e11d48') +
-                    tile(fx(d.stat.ssiRate), 'อัตราแผลผ่าตัด (SSI)', '/100 ผ่าตัด (' + (d.stat.op || 0).toLocaleString() + ')', '#7c3aed') +
-                    '</div>' + foot + '</div>'
-            });
-            // 3) ตามตำแหน่ง SITE
-            const siteBody = d.siteRows.length ? d.siteRows.map(s => '<tr><td>' + d.esc(s.label) + '</td><td class="r">' + s.n + '</td><td class="r">' + fx(s.rate) + ' <span style="opacity:.5">' + s.unit + '</span></td></tr>').join('') : '<tr><td colspan="3" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>';
-            slides.push({
-                html: '<div class="pslide"><div class="p-eyebrow">จำแนกตำแหน่ง</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:44px">การติดเชื้อตามตำแหน่ง (SITE)</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' +
-                    '<div class="p-anim" style="margin-top:8px;max-width:820px"><table class="ptable"><thead><tr><th>ตำแหน่ง</th><th class="r">จำนวน (ราย)</th><th class="r">อัตรา</th></tr></thead><tbody>' + siteBody + '</tbody></table></div>' + foot + '</div>'
-            });
-            // 4) แนวโน้มรายเดือน (กราฟ)
-            slides.push({
-                html: '<div class="pslide"><div class="p-eyebrow">แนวโน้ม</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:44px">แนวโน้มการติดเชื้อรายเดือน</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' +
-                    '<div style="flex:1;position:relative;margin-top:6px"><canvas id="presentChart"></canvas></div>' + foot + '</div>',
-                chart: () => {
-                    const ctx = document.getElementById('presentChart'); if (!ctx) return;
-                    if (presentChartInst) presentChartInst.destroy();
-                    presentChartInst = new Chart(ctx, {
-                        data: { labels: d.monthly.labels, datasets: [
-                            { type: 'bar', label: 'จำนวนเคส', data: d.monthly.counts, backgroundColor: 'rgba(99,102,241,.35)', borderRadius: 8, yAxisID: 'y' },
-                            { type: 'line', label: 'อัตรา /1,000 วันนอน', data: d.monthly.rates, borderColor: '#4f46e5', backgroundColor: '#4f46e5', borderWidth: 3, tension: .4, pointRadius: 4, yAxisID: 'y1' }
-                        ] },
-                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } },
-                            scales: { y: { beginAtZero: true, position: 'left', title: { display: true, text: 'จำนวนเคส' } }, y1: { beginAtZero: true, position: 'right', grid: { display: false }, title: { display: true, text: 'อัตรา/1,000' } }, x: { grid: { display: false } } } }
-                    });
-                }
-            });
-            // 5) เชื้อก่อโรค + MDR
-            const orgList = (arr, color) => arr.length ? arr.map((o, i) => '<tr><td style="opacity:.5">' + (i + 1) + '</td><td>' + d.esc(o.org) + '</td><td class="r" style="color:' + color + ';font-weight:700">' + o.n + '</td></tr>').join('') : '<tr><td colspan="3" style="opacity:.5">— ไม่มี —</td></tr>';
-            slides.push({
-                html: '<div class="pslide"><div class="p-eyebrow">จุลชีพ</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:44px">เชื้อก่อโรคที่พบบ่อย</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' +
-                    '<div class="p-anim" style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:8px">' +
-                    '<div><div style="font-size:18px;font-weight:600;opacity:.6;margin-bottom:8px">เชื้อที่พบบ่อย (Top)</div><table class="ptable" style="font-size:18px"><tbody>' + orgList(d.orgsTop, '#4f46e5') + '</tbody></table></div>' +
-                    '<div><div style="font-size:18px;font-weight:600;opacity:.6;margin-bottom:8px">เชื้อดื้อยา (MDR)</div><table class="ptable" style="font-size:18px"><tbody>' + orgList(d.mdrOrgs, '#e11d48') + '</tbody></table></div>' +
-                    '</div>' + foot + '</div>'
-            });
-            // 6) หอผู้ป่วยเด่น
-            const wardBody = d.wards.length ? d.wards.map((w, i) => '<tr><td style="opacity:.5">' + (i + 1) + '</td><td>' + d.esc(w.name) + '</td><td class="r">' + w.cases + '</td><td class="r">' + fx(w.rate) + ' <span style="opacity:.5">/1000</span></td></tr>').join('') : '<tr><td colspan="4" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>';
-            slides.push({
-                html: '<div class="pslide"><div class="p-eyebrow">รายหอผู้ป่วย</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:44px">หอผู้ป่วยที่พบมากที่สุด</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' +
-                    '<div class="p-anim" style="margin-top:8px;max-width:900px"><table class="ptable"><thead><tr><th>#</th><th>หอผู้ป่วย</th><th class="r">จำนวนเคส</th><th class="r">อัตรา</th></tr></thead><tbody>' + wardBody + '</tbody></table></div>' + foot + '</div>'
-            });
-            // 7) สรุป
-            const bullets = [];
-            bullets.push('พบการติดเชื้อในโรงพยาบาลรวม <b>' + d.stat.totCases + ' ราย</b> คิดเป็นอัตรา <b>' + fx(d.stat.hospRate) + '</b> ต่อ 1,000 วันนอน');
-            if (d.siteRows[0]) bullets.push('ตำแหน่งที่พบมากที่สุดคือ <b>' + d.esc(d.siteRows[0].label) + '</b> จำนวน <b>' + d.siteRows[0].n + ' ราย</b>');
-            bullets.push('เชื้อดื้อยา (MDR) <b>' + d.stat.mdr + ' ราย</b> (' + d.stat.mdrPct + '% ของเคส · อัตรา ' + fx(d.stat.mdrRate) + '/1,000 วันนอน)');
-            if (d.orgsTop[0]) bullets.push('เชื้อก่อโรคที่พบบ่อยที่สุดคือ <b>' + d.esc(d.orgsTop[0].org) + '</b> (' + d.orgsTop[0].n + ' ครั้ง)');
-            slides.push({
-                html: '<div class="pslide dark"><div class="p-eyebrow">สรุป</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:46px">สรุปผลและข้อเสนอแนะ</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' +
-                    '<ul class="p-anim" style="margin-top:10px;font-size:24px;line-height:1.9;list-style:none;padding:0">' +
-                    bullets.map(b => '<li style="margin-bottom:6px">• ' + b + '</li>').join('') +
-                    '</ul>' + foot + '</div>'
-            });
+            const tiles = arr => '<div class="p-anim" style="display:grid;grid-template-columns:repeat(' + arr.length + ',1fr);gap:22px;margin-top:26px">' + arr.join('') + '</div>';
+            const tbl = (headers, bodyRows) => '<div class="p-anim" style="margin-top:6px;max-width:1040px;max-height:540px;overflow:auto"><table class="ptable"><thead><tr>' + headers.map((h, i) => '<th' + (i ? ' class="r"' : '') + '>' + h + '</th>').join('') + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div>';
+            const chartBox = '<div style="flex:1;position:relative;margin-top:6px"><canvas id="presentChart"></canvas></div>';
+            const mkLine = (labels, data, label, color) => () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label, data, borderColor: color, backgroundColor: color, borderWidth: 3, tension: .4, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); };
+            const mkBar = (labels, data, label, color) => () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label, data, backgroundColor: color, borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); };
+            // แถวตาราง
+            const wardRows = arr => arr.length ? arr.map((w, i) => '<tr><td style="opacity:.5">' + (i + 1) + '</td><td>' + esc(w.name) + '</td><td class="r" style="opacity:.6">' + (w.den || 0).toLocaleString() + '</td><td class="r">' + (w.n || 0) + '</td><td class="r">' + fx(w.rate) + '</td></tr>').join('') : '<tr><td colspan="5" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>';
+            const orgRows = (arr, color, off, lim) => { const tot = arr.reduce((s, x) => s + x.n, 0); const a = arr.slice(off || 0, (off || 0) + (lim || 999)); return a.length ? a.map((o, i) => '<tr><td style="opacity:.5">' + ((off || 0) + i + 1) + '</td><td>' + esc(o.org) + '</td><td class="r" style="color:' + color + ';font-weight:700">' + o.n + '</td><td class="r" style="opacity:.6">' + (tot ? Math.round(o.n / tot * 100) : 0) + '%</td></tr>').join('') : '<tr><td colspan="4" style="opacity:.5">— ไม่มี —</td></tr>'; };
+            const siteWardSlide = (eye, title, key) => sec(eye, title, tbl(['#', 'หอผู้ป่วย', 'ตัวหาร', 'ครั้ง', 'อัตรา'], wardRows(d.perSite[key].ward)));
+            const siteOrgSlide = (eye, title, key, color, off, lim) => sec(eye, title, tbl(['#', 'เชื้อก่อโรค', 'จำนวน', '%'], orgRows(d.perSite[key].orgs, color, off, lim)));
+            const C = { VAP: '#14b8a6', CAUTI: '#f97316', SSI: '#3b82f6', MDR: '#a855f7', HAI: '#4f46e5' };
+
+            /* ===== 1. บทนำ ===== */
+            slides.push({ html: '<div class="pslide dark"><div class="p-anim"><div class="p-eyebrow">Healthcare-Associated Infection</div><h1 class="p-title" style="view-transition-name:pTitle">การประชุมสรุปผลการดำเนินงาน<br>ด้านการควบคุมและป้องกันการติดเชื้อ</h1><div class="p-accent" style="view-transition-name:pAccent"></div><div class="p-sub">' + HOSPITAL_NAME + ' · ' + d.periodLabel + '</div></div><div class="p-foot"><span>งานป้องกันและควบคุมการติดเชื้อ (IC)</span><span>' + new Date().toLocaleDateString('th-TH') + '</span></div></div>' });
+            const agendaItems = ['อัตราการติดเชื้อในโรงพยาบาล', 'อัตราการติดเชื้อดื้อยาต้านจุลชีพ', 'อุบัติการณ์เข็มทิ่มตำในเจ้าหน้าที่', 'การติดเชื้อโคโรนาไวรัส (COVID-19)', 'วัณโรคในเจ้าหน้าที่', 'IC Round และการทำความสะอาดมือ', 'การทบทวนความรู้ของบุคลากร', 'มาตรการป้องกัน CAUTI / VAP'];
+            const agenda = hi => '<ol class="p-anim" style="margin-top:20px;font-size:26px;line-height:2.1;padding-left:0;list-style:none">' + agendaItems.map((t, i) => '<li style="opacity:' + (hi == null || hi === i ? 1 : .4) + ';font-weight:' + (hi === i ? 700 : 400) + '">' + (i + 1) + '. ' + t + '</li>').join('') + '</ol>';
+            sec('Agenda', 'หัวข้อการนำเสนอ', agenda(null));
+
+            /* ===== 2. อัตราการติดเชื้อในโรงพยาบาล ===== */
+            const S2 = 'อัตราการติดเชื้อในโรงพยาบาล';
+            sec(S2, 'เปรียบเทียบอัตราการติดเชื้อในโรงพยาบาลโดยรวม', chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { data: { labels: d.monthly.labels, datasets: [{ type: 'bar', label: 'จำนวนเคส', data: d.monthly.counts, backgroundColor: 'rgba(99,102,241,.35)', borderRadius: 8, yAxisID: 'y' }, { type: 'line', label: 'อัตรา /1,000 วันนอน', data: d.monthly.rates, borderColor: C.HAI, backgroundColor: C.HAI, borderWidth: 3, tension: .4, pointRadius: 4, yAxisID: 'y1' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true, position: 'left', title: { display: true, text: 'จำนวนเคส' } }, y1: { beginAtZero: true, position: 'right', grid: { display: false }, title: { display: true, text: 'อัตรา/1,000' } }, x: { grid: { display: false } } } } }); });
+            sec(S2, 'อัตราการติดเชื้อ จำแนกตามตำแหน่งการติดเชื้อ', tbl(['ตำแหน่ง', 'จำนวน (ราย)', 'อัตรา'], d.siteRows.length ? d.siteRows.map(s => '<tr><td>' + esc(s.label) + '</td><td class="r">' + s.n + '</td><td class="r">' + fx(s.rate) + ' <span style="opacity:.5">' + s.unit + '</span></td></tr>').join('') : '<tr><td colspan="3" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>'));
+            ph(S2, 'อัตราการติดเชื้อ จำแนกตามหอผู้ป่วยอายุรกรรม', 'ดูอัตรารายหอทั้งหมดในสไลด์ "จำแนกตามหอผู้ป่วยโดยรวม" · การแยกกลุ่มอายุรกรรมอยู่ในเด็ค Canva');
+            ph(S2, 'อัตราการติดเชื้อ จำแนกตามหอผู้ป่วยศัลยกรรม', 'ดูอัตรารายหอทั้งหมดในสไลด์ "จำแนกตามหอผู้ป่วยโดยรวม"');
+            ph(S2, 'อัตราการติดเชื้อ จำแนกตามหอผู้ป่วยผู้คลอด กุมารเวชกรรม และ NICU', 'ดูอัตรารายหอทั้งหมดในสไลด์ "จำแนกตามหอผู้ป่วยโดยรวม"');
+            ph(S2, 'อัตราการติดเชื้อ จำแนกตามหอผู้ป่วยพิเศษและ Cohort', 'ดูอัตรารายหอทั้งหมดในสไลด์ "จำแนกตามหอผู้ป่วยโดยรวม"');
+            sec(S2, 'อัตราการติดเชื้อ จำแนกตามหอผู้ป่วยโดยรวม', tbl(['#', 'หอผู้ป่วย', 'จำนวนเคส', 'อัตรา/1000'], d.wardsAll.length ? d.wardsAll.map((w, i) => '<tr><td style="opacity:.5">' + (i + 1) + '</td><td>' + esc(w.name) + '</td><td class="r">' + w.cases + '</td><td class="r">' + fx(w.rate) + '</td></tr>').join('') : '<tr><td colspan="4" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>'));
+
+            /* ===== 3. VAP ===== */
+            const S3 = 'การติดเชื้อ VAP';
+            sec(S3, 'อัตราการติดเชื้อ VAP (ปอดอักเสบจากเครื่องช่วยหายใจ)', chartBox, mkLine(d.perSite.VAP.monthly.labels, d.perSite.VAP.monthly.rates, 'VAP /1,000 วันใส่เครื่องช่วยหายใจ', C.VAP));
+            ph(S3, 'อัตราการติดเชื้อ VAP จำแนกตามแผนก', 'การแยกตามแผนกอยู่ในเด็ค Canva · ดูรายหอในสไลด์ถัดไป');
+            sec(S3, 'อัตราการติดเชื้อ VAP รายเดือน (ต.ค. – มี.ค.)', chartBox, mkLine(d.perSite.VAP.mH1.labels, d.perSite.VAP.mH1.rates, 'VAP /1,000', C.VAP));
+            sec(S3, 'อัตราการติดเชื้อ VAP รายเดือน (เม.ย. – ก.ย.)', chartBox, mkLine(d.perSite.VAP.mH2.labels, d.perSite.VAP.mH2.rates, 'VAP /1,000', C.VAP));
+            siteWardSlide(S3, 'อัตราการติดเชื้อ VAP จำแนกตามหอผู้ป่วย', 'VAP');
+            siteOrgSlide(S3, 'ร้อยละของเชื้อที่เป็นสาเหตุของ VAP', 'VAP', C.VAP);
+
+            /* ===== 4. CAUTI ===== */
+            const S4 = 'การติดเชื้อ CAUTI';
+            sec(S4, 'อัตราการติดเชื้อ CAUTI (ทางเดินปัสสาวะจากสายสวน)', chartBox, mkLine(d.perSite.CAUTI.monthly.labels, d.perSite.CAUTI.monthly.rates, 'CAUTI /1,000 วันคาสาย', C.CAUTI));
+            sec(S4, 'อัตราการติดเชื้อ CAUTI รายเดือน (ต.ค. – มี.ค.)', chartBox, mkLine(d.perSite.CAUTI.mH1.labels, d.perSite.CAUTI.mH1.rates, 'CAUTI /1,000', C.CAUTI));
+            sec(S4, 'อัตราการติดเชื้อ CAUTI รายเดือน (เม.ย. – ก.ย.)', chartBox, mkLine(d.perSite.CAUTI.mH2.labels, d.perSite.CAUTI.mH2.rates, 'CAUTI /1,000', C.CAUTI));
+            sec(S4, 'อัตราการติดเชื้อ CAUTI จำแนกตามหอผู้ป่วย', tbl(['#', 'หอผู้ป่วย', 'ตัวหาร', 'ครั้ง', 'อัตรา'], wardRows(d.perSite.CAUTI.ward.slice(0, 9))));
+            sec(S4, 'อัตราการติดเชื้อ CAUTI จำแนกตามหอผู้ป่วย (เพิ่มเติม)', tbl(['#', 'หอผู้ป่วย', 'ตัวหาร', 'ครั้ง', 'อัตรา'], wardRows(d.perSite.CAUTI.ward.slice(9))));
+            siteOrgSlide(S4, 'ร้อยละของเชื้อที่เป็นสาเหตุของ CAUTI (ส่วนที่ 1)', 'CAUTI', C.CAUTI, 0, 10);
+            siteOrgSlide(S4, 'ร้อยละของเชื้อที่เป็นสาเหตุของ CAUTI (ส่วนที่ 2)', 'CAUTI', C.CAUTI, 10, 10);
+            siteOrgSlide(S4, 'ร้อยละของเชื้อที่เป็นสาเหตุของ CAUTI (ส่วนที่ 3)', 'CAUTI', C.CAUTI, 20, 20);
+
+            /* ===== 5. SSI & Omphalitis ===== */
+            const S5 = 'SSI / Omphalitis';
+            sec(S5, 'อัตราการติดเชื้อแผลผ่าตัด SSI', chartBox, mkLine(d.perSite.SSI.monthly.labels, d.perSite.SSI.monthly.rates, 'SSI /100 ผ่าตัด', C.SSI));
+            sec(S5, 'อัตราการติดเชื้อ SSI จำแนกตามประเภทแผลผ่าตัด', tbl(['ประเภทแผล', 'จำนวนผ่าตัด', 'SSI (ครั้ง)', 'อัตรา/100'], d.ssiWound.map(w => '<tr><td>Class ' + w.cls + '</td><td class="r" style="opacity:.6">' + (w.op || 0).toLocaleString() + '</td><td class="r">' + w.cases + '</td><td class="r">' + fx(w.op ? w.cases / w.op * 100 : null) + '</td></tr>').join('')));
+            siteWardSlide(S5, 'อัตราการติดเชื้อ SSI จำแนกตามหอผู้ป่วย', 'SSI');
+            sec(S5, 'จำนวนครั้งและประเภทการผ่าตัดที่เกิด SSI', tbl(['อวัยวะ/หัตถการ', 'จำนวน (ครั้ง)'], d.ssiAnat.some(a => a.n) ? d.ssiAnat.map(a => '<tr><td>' + a.label + '</td><td class="r">' + a.n + '</td></tr>').join('') : '<tr><td colspan="2" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>'));
+            siteOrgSlide(S5, 'ร้อยละของเชื้อที่เป็นสาเหตุของ SSI (ส่วนที่ 1)', 'SSI', C.SSI, 0, 10);
+            siteOrgSlide(S5, 'ร้อยละของเชื้อที่เป็นสาเหตุของ SSI (ส่วนที่ 2)', 'SSI', C.SSI, 10, 20);
+            sec(S5, 'ภาวะ Omphalitis (การติดเชื้อบริเวณสะดือทารก)', tiles([tile(d.perSite.Omphalitis.n, 'จำนวนเคส', 'ราย', '#f43f5e'), tile(fx(d.perSite.Omphalitis.rate), 'อัตรา', '/100 เด็กเกิดมีชีพ (' + Math.round(d.denTot.liveBirth || 0).toLocaleString() + ')', '#f59e0b')]));
+            siteWardSlide(S5, 'อัตราการติดเชื้อ Omphalitis จำแนกตามหอผู้ป่วย', 'Omphalitis');
+
+            /* ===== 6. เชื้อดื้อยา MDR ===== */
+            const S6 = 'เชื้อดื้อยาต้านจุลชีพ (MDR)';
+            sec('Agenda', 'หัวข้อถัดไป: การติดเชื้อดื้อยาต้านจุลชีพ', agenda(1), null, true);
+            sec(S6, 'เปรียบเทียบอัตราการติดเชื้อกับการติดเชื้อดื้อยา', chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'bar', data: { labels: d.mdrMonthly.labels, datasets: [{ label: 'HAI (เคส)', data: d.mdrMonthly.haiCounts, backgroundColor: 'rgba(79,70,229,.5)', borderRadius: 6 }, { label: 'MDR (เคส)', data: d.mdrMonthly.mdrCounts, backgroundColor: '#e11d48', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); });
+            sec(S6, 'อัตราการติดเชื้อดื้อยาต้านจุลชีพในโรงพยาบาล', tiles([tile(d.stat.mdr, 'เชื้อดื้อยา (MDR)', 'ราย (' + d.stat.mdrPct + '% ของ HAI)', '#e11d48'), tile(fx(d.stat.mdrRate), 'อัตรา MDR', '/1,000 วันนอน', '#a855f7')]));
+            sec(S6, 'ร้อยละของเชื้อที่เป็นสาเหตุของการติดเชื้อดื้อยา', tbl(['#', 'เชื้อก่อโรค', 'จำนวน', '%'], orgRows(d.mdrOrgs, '#e11d48', 0, 20)));
+            sec(S6, 'การติดเชื้อดื้อยา จำแนกตามตำแหน่งการติดเชื้อ', tbl(['ตำแหน่ง', 'จำนวน (ราย)'], d.mdrSiteRows.length ? d.mdrSiteRows.map(s => '<tr><td>' + esc(s.label) + '</td><td class="r">' + s.n + '</td></tr>').join('') : '<tr><td colspan="2" style="opacity:.5">— ไม่มี —</td></tr>'));
+            sec(S6, 'อัตราการติดเชื้อดื้อยา VAP', tiles([tile(d.mdrBy('VAP'), 'VAP ดื้อยา', 'ราย', '#14b8a6')]));
+            sec(S6, 'อัตราการติดเชื้อดื้อยา CAUTI', tiles([tile(d.mdrBy('CAUTI'), 'CAUTI ดื้อยา', 'ราย', '#f97316')]));
+            sec(S6, 'ระบบเฝ้าระวัง: การรายงานผู้ป่วยสงสัย และ Device Day', tbl(['อุปกรณ์', 'จำนวนคนใช้', 'วันคาอุปกรณ์รวม', 'เฉลี่ยวัน/คน'], '<tr><td>สายสวนปัสสาวะ</td><td class="r">' + (d.device.cathN || 0).toLocaleString() + '</td><td class="r">' + Math.round(d.device.cathDay || 0).toLocaleString() + '</td><td class="r">' + fx(d.device.cathAvg) + '</td></tr><tr><td>เครื่องช่วยหายใจ</td><td class="r">' + (d.device.venN || 0).toLocaleString() + '</td><td class="r">' + Math.round(d.device.venDay || 0).toLocaleString() + '</td><td class="r">' + fx(d.device.venAvg) + '</td></tr><tr><td>สายหลอดเลือด</td><td class="r">' + (d.device.lineN || 0).toLocaleString() + '</td><td class="r">' + Math.round(d.device.lineDay || 0).toLocaleString() + '</td><td class="r">' + fx(d.device.lineAvg) + '</td></tr>'));
+
+            /* ===== 7. อุบัติเหตุในเจ้าหน้าที่ ===== */
+            const S7 = 'อุบัติเหตุในเจ้าหน้าที่';
+            sec('Agenda', 'หัวข้อถัดไป: อุบัติการณ์ในเจ้าหน้าที่', agenda(2), null, true);
+            sec(S7, 'จำนวนครั้งการเกิดอุบัติเหตุในเจ้าหน้าที่', d.needle ? tbl(['ไตรมาส', 'จำนวน (ครั้ง)'], 'Q1,Q2,Q3,Q4'.split(',').map(q => '<tr><td>' + q + '</td><td class="r">' + (d.needle.byQ[q] || 0) + '</td></tr>').join('') + '<tr style="font-weight:700"><td>รวม</td><td class="r">' + d.needle.total + '</td></tr>') : '<div class="p-anim" style="opacity:.5;margin-top:30px">— ไม่มีข้อมูลบุคลากร —</div>');
+            ph(S7, 'จำนวนครั้งการเกิดอุบัติเหตุ จำแนกตามวิชาชีพ เหตุการณ์ และหน่วยงาน');
+            ph(S7, 'จำนวนครั้งการเกิดอุบัติเหตุ จำแนกตามวิชาชีพ');
+            ph(S7, 'จำนวนครั้งการเกิดอุบัติเหตุ จำแนกตามเหตุการณ์');
+            ph(S7, 'จำนวนครั้งการเกิดอุบัติเหตุ จำแนกตามกิจกรรม');
+            ph(S7, 'จำนวนครั้งการเกิดอุบัติเหตุ จำแนกตามช่วงเวลาที่เกิด');
+            ph(S7, 'จำนวนครั้งการเกิดอุบัติเหตุ จำแนกตามลักษณะการดูแล');
+
+            /* ===== 8. COVID-19 ===== */
+            const S8 = 'การติดเชื้อโคโรนาไวรัส (COVID-19)';
+            sec('Agenda', 'หัวข้อถัดไป: การติดเชื้อโคโรนาไวรัส (COVID-19)', agenda(3), null, true);
+            ['จำนวนผู้ป่วยติดเชื้อ COVID-19 ในหอผู้ป่วยแยกโรค', 'จำนวนผู้ป่วยติดเชื้อ COVID-19 เสียชีวิต ในหอแยกโรค', 'จำนวนเจ้าหน้าที่ติดเชื้อ COVID-19 จำแนกตามประเภทงาน', 'เจ้าหน้าที่ติดเชื้อ COVID-19 จำแนกตามประเภทงาน', 'จำนวนเจ้าหน้าที่ให้บริการที่ติดเชื้อ COVID-19 ปี 2567', 'จำนวนเจ้าหน้าที่ทั่วไปที่ติดเชื้อ COVID-19 ปี 2567', 'จำนวนเจ้าหน้าที่กลุ่มการพยาบาลที่ติดเชื้อ COVID-19', 'จำนวนเจ้าหน้าที่ติดเชื้อ COVID-19 จำแนกตามแหล่งสัมผัส'].forEach(t => ph(S8, t));
+
+            /* ===== 9. วัณโรค ===== */
+            const S9 = 'วัณโรคในเจ้าหน้าที่';
+            sec('Agenda', 'หัวข้อถัดไป: วัณโรคในเจ้าหน้าที่', agenda(4), null, true);
+            ph(S9, 'จำนวนครั้งการเกิดอุบัติการณ์วัณโรคในเจ้าหน้าที่');
+
+            /* ===== 10. IC Round / ล้างมือ ===== */
+            const S10 = 'IC Round และการทำความสะอาดมือ';
+            sec('Agenda', 'หัวข้อถัดไป: IC Round และการทำความสะอาดมือ', agenda(5), null, true);
+            ['ผล IC Round: พื้นที่ ขยะ การทำลายเชื้อ น้ำยา และการแพร่กระจายเชื้อ', 'ผล IC Round: PPE, Multiple doses, ผ้าเปื้อน, IV และ TB', 'ผล IC Round: VAP, CAUTI และ MDRO', 'ผล VAP, CAUTI, MDRO จำแนกตามหอผู้ป่วย', 'ผล VAP, CAUTI, MDRO จำแนกตามหอผู้ป่วย (เพิ่มเติม)', 'ผลการทำความสะอาดมือ เปรียบเทียบตามโอกาส (5 Moments)', 'ผลการปฏิบัติตามขั้นตอนการทำความสะอาดมือ'].forEach(t => ph(S10, t));
+
+            /* ===== 11. ทบทวนความรู้ ===== */
+            const S11 = 'การทบทวนความรู้ของบุคลากร';
+            ['RN: ความรู้การวินิจฉัยการติดเชื้อ — ร้อยละการตอบแบบทดสอบ', 'RN: ความรู้การวินิจฉัยการติดเชื้อ — ค่าเฉลี่ยคะแนน', 'RN: ความรู้การวินิจฉัยการติดเชื้อ — ระดับความรู้', 'PN/NA: การดูแลสิ่งแวดล้อมเชื้อดื้อยา — ร้อยละการตอบแบบทดสอบ', 'PN/NA: การดูแลสิ่งแวดล้อมเชื้อดื้อยา — ค่าเฉลี่ยคะแนน', 'PN/NA: การดูแลสิ่งแวดล้อมเชื้อดื้อยา — ระดับความรู้'].forEach(t => ph(S11, t));
+
+            /* ===== 12. มาตรการป้องกัน CAUTI ===== */
+            const S12 = 'มาตรการป้องกัน CAUTI';
+            ph(S12, 'มาตรการป้องกัน CAUTI (ภาพรวม)');
+            sec(S12, 'ข้อมูลวันใส่สายสวนปัสสาวะ จำนวนผู้ป่วย และค่าเฉลี่ยวันใส่สาย', tiles([tile(Math.round(d.device.cathDay || 0).toLocaleString(), 'วันคาสายรวม', 'วัน', '#f59e0b'), tile((d.device.cathN || 0).toLocaleString(), 'จำนวนผู้ป่วย', 'ราย', '#0ea5e9'), tile(fx(d.device.cathAvg), 'เฉลี่ยวัน/คน', 'วัน', '#10b981')]));
+            ph(S12, 'โปสเตอร์ประชาสัมพันธ์และการเตือนพิจารณาถอดสายสวนปัสสาวะ', '🖼️ เป็นรูปภาพ — ดูในเด็ค Canva');
+            ph(S12, 'บัตรสอดเตือนที่จุด Charge', '🖼️ เป็นรูปภาพ — ดูในเด็ค Canva');
+            ph(S12, 'ตัวอย่างการใช้บัตรสอดเตือนที่จุด Charge', '🖼️ เป็นรูปภาพ — ดูในเด็ค Canva');
+
+            /* ===== 13. มาตรการป้องกัน VAP ===== */
+            const S13 = 'มาตรการป้องกัน VAP';
+            sec(S13, 'ข้อมูลวันใช้เครื่องช่วยหายใจ จำนวนผู้ป่วย และค่าเฉลี่ยวันใช้เครื่อง', tiles([tile(Math.round(d.device.venDay || 0).toLocaleString(), 'วันใช้เครื่องรวม', 'วัน', '#f59e0b'), tile((d.device.venN || 0).toLocaleString(), 'จำนวนผู้ป่วย', 'ราย', '#0ea5e9'), tile(fx(d.device.venAvg), 'เฉลี่ยวัน/คน', 'วัน', '#10b981')]));
+            sec(S13, 'ค่าเฉลี่ยวันใช้เครื่องช่วยหายใจ', tiles([tile(fx(d.device.venAvg), 'เฉลี่ยวันใช้เครื่องช่วยหายใจ', 'วัน/คน', '#14b8a6')]));
+
+            /* ===== 14. เข็มทิ่มตำ ===== */
+            const S14 = 'อุบัติเหตุเข็มทิ่มตำ';
+            sec(S14, 'อุบัติเหตุเข็มทิ่มตำในเจ้าหน้าที่', d.needle ? tiles([tile(d.needle.total, 'เข็มทิ่มตำทั้งปี', 'ครั้ง', '#e11d48')]) : '<div class="p-anim" style="opacity:.5;margin-top:30px">— ไม่มีข้อมูลบุคลากร —</div>');
+            sec(S14, 'สรุปผลและข้อเสนอแนะ', '<ul class="p-anim" style="margin-top:10px;font-size:22px;line-height:1.9;list-style:none;padding:0">' + ['พบการติดเชื้อในโรงพยาบาลรวม <b>' + d.stat.totCases + ' ราย</b> อัตรา <b>' + fx(d.stat.hospRate) + '</b>/1,000 วันนอน', 'เชื้อดื้อยา (MDR) <b>' + d.stat.mdr + ' ราย</b> (' + d.stat.mdrPct + '%)', d.siteRows[0] ? ('ตำแหน่งที่พบมากสุด: <b>' + esc(d.siteRows[0].label) + '</b> (' + d.siteRows[0].n + ' ราย)') : '', d.orgsTop[0] ? ('เชื้อที่พบบ่อยสุด: <b>' + esc(d.orgsTop[0].org) + '</b> (' + d.orgsTop[0].n + ' ครั้ง)') : ''].filter(Boolean).map(b => '<li style="margin-bottom:6px">• ' + b + '</li>').join('') + '</ul>', null, true);
+
             presentSlides = slides;
         }
         function presentScale() {
