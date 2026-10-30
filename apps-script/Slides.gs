@@ -173,21 +173,9 @@ function createSlidesTab() {
   // เปิดชีต: ใช้ไฟล์ที่ผูกอยู่ก่อน ถ้าไม่มีให้เปิดด้วย ID
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) ss = SpreadsheetApp.openById(SLIDES_SHEET_ID);
+  // ถ้ามีแท็บเดิม → ล้างแล้วสร้างทับเลย (ไม่ถามยืนยัน เพื่อไม่ให้ค้างรอกล่อง dialog จนหมดเวลา)
   var sh = ss.getSheetByName(SLIDES_TAB);
-  if (sh) {
-    // ถามยืนยันเฉพาะเมื่อมี UI (รันจากในชีต); ถ้ารันจากตัวแก้ไขจะล้างให้เลย
-    var ui = null;
-    try { ui = SpreadsheetApp.getUi(); } catch (e) { ui = null; }
-    if (ui) {
-      var resp = ui.alert('พบแท็บ "' + SLIDES_TAB + '" อยู่แล้ว',
-        'ต้องการล้างและสร้างใหม่หรือไม่? (ข้อมูลเดิมจะหาย)', ui.ButtonSet.YES_NO);
-      if (resp !== ui.Button.YES) return;
-    }
-    sh.clear();
-    sh.clearDataValidations();
-  } else {
-    sh = ss.insertSheet(SLIDES_TAB);
-  }
+  if (sh) { sh.clear(); sh.clearDataValidations(); } else { sh = ss.insertSheet(SLIDES_TAB); }
 
   // รวมทุกค่าลง "ครั้งเดียว" (A..I) เพื่อลดการ trigger คำนวณใหม่ (เช่นชีตที่มี IMPORTRANGE)
   var sample = SLIDE_SAMPLE.map(function (r, i) { return [i + 1].concat(r); });   // A-F
