@@ -1142,7 +1142,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30j</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30k</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -5868,6 +5868,61 @@
         /* ===================== โหมดนำเสนอ (สไลด์ 16:9 + Morph) ===================== */
         const HOSPITAL_NAME = 'โรงพยาบาลศรีสังวรสุโขทัย';
         let presentSlides = [], presentIdx = 0, presentChartInst = null;
+        // ===== ชุดข้อมูลตามหน่วยเวลา (ปี/ไตรมาส/เดือน) สำหรับกราฟในแท็บ Slides =====
+        // key: 'HAI' หรือตำแหน่งติดเชื้อ (VAP/CAUTI/...), unit: 'year'|'quarter'|'month'
+        function presentTimeSeries(key, unit) {
+            key = (key || 'HAI').toString().trim() || 'HAI';
+            const K = key.toUpperCase() === 'HAI' ? 'HAI' : key;
+            const meta = RATE_META[K] || RATE_META[key] || RATE_META.HAI;
+            const denKey = meta.den, factor = meta.factor;
+            // ใช้ตัวกรองบนทั้งหมด ยกเว้นมิติเวลาที่กำลังพล็อต (เพื่อให้เห็นหลายปี/ไตรมาส/เดือน)
+            const rows = rawData.filter(d =>
+                (unit === 'year' || fPass('year', d.year)) &&
+                (unit === 'quarter' || fPass('quarter', d.quarter)) &&
+                (unit === 'month' || fPass('month', String(d.month))) &&
+                fPass('unit', d.unit) && fPass('pct', d.pct));
+            let groups, labels;
+            if (unit === 'year') {
+                groups = [...new Set(rows.map(r => r.year).filter(Boolean))].sort();
+                labels = groups.map(String);
+            } else if (unit === 'quarter') {
+                groups = ['Q1', 'Q2', 'Q3', 'Q4'];
+                labels = groups.slice();
+            } else { // month
+                groups = FISCAL_MONTHS.slice();
+                labels = groups.map(m => MONTH_LABELS[m]);
+            }
+            const field = unit === 'year' ? (r => r.year) : unit === 'quarter' ? (r => r.quarter) : (r => r.month);
+            const isK = key.toUpperCase() === 'HAI' ? (r => r.isHAI) : (r => r.isHAI && r.siteType === key);
+            const counts = groups.map(g => rows.filter(r => field(r) === g && isK(r)).length);
+            const rates = groups.map(g => {
+                const sub = rows.filter(r => field(r) === g);
+                const den = sub.reduce((a, r) => a + (r[denKey] || 0), 0);
+                const num = sub.filter(isK).length;
+                return den ? +(num / den * factor).toFixed(2) : 0;
+            });
+            return { labels, counts, rates, unitLabel: { year: 'ปี', quarter: 'ไตรมาส', month: 'เดือน' }[unit], rateUnit: meta.unit };
+        }
+        // callback สร้างกราฟ time-series พร้อมชื่อแกน X/Y (rate=เส้น, count=แท่ง)
+        function presentTSChartCb(ts, label, color, mode) {
+            return () => {
+                const ctx = document.getElementById('presentChart'); if (!ctx) return;
+                if (presentChartInst) presentChartInst.destroy();
+                const isCount = mode === 'count';
+                presentChartInst = new Chart(ctx, {
+                    type: isCount ? 'bar' : 'line',
+                    data: { labels: ts.labels, datasets: [{ label, data: isCount ? ts.counts : ts.rates, borderColor: color, backgroundColor: color, borderWidth: 3, tension: .4, pointRadius: 4, borderRadius: 6 }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } },
+                        scales: {
+                            y: { beginAtZero: true, title: { display: true, text: isCount ? 'จำนวน (ราย)' : ('อัตรา ' + (ts.rateUnit || '')), font: { family: 'Kanit', size: 13 } } },
+                            x: { grid: { display: false }, title: { display: true, text: ts.unitLabel, font: { family: 'Kanit', size: 13 } } }
+                        }
+                    }
+                });
+            };
+        }
         // ===== พาเลทสีสำหรับการนำเสนอ =====
         // a:แถบเน้น/ไล่เฉด, bg:พื้นหลังสไลด์ (อ่อน), d:พื้นหลังสไลด์ปก (เข้ม), chart:[HAI,VAP,CAUTI,SSI,MDR,extra]
         const PRESENT_PALETTES = {
@@ -6160,6 +6215,17 @@
                 case 'org-top': sec(head, title, '<div class="p-anim" style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:8px"><div><div style="font-size:18px;font-weight:600;opacity:.6;margin-bottom:8px">เชื้อที่พบบ่อย</div><table class="ptable" style="font-size:18px"><tbody>' + orgRows(d.orgsTop, '#4f46e5', 0, 8) + '</tbody></table></div><div><div style="font-size:18px;font-weight:600;opacity:.6;margin-bottom:8px">เชื้อดื้อยา (MDR)</div><table class="ptable" style="font-size:18px"><tbody>' + orgRows(d.mdrOrgs, '#e11d48', 0, 6) + '</tbody></table></div></div>'); break;
                 case 'needle': sec(head, title, d.needle ? tbl(['ไตรมาส', 'จำนวน (ครั้ง)'], 'Q1,Q2,Q3,Q4'.split(',').map(q => '<tr><td>' + q + '</td><td class="r">' + (d.needle.byQ[q] || 0) + '</td></tr>').join('') + '<tr style="font-weight:700"><td>รวม</td><td class="r">' + d.needle.total + '</td></tr>') : '<div class="p-anim" style="opacity:.5;margin-top:30px">— ไม่มีข้อมูลบุคลากร —</div>'); break;
                 case 'summary': case 'สรุป': sec(head, title, '<ul class="p-anim" style="margin-top:10px;font-size:22px;line-height:1.9;list-style:none;padding:0">' + ['พบการติดเชื้อรวม <b>' + d.stat.totCases + ' ราย</b> อัตรา <b>' + fx(d.stat.hospRate) + '</b>/1,000 วันนอน', 'ดื้อยา (MDR) <b>' + d.stat.mdr + ' ราย</b> (' + d.stat.mdrPct + '%)'].map(b => '<li style="margin-bottom:6px">• ' + b + '</li>').join('') + '</ul>', null, true); break;
+                // ===== กราฟตามหน่วยเวลา: อัตรา/จำนวน × ปี/ไตรมาส/เดือน (แสดงแกน X/Y) =====
+                case 'rate-year': case 'rate-quarter': case 'rate-month':
+                case 'count-year': case 'count-quarter': case 'count-month': {
+                    const unit = type.split('-')[1];                 // year/quarter/month
+                    const mode = type.split('-')[0];                 // rate/count
+                    const siteKey = p || 'HAI';
+                    const ts = presentTimeSeries(siteKey, unit);
+                    const lbl = (siteKey === 'HAI' ? 'HAI' : siteKey) + (mode === 'rate' ? ' (' + ts.rateUnit + ')' : ' (จำนวน)');
+                    sec(head, title, chartBox, presentTSChartCb(ts, lbl, col, mode));
+                    break;
+                }
                 default: ph(head, title, row.note || ''); break;   // placeholder/text/ไม่รู้จัก
             }
         }
@@ -6204,7 +6270,7 @@
                     }))
                     .filter(r => (r.title || r.type || r.section) !== '');
                 // ยอมรับเฉพาะเมื่อมีอย่างน้อย 1 แถวที่ชนิดเป็นค่าที่รู้จัก (กัน CSV จากชีตผิดแท็บ)
-                const KNOWN = new Set(['cover', 'agenda', 'kpi', 'site-table', 'trend', 'ward-all', 'site-rate', 'site-month-h1', 'site-month-h2', 'site-ward', 'site-org', 'ssi-wound', 'ssi-anat', 'omph-kpi', 'mdr-compare', 'mdr-kpi', 'mdr-org', 'mdr-site', 'mdr-of', 'device', 'device-cath', 'device-ven', 'org-top', 'needle', 'summary', 'placeholder']);
+                const KNOWN = new Set(['cover', 'agenda', 'kpi', 'site-table', 'trend', 'ward-all', 'site-rate', 'site-month-h1', 'site-month-h2', 'site-ward', 'site-org', 'ssi-wound', 'ssi-anat', 'omph-kpi', 'mdr-compare', 'mdr-kpi', 'mdr-org', 'mdr-site', 'mdr-of', 'device', 'device-cath', 'device-ven', 'org-top', 'needle', 'summary', 'placeholder', 'rate-year', 'rate-quarter', 'rate-month', 'count-year', 'count-quarter', 'count-month']);
                 SLIDES_CONFIG = cfg.some(r => KNOWN.has((r.type || '').toString().trim().toLowerCase())) ? cfg : [];
             } catch (e) { SLIDES_CONFIG = []; }
         }
