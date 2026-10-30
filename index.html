@@ -6044,16 +6044,22 @@
                 const url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(SLIDES_SHEET) + '&_=' + Date.now();
                 const res = await fetch(url);
                 if (!res.ok) { SLIDES_CONFIG = []; return; }
+                // parseCSV คืน array ของ object (คีย์ = ชื่อหัวคอลัมน์)
                 const rows = parseCSV(await res.text());
                 if (!rows.length) { SLIDES_CONFIG = []; return; }
-                const hdr = rows[0].map(h => (h || '').toString().trim().toLowerCase());
-                const find = names => { for (const n of names) { const i = hdr.indexOf(n); if (i >= 0) return i; } return -1; };
-                const ci = { sec: find(['หัวข้อหลัก', 'section', 'หมวด']), title: find(['หัวข้อรอง', 'title', 'หัวข้อ']), type: find(['ชนิด', 'type', 'ชนิดข้อมูล']), param: find(['พารามิเตอร์', 'param', 'ค่า']), note: find(['หมายเหตุ', 'note', 'เนื้อหา']) };
+                const get = (r, names) => { for (const n of names) { if (r[n] !== undefined && String(r[n]).trim() !== '') return String(r[n]).trim(); } return ''; };
+                const hasKey = (r, names) => names.some(n => n in r);
                 // ต้องเจอคอลัมน์ "ชนิด" (type) จริง ๆ ไม่งั้นถือว่าไม่ใช่แท็บ Slides → ใช้เด็คในตัว
-                if (ci.type < 0) { SLIDES_CONFIG = []; return; }
-                const cfg = rows.slice(1)
-                    .map(r => ({ section: ci.sec >= 0 ? (r[ci.sec] || '') : '', title: ci.title >= 0 ? (r[ci.title] || '') : '', type: ci.type >= 0 ? (r[ci.type] || '') : '', param: ci.param >= 0 ? (r[ci.param] || '') : '', note: ci.note >= 0 ? (r[ci.note] || '') : '' }))
-                    .filter(r => (r.title || r.type || r.section).toString().trim() !== '');
+                if (!hasKey(rows[0], ['ชนิด', 'type', 'ชนิดข้อมูล'])) { SLIDES_CONFIG = []; return; }
+                const cfg = rows
+                    .map(r => ({
+                        section: get(r, ['หัวข้อหลัก', 'section', 'หมวด']),
+                        title: get(r, ['หัวข้อรอง', 'title', 'หัวข้อ']),
+                        type: get(r, ['ชนิด', 'type', 'ชนิดข้อมูล']),
+                        param: get(r, ['พารามิเตอร์', 'param']),
+                        note: get(r, ['หมายเหตุ', 'note', 'เนื้อหา'])
+                    }))
+                    .filter(r => (r.title || r.type || r.section) !== '');
                 // ยอมรับเฉพาะเมื่อมีอย่างน้อย 1 แถวที่ชนิดเป็นค่าที่รู้จัก (กัน CSV จากชีตผิดแท็บ)
                 const KNOWN = new Set(['cover', 'agenda', 'kpi', 'site-table', 'trend', 'ward-all', 'site-rate', 'site-month-h1', 'site-month-h2', 'site-ward', 'site-org', 'ssi-wound', 'ssi-anat', 'omph-kpi', 'mdr-compare', 'mdr-kpi', 'mdr-org', 'mdr-site', 'mdr-of', 'device', 'device-cath', 'device-ven', 'org-top', 'needle', 'summary', 'placeholder']);
                 SLIDES_CONFIG = cfg.some(r => KNOWN.has((r.type || '').toString().trim().toLowerCase())) ? cfg : [];
