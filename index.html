@@ -1107,7 +1107,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30g</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30h</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -1285,7 +1285,7 @@
                         <p class="text-xs text-slate-400 mt-0.5">เลือกหลายค่ามาวางเทียบกันในกราฟเดียวและตารางข้างกัน (อยู่ในช่วงปี/ไตรมาสของตัวกรองด้านบน)</p>
                     </div>
                 </div>
-                <div class="grid sm:grid-cols-2 gap-4">
+                <div class="grid sm:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-xs font-medium text-slate-500 mb-1">เปรียบเทียบตาม</label>
                         <select id="cmpDim" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400">
@@ -1294,6 +1294,14 @@
                             <option value="site">ตำแหน่งติดเชื้อ (SITE)</option>
                             <option value="year">ปี</option>
                             <option value="quarter">ไตรมาส</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">กรองเชื้อดื้อยา</label>
+                        <select id="cmpMdr" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <option value="all">ทั้งหมด (MDR + ไม่ดื้อยา)</option>
+                            <option value="mdr">เฉพาะเชื้อดื้อยา (MDR)</option>
+                            <option value="nonmdr">เฉพาะไม่ดื้อยา (No MDR)</option>
                         </select>
                     </div>
                     <div>
@@ -5186,7 +5194,10 @@
             CMP_METRIC['count_' + s] = { label: 'จำนวนเคส ' + s, color: CMP_SITE_COLORS[s] || '#0ea5e9', fmt: v => (v || 0).toLocaleString() };
         });
         // อัตรา/จำนวนเคสของตำแหน่ง site จากชุดแถว rows (ตัวหารตาม RATE_META, Omphalitis ใช้เด็กเกิดมีชีพแบบไม่อิงหอ)
-        function cmpSiteCount(rows, site) { return rows.filter(r => r.isHAI && r.siteType === site).length; }
+        // ตัวกรองเชื้อดื้อยาในโหมดเปรียบเทียบ: all / mdr / nonmdr (กรองเฉพาะ "เคส" ไม่แตะตัวหาร)
+        function cmpMdrMode() { const el = document.getElementById('cmpMdr'); return el ? el.value : 'all'; }
+        function cmpMdrPass(r) { const m = cmpMdrMode(); return m === 'all' ? true : (m === 'mdr' ? !!r.isMDR : !r.isMDR); }
+        function cmpSiteCount(rows, site) { return rows.filter(r => r.isHAI && cmpMdrPass(r) && r.siteType === site).length; }
         function cmpSiteRate(rows, site) {
             const n = cmpSiteCount(rows, site);
             const meta = RATE_META[site] || RATE_META.HAI;
@@ -5211,13 +5222,13 @@
         }
         function cmpDimValues(dim, rows) {
             // SITE: เอาเฉพาะตำแหน่งที่มีเคส HAI จริง
-            if (dim === 'site') return [...new Set(rows.filter(r => r.isHAI).map(r => r.siteType).filter(Boolean))].sort();
+            if (dim === 'site') return [...new Set(rows.filter(r => r.isHAI && cmpMdrPass(r)).map(r => r.siteType).filter(Boolean))].sort();
             const set = [...new Set(rows.map(CMP_DIM_GET[dim]).filter(Boolean))];
             if (dim === 'quarter') return ['Q1', 'Q2', 'Q3', 'Q4'].filter(q => set.includes(q));
             return set.sort();
         }
         function cmpMetricsOf(rows) {
-            const hai = rows.filter(r => r.isHAI);
+            const hai = rows.filter(r => r.isHAI && cmpMdrPass(r));
             const haiCount = hai.length;
             const pd = rows.reduce((a, r) => a + (r.patientDay || 0), 0);
             const mdr = hai.filter(r => r.isMDR).length;
@@ -5226,7 +5237,7 @@
         // คำนวณตามมิติ (SITE ใช้ตัวหารเฉพาะตำแหน่งตาม RATE_META)
         function cmpMetricsFor(dim, v, base) {
             if (dim === 'site') {
-                const hai = base.filter(r => r.isHAI && r.siteType === v);
+                const hai = base.filter(r => r.isHAI && cmpMdrPass(r) && r.siteType === v);
                 const haiCount = hai.length;
                 const mdr = hai.filter(r => r.isMDR).length;
                 const meta = RATE_META[v] || RATE_META.HAI;
@@ -5267,7 +5278,8 @@
             const sel = cmpGetChecked();
             const stats = sel.map(v => ({ v, m: cmpMetricsFor(dim, v, base) }));
             const rateNote = (dim === 'site' && metric === 'haiRate') ? ' (อัตราเฉพาะตำแหน่ง)' : '';
-            document.getElementById('cmpChartTitle').textContent = 'กราฟเปรียบเทียบ: ' + meta.label + rateNote + ' ตาม' + CMP_DIM_LABEL[dim];
+            const mdrNote = { mdr: ' · เฉพาะ MDR', nonmdr: ' · เฉพาะไม่ดื้อยา' }[cmpMdrMode()] || '';
+            document.getElementById('cmpChartTitle').textContent = 'กราฟเปรียบเทียบ: ' + meta.label + rateNote + ' ตาม' + CMP_DIM_LABEL[dim] + mdrNote;
             // กราฟแท่ง
             const ctx = document.getElementById('cmpChart');
             if (cmpChartInstance) cmpChartInstance.destroy();
@@ -8608,6 +8620,7 @@
         })();
         document.getElementById('cmpDim').addEventListener('change', updateCompareView);
         document.getElementById('cmpMetric').addEventListener('change', cmpRender);
+        document.getElementById('cmpMdr').addEventListener('change', updateCompareView);
         document.getElementById('cmpAll').addEventListener('click', () => { document.querySelectorAll('#cmpValues .cmp-val').forEach(cb => cb.checked = true); cmpRender(); });
         document.getElementById('cmpNone').addEventListener('click', () => { document.querySelectorAll('#cmpValues .cmp-val').forEach(cb => cb.checked = false); cmpRender(); });
         document.getElementById('btnExportCompare').addEventListener('click', exportCompareCSV);
