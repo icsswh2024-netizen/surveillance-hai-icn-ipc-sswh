@@ -165,15 +165,24 @@ var SLIDE_SAMPLE = [
   [S14, 'สรุปผลและข้อเสนอแนะ', 'summary', '', '']
 ];
 
-/** สร้าง/รีเซ็ตแท็บ Slides พร้อมดรอปดาวน์ */
+// ID ของชีต "0-2569-รายงานการติดเชื้อในโรงพยาบาล" (ใช้สำรองเมื่อรันนอกบริบทชีต)
+var SLIDES_SHEET_ID = '1KEK2bvXLDAY7awAapTnF32yZz1qvfqfWXje2ccG2pLc';
+
+/** สร้าง/รีเซ็ตแท็บ Slides พร้อมดรอปดาวน์ (รันได้ทั้งจากเมนู Extensions และจากตัวแก้ไข Apps Script) */
 function createSlidesTab() {
+  // เปิดชีต: ใช้ไฟล์ที่ผูกอยู่ก่อน ถ้าไม่มีให้เปิดด้วย ID
   var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) ss = SpreadsheetApp.openById(SLIDES_SHEET_ID);
   var sh = ss.getSheetByName(SLIDES_TAB);
   if (sh) {
-    var ui = SpreadsheetApp.getUi();
-    var resp = ui.alert('พบแท็บ "' + SLIDES_TAB + '" อยู่แล้ว',
-      'ต้องการล้างและสร้างใหม่หรือไม่? (ข้อมูลเดิมจะหาย)', ui.ButtonSet.YES_NO);
-    if (resp !== ui.Button.YES) return;
+    // ถามยืนยันเฉพาะเมื่อมี UI (รันจากในชีต); ถ้ารันจากตัวแก้ไขจะล้างให้เลย
+    var ui = null;
+    try { ui = SpreadsheetApp.getUi(); } catch (e) { ui = null; }
+    if (ui) {
+      var resp = ui.alert('พบแท็บ "' + SLIDES_TAB + '" อยู่แล้ว',
+        'ต้องการล้างและสร้างใหม่หรือไม่? (ข้อมูลเดิมจะหาย)', ui.ButtonSet.YES_NO);
+      if (resp !== ui.Button.YES) return;
+    }
     sh.clear();
     sh.clearDataValidations();
   } else {
@@ -223,5 +232,10 @@ function createSlidesTab() {
   sh.setColumnWidth(8, 150);
   sh.setColumnWidth(9, 420);
 
-  SpreadsheetApp.getActiveSpreadsheet().toast('สร้างแท็บ "' + SLIDES_TAB + '" พร้อมดรอปดาวน์เรียบร้อย', 'สำเร็จ', 5);
+  try { ss.toast('สร้างแท็บ "' + SLIDES_TAB + '" พร้อมดรอปดาวน์เรียบร้อย', 'สำเร็จ', 5); } catch (e) { }
+  Logger.log('สร้างแท็บ "%s" เรียบร้อย (%s แถว)', SLIDES_TAB, rows.length);
 }
+
+// หมายเหตุ: โปรเจกต์นี้มี onOpen อยู่แล้วใน SurveillanceMatch.gs — ห้ามประกาศ onOpen ซ้ำ
+// ถ้าต้องการเมนูลัด ให้เพิ่มบรรทัดนี้ภายใน onOpen เดิม:
+//   SpreadsheetApp.getUi().createMenu('IC นำเสนอ').addItem('สร้าง/รีเซ็ตแท็บ Slides','createSlidesTab').addToUi();
