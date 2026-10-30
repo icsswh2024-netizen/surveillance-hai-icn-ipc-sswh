@@ -175,7 +175,7 @@ function createSlidesTab() {
   if (!ss) ss = SpreadsheetApp.openById(SLIDES_SHEET_ID);
   // ถ้ามีแท็บเดิม → ล้างแล้วสร้างทับเลย (ไม่ถามยืนยัน เพื่อไม่ให้ค้างรอกล่อง dialog จนหมดเวลา)
   var sh = ss.getSheetByName(SLIDES_TAB);
-  if (sh) { sh.clear(); sh.clearDataValidations(); } else { sh = ss.insertSheet(SLIDES_TAB); }
+  if (sh) { sh.clear(); sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).clearDataValidations(); } else { sh = ss.insertSheet(SLIDES_TAB); }
 
   // รวมทุกค่าลง "ครั้งเดียว" (A..I) เพื่อลดการ trigger คำนวณใหม่ (เช่นชีตที่มี IMPORTRANGE)
   var sample = SLIDE_SAMPLE.map(function (r, i) { return [i + 1].concat(r); });   // A-F
@@ -217,7 +217,7 @@ function createSlidesTabLite() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) ss = SpreadsheetApp.openById(SLIDES_SHEET_ID);
   var sh = ss.getSheetByName(SLIDES_TAB);
-  if (sh) { sh.clear(); sh.clearDataValidations(); } else { sh = ss.insertSheet(SLIDES_TAB); }
+  if (sh) { sh.clear(); sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).clearDataValidations(); } else { sh = ss.insertSheet(SLIDES_TAB); }
   var grid = [['ลำดับ', 'หัวข้อหลัก', 'หัวข้อรอง', 'ชนิด', 'พารามิเตอร์', 'หมายเหตุ']];
   SLIDE_SAMPLE.forEach(function (r, i) { grid.push([i + 1].concat(r)); });
   sh.getRange(1, 1, grid.length, 6).setValues(grid);   // เขียนครั้งเดียว ไม่มี validation
