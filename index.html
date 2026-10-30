@@ -5844,8 +5844,7 @@
             const mdrBy = k => mdrBySite[k] || 0;
             return { esc, periodLabel, siteRows, stat, wards, orgsTop, mdrOrgs, monthly, perSite, mdrSiteRows, device, needle, ssiWound, wardsAll, denTot, mdrMonthly, ssiAnat, mdrBy };
         }
-        function presentBuild() {
-            const d = presentData();
+        function presentCtx(d) {
             const foot = '<div class="p-foot"><span>' + HOSPITAL_NAME + '</span><span>' + d.periodLabel + '</span></div>';
             const fx = v => v == null ? '—' : v.toFixed(2);
             const esc = d.esc;
@@ -5865,11 +5864,17 @@
             const siteWardSlide = (eye, title, key) => sec(eye, title, tbl(['#', 'หอผู้ป่วย', 'ตัวหาร', 'ครั้ง', 'อัตรา'], wardRows(d.perSite[key].ward)));
             const siteOrgSlide = (eye, title, key, color, off, lim) => sec(eye, title, tbl(['#', 'เชื้อก่อโรค', 'จำนวน', '%'], orgRows(d.perSite[key].orgs, color, off, lim)));
             const C = { VAP: '#14b8a6', CAUTI: '#f97316', SSI: '#3b82f6', MDR: '#a855f7', HAI: '#4f46e5' };
-
-            /* ===== 1. บทนำ ===== */
-            slides.push({ html: '<div class="pslide dark"><div class="p-anim"><div class="p-eyebrow">Healthcare-Associated Infection</div><h1 class="p-title" style="view-transition-name:pTitle">การประชุมสรุปผลการดำเนินงาน<br>ด้านการควบคุมและป้องกันการติดเชื้อ</h1><div class="p-accent" style="view-transition-name:pAccent"></div><div class="p-sub">' + HOSPITAL_NAME + ' · ' + d.periodLabel + '</div></div><div class="p-foot"><span>งานป้องกันและควบคุมการติดเชื้อ (IC)</span><span>' + new Date().toLocaleDateString('th-TH') + '</span></div></div>' });
             const agendaItems = ['อัตราการติดเชื้อในโรงพยาบาล', 'อัตราการติดเชื้อดื้อยาต้านจุลชีพ', 'อุบัติการณ์เข็มทิ่มตำในเจ้าหน้าที่', 'การติดเชื้อโคโรนาไวรัส (COVID-19)', 'วัณโรคในเจ้าหน้าที่', 'IC Round และการทำความสะอาดมือ', 'การทบทวนความรู้ของบุคลากร', 'มาตรการป้องกัน CAUTI / VAP'];
             const agenda = hi => '<ol class="p-anim" style="margin-top:20px;font-size:26px;line-height:2.1;padding-left:0;list-style:none">' + agendaItems.map((t, i) => '<li style="opacity:' + (hi == null || hi === i ? 1 : .4) + ';font-weight:' + (hi === i ? 700 : 400) + '">' + (i + 1) + '. ' + t + '</li>').join('') + '</ol>';
+            const coverHtml = '<div class="pslide dark"><div class="p-anim"><div class="p-eyebrow">Healthcare-Associated Infection</div><h1 class="p-title" style="view-transition-name:pTitle">การประชุมสรุปผลการดำเนินงาน<br>ด้านการควบคุมและป้องกันการติดเชื้อ</h1><div class="p-accent" style="view-transition-name:pAccent"></div><div class="p-sub">' + HOSPITAL_NAME + ' · ' + d.periodLabel + '</div></div><div class="p-foot"><span>งานป้องกันและควบคุมการติดเชื้อ (IC)</span><span>' + new Date().toLocaleDateString('th-TH') + '</span></div></div>';
+            return { d, foot, fx, esc, slides, sec, ph, tile, tiles, tbl, chartBox, mkLine, mkBar, wardRows, orgRows, siteWardSlide, siteOrgSlide, C, agendaItems, agenda, coverHtml };
+        }
+        function presentDefaultSlides(d) {
+            const X = presentCtx(d);
+            const { foot, fx, esc, slides, sec, ph, tile, tiles, tbl, chartBox, mkLine, mkBar, wardRows, orgRows, siteWardSlide, siteOrgSlide, C, agenda } = X;
+
+            /* ===== 1. บทนำ ===== */
+            slides.push({ html: X.coverHtml });
             sec('Agenda', 'หัวข้อการนำเสนอ', agenda(null));
 
             /* ===== 2. อัตราการติดเชื้อในโรงพยาบาล ===== */
@@ -5972,7 +5977,75 @@
             sec(S14, 'อุบัติเหตุเข็มทิ่มตำในเจ้าหน้าที่', d.needle ? tiles([tile(d.needle.total, 'เข็มทิ่มตำทั้งปี', 'ครั้ง', '#e11d48')]) : '<div class="p-anim" style="opacity:.5;margin-top:30px">— ไม่มีข้อมูลบุคลากร —</div>');
             sec(S14, 'สรุปผลและข้อเสนอแนะ', '<ul class="p-anim" style="margin-top:10px;font-size:22px;line-height:1.9;list-style:none;padding:0">' + ['พบการติดเชื้อในโรงพยาบาลรวม <b>' + d.stat.totCases + ' ราย</b> อัตรา <b>' + fx(d.stat.hospRate) + '</b>/1,000 วันนอน', 'เชื้อดื้อยา (MDR) <b>' + d.stat.mdr + ' ราย</b> (' + d.stat.mdrPct + '%)', d.siteRows[0] ? ('ตำแหน่งที่พบมากสุด: <b>' + esc(d.siteRows[0].label) + '</b> (' + d.siteRows[0].n + ' ราย)') : '', d.orgsTop[0] ? ('เชื้อที่พบบ่อยสุด: <b>' + esc(d.orgsTop[0].org) + '</b> (' + d.orgsTop[0].n + ' ครั้ง)') : ''].filter(Boolean).map(b => '<li style="margin-bottom:6px">• ' + b + '</li>').join('') + '</ul>', null, true);
 
-            presentSlides = slides;
+            return slides;
+        }
+        // ===== เด็คจากแท็บชีต "Slides" (ถ้ามี) — แต่ละแถว = 1 สไลด์ =====
+        // สร้าง 1 สไลด์จาก config 1 แถว โดยใช้ตัวช่วยใน X (presentCtx)
+        function presentConfigSlide(X, d, row) {
+            const { sec, ph, tile, tiles, tbl, chartBox, mkLine, wardRows, orgRows, C, fx, esc, slides, agenda } = X;
+            const head = row.section || '';            // หัวข้อหลัก (eyebrow)
+            const title = row.title || '';             // หัวข้อรอง
+            const type = (row.type || '').toString().trim().toLowerCase();
+            const p = (row.param || '').toString().trim();          // พารามิเตอร์ (เช่น VAP, CAUTI)
+            const pk = p.toUpperCase();                              // key ตำแหน่งติดเชื้อ
+            const ps = d.perSite[pk] || d.perSite[p];                // ชุดข้อมูลของตำแหน่งนั้น (ถ้ามี)
+            const col = C[pk] || C.HAI;
+            const num = parseInt(p, 10);                             // พารามิเตอร์ที่เป็นตัวเลข (เช่น ส่วนที่ของเชื้อ)
+            switch (type) {
+                case 'cover': slides.push({ html: X.coverHtml }); break;
+                case 'agenda': sec(head || 'Agenda', title || 'หัวข้อการนำเสนอ', agenda(isFinite(num) ? num - 1 : null), null, true); break;
+                case 'kpi': case 'ภาพรวม': sec(head, title, tiles([tile(d.stat.totCases, 'เคสติดเชื้อทั้งหมด', 'ราย', '#4f46e5'), tile(fx(d.stat.hospRate), 'อัตราติดเชื้อ', '/1,000 วันนอน', '#0ea5e9'), tile(d.stat.mdr, 'ดื้อยา (MDR)', d.stat.mdrPct + '%', '#e11d48'), tile(fx(d.stat.ssiRate), 'SSI', '/100 ผ่าตัด', '#7c3aed')])); break;
+                case 'site-table': case 'ตำแหน่ง': sec(head, title, tbl(['ตำแหน่ง', 'จำนวน (ราย)', 'อัตรา'], d.siteRows.map(s => '<tr><td>' + esc(s.label) + '</td><td class="r">' + s.n + '</td><td class="r">' + fx(s.rate) + ' <span style="opacity:.5">' + s.unit + '</span></td></tr>').join('') || '<tr><td colspan="3" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>')); break;
+                case 'trend': case 'แนวโน้ม': sec(head, title, chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { data: { labels: d.monthly.labels, datasets: [{ type: 'bar', label: 'จำนวนเคส', data: d.monthly.counts, backgroundColor: 'rgba(99,102,241,.35)', borderRadius: 8, yAxisID: 'y' }, { type: 'line', label: 'อัตรา /1,000', data: d.monthly.rates, borderColor: C.HAI, backgroundColor: C.HAI, borderWidth: 3, tension: .4, pointRadius: 4, yAxisID: 'y1' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true, position: 'left' }, y1: { beginAtZero: true, position: 'right', grid: { display: false } }, x: { grid: { display: false } } } } }); }); break;
+                case 'ward-all': case 'รายหอ': sec(head, title, tbl(['#', 'หอผู้ป่วย', 'จำนวนเคส', 'อัตรา/1000'], d.wardsAll.map((w, i) => '<tr><td style="opacity:.5">' + (i + 1) + '</td><td>' + esc(w.name) + '</td><td class="r">' + w.cases + '</td><td class="r">' + fx(w.rate) + '</td></tr>').join('') || '<tr><td colspan="4" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>')); break;
+                case 'site-rate': sec(head, title, chartBox, ps ? mkLine(ps.monthly.labels, ps.monthly.rates, pk + ' ' + (ps.unit || ''), col) : null); if (!ps) ph(head, title, 'ไม่พบตำแหน่ง "' + p + '"'); break;
+                case 'site-month-h1': sec(head, title, chartBox, ps ? mkLine(ps.mH1.labels, ps.mH1.rates, pk, col) : null); break;
+                case 'site-month-h2': sec(head, title, chartBox, ps ? mkLine(ps.mH2.labels, ps.mH2.rates, pk, col) : null); break;
+                case 'site-ward': ps ? sec(head, title, tbl(['#', 'หอผู้ป่วย', 'ตัวหาร', 'ครั้ง', 'อัตรา'], wardRows(ps.ward))) : ph(head, title, 'ไม่พบตำแหน่ง "' + p + '"'); break;
+                case 'site-org': ps ? sec(head, title, tbl(['#', 'เชื้อก่อโรค', 'จำนวน', '%'], orgRows(ps.orgs, col, isFinite(num) && num > 1 ? (num - 1) * 10 : 0, 10))) : ph(head, title, 'ไม่พบตำแหน่ง "' + p + '"'); break;
+                case 'ssi-wound': sec(head, title, tbl(['ประเภทแผล', 'จำนวนผ่าตัด', 'SSI (ครั้ง)', 'อัตรา/100'], d.ssiWound.map(w => '<tr><td>Class ' + w.cls + '</td><td class="r" style="opacity:.6">' + (w.op || 0).toLocaleString() + '</td><td class="r">' + w.cases + '</td><td class="r">' + fx(w.op ? w.cases / w.op * 100 : null) + '</td></tr>').join(''))); break;
+                case 'ssi-anat': sec(head, title, tbl(['อวัยวะ/หัตถการ', 'จำนวน (ครั้ง)'], d.ssiAnat.some(a => a.n) ? d.ssiAnat.map(a => '<tr><td>' + a.label + '</td><td class="r">' + a.n + '</td></tr>').join('') : '<tr><td colspan="2" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>')); break;
+                case 'omph-kpi': sec(head, title, tiles([tile(d.perSite.Omphalitis.n, 'จำนวนเคส', 'ราย', '#f43f5e'), tile(fx(d.perSite.Omphalitis.rate), 'อัตรา', '/100 เด็กเกิดมีชีพ', '#f59e0b')])); break;
+                case 'mdr-compare': sec(head, title, chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'bar', data: { labels: d.mdrMonthly.labels, datasets: [{ label: 'HAI', data: d.mdrMonthly.haiCounts, backgroundColor: 'rgba(79,70,229,.5)', borderRadius: 6 }, { label: 'MDR', data: d.mdrMonthly.mdrCounts, backgroundColor: '#e11d48', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); }); break;
+                case 'mdr-kpi': sec(head, title, tiles([tile(d.stat.mdr, 'เชื้อดื้อยา (MDR)', d.stat.mdrPct + '% ของ HAI', '#e11d48'), tile(fx(d.stat.mdrRate), 'อัตรา MDR', '/1,000 วันนอน', '#a855f7')])); break;
+                case 'mdr-org': sec(head, title, tbl(['#', 'เชื้อก่อโรค', 'จำนวน', '%'], orgRows(d.mdrOrgs, '#e11d48', 0, 20))); break;
+                case 'mdr-site': sec(head, title, tbl(['ตำแหน่ง', 'จำนวน (ราย)'], d.mdrSiteRows.map(s => '<tr><td>' + esc(s.label) + '</td><td class="r">' + s.n + '</td></tr>').join('') || '<tr><td colspan="2" style="opacity:.5">— ไม่มี —</td></tr>')); break;
+                case 'mdr-of': sec(head, title, tiles([tile(d.mdrBy(pk), pk + ' ดื้อยา', 'ราย', col)])); break;
+                case 'device': sec(head, title, tbl(['อุปกรณ์', 'จำนวนคนใช้', 'วันคาอุปกรณ์รวม', 'เฉลี่ยวัน/คน'], '<tr><td>สายสวนปัสสาวะ</td><td class="r">' + (d.device.cathN || 0).toLocaleString() + '</td><td class="r">' + Math.round(d.device.cathDay || 0).toLocaleString() + '</td><td class="r">' + fx(d.device.cathAvg) + '</td></tr><tr><td>เครื่องช่วยหายใจ</td><td class="r">' + (d.device.venN || 0).toLocaleString() + '</td><td class="r">' + Math.round(d.device.venDay || 0).toLocaleString() + '</td><td class="r">' + fx(d.device.venAvg) + '</td></tr><tr><td>สายหลอดเลือด</td><td class="r">' + (d.device.lineN || 0).toLocaleString() + '</td><td class="r">' + Math.round(d.device.lineDay || 0).toLocaleString() + '</td><td class="r">' + fx(d.device.lineAvg) + '</td></tr>')); break;
+                case 'device-cath': sec(head, title, tiles([tile(Math.round(d.device.cathDay || 0).toLocaleString(), 'วันคาสายรวม', 'วัน', '#f59e0b'), tile((d.device.cathN || 0).toLocaleString(), 'ผู้ป่วย', 'ราย', '#0ea5e9'), tile(fx(d.device.cathAvg), 'เฉลี่ย', 'วัน/คน', '#10b981')])); break;
+                case 'device-ven': sec(head, title, tiles([tile(Math.round(d.device.venDay || 0).toLocaleString(), 'วันใช้เครื่องรวม', 'วัน', '#f59e0b'), tile((d.device.venN || 0).toLocaleString(), 'ผู้ป่วย', 'ราย', '#0ea5e9'), tile(fx(d.device.venAvg), 'เฉลี่ย', 'วัน/คน', '#10b981')])); break;
+                case 'org-top': sec(head, title, '<div class="p-anim" style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:8px"><div><div style="font-size:18px;font-weight:600;opacity:.6;margin-bottom:8px">เชื้อที่พบบ่อย</div><table class="ptable" style="font-size:18px"><tbody>' + orgRows(d.orgsTop, '#4f46e5', 0, 8) + '</tbody></table></div><div><div style="font-size:18px;font-weight:600;opacity:.6;margin-bottom:8px">เชื้อดื้อยา (MDR)</div><table class="ptable" style="font-size:18px"><tbody>' + orgRows(d.mdrOrgs, '#e11d48', 0, 6) + '</tbody></table></div></div>'); break;
+                case 'needle': sec(head, title, d.needle ? tbl(['ไตรมาส', 'จำนวน (ครั้ง)'], 'Q1,Q2,Q3,Q4'.split(',').map(q => '<tr><td>' + q + '</td><td class="r">' + (d.needle.byQ[q] || 0) + '</td></tr>').join('') + '<tr style="font-weight:700"><td>รวม</td><td class="r">' + d.needle.total + '</td></tr>') : '<div class="p-anim" style="opacity:.5;margin-top:30px">— ไม่มีข้อมูลบุคลากร —</div>'); break;
+                case 'summary': case 'สรุป': sec(head, title, '<ul class="p-anim" style="margin-top:10px;font-size:22px;line-height:1.9;list-style:none;padding:0">' + ['พบการติดเชื้อรวม <b>' + d.stat.totCases + ' ราย</b> อัตรา <b>' + fx(d.stat.hospRate) + '</b>/1,000 วันนอน', 'ดื้อยา (MDR) <b>' + d.stat.mdr + ' ราย</b> (' + d.stat.mdrPct + '%)'].map(b => '<li style="margin-bottom:6px">• ' + b + '</li>').join('') + '</ul>', null, true); break;
+                default: ph(head, title, row.note || ''); break;   // placeholder/text/ไม่รู้จัก
+            }
+        }
+        function presentFromConfig(d) {
+            const X = presentCtx(d);
+            SLIDES_CONFIG.forEach(row => { try { presentConfigSlide(X, d, row); } catch (e) { X.ph(row.section || '', row.title || 'สไลด์', '⚠️ สร้างไม่สำเร็จ: ' + e.message); } });
+            return X.slides;
+        }
+        function presentBuild() {
+            const d = presentData();
+            presentSlides = (SLIDES_CONFIG && SLIDES_CONFIG.length) ? presentFromConfig(d) : presentDefaultSlides(d);
+        }
+        // โหลดโครงสไลด์จากแท็บ "Slides" (คอลัมน์: ลำดับ/หัวข้อหลัก/หัวข้อรอง/ชนิด/พารามิเตอร์/หมายเหตุ)
+        let SLIDES_CONFIG = null;
+        const SLIDES_SHEET = 'Slides';
+        async function loadSlidesConfig() {
+            try {
+                const url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(SLIDES_SHEET) + '&_=' + Date.now();
+                const res = await fetch(url);
+                if (!res.ok) { SLIDES_CONFIG = []; return; }
+                const rows = parseCSV(await res.text());
+                if (!rows.length) { SLIDES_CONFIG = []; return; }
+                const hdr = rows[0].map(h => (h || '').toString().trim().toLowerCase());
+                const find = names => { for (const n of names) { const i = hdr.indexOf(n); if (i >= 0) return i; } return -1; };
+                const ci = { sec: find(['หัวข้อหลัก', 'section', 'หมวด']), title: find(['หัวข้อรอง', 'title', 'หัวข้อ']), type: find(['ชนิด', 'type', 'ชนิดข้อมูล']), param: find(['พารามิเตอร์', 'param', 'ค่า']), note: find(['หมายเหตุ', 'note', 'เนื้อหา']) };
+                SLIDES_CONFIG = rows.slice(1)
+                    .map(r => ({ section: ci.sec >= 0 ? (r[ci.sec] || '') : '', title: ci.title >= 0 ? (r[ci.title] || '') : '', type: ci.type >= 0 ? (r[ci.type] || '') : '', param: ci.param >= 0 ? (r[ci.param] || '') : '', note: ci.note >= 0 ? (r[ci.note] || '') : '' }))
+                    .filter(r => (r.title || r.type || r.section).toString().trim() !== '');
+            } catch (e) { SLIDES_CONFIG = []; }
         }
         function presentScale() {
             const stage = document.getElementById('presentStage'); if (!stage) return;
@@ -8528,6 +8601,7 @@
             const statusEl = document.getElementById('lastUpdated');
             try {
                 rawData = await loadData();
+                loadSlidesConfig();   // โหลดโครงสไลด์จากแท็บ "Slides" แบบไม่บล็อก (ถ้าไม่มีก็ใช้เด็คในตัว)
                 populateFilters();
                 const caseCount = rawData.filter(d => d.isHAI).length;
 
