@@ -189,51 +189,53 @@ function createSlidesTab() {
     sh = ss.insertSheet(SLIDES_TAB);
   }
 
-  // หัวคอลัมน์
-  var header = ['ลำดับ', 'หัวข้อหลัก', 'หัวข้อรอง', 'ชนิด', 'พารามิเตอร์', 'หมายเหตุ'];
-  sh.getRange(1, 1, 1, header.length).setValues([header])
-    .setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff')
-    .setHorizontalAlignment('center');
+  // รวมทุกค่าลง "ครั้งเดียว" (A..I) เพื่อลดการ trigger คำนวณใหม่ (เช่นชีตที่มี IMPORTRANGE)
+  var sample = SLIDE_SAMPLE.map(function (r, i) { return [i + 1].concat(r); });   // A-F
+  var nData = Math.max(sample.length, SLIDE_TYPES.length);
+  var grid = [['ลำดับ', 'หัวข้อหลัก', 'หัวข้อรอง', 'ชนิด', 'พารามิเตอร์', 'หมายเหตุ', '', 'ชนิด (ค่า)', 'ความหมาย']];
+  for (var i = 0; i < nData; i++) {
+    var a = sample[i] || ['', '', '', '', '', ''];
+    var t = SLIDE_TYPES[i] || ['', ''];
+    grid.push([a[0], a[1], a[2], a[3], a[4], a[5], '', t[0], t[1]]);
+  }
+  sh.getRange(1, 1, grid.length, 9).setValues(grid);   // เขียนทีเดียว
+
+  // จัดรูปแบบหัวคอลัมน์ (ไม่ trigger คำนวณใหม่)
+  sh.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff').setHorizontalAlignment('center');
+  sh.getRange(1, 8, 1, 2).setFontWeight('bold').setBackground('#e2e8f0');
   sh.setFrozenRows(1);
 
-  // แถวตัวอย่าง (เติมเลขลำดับอัตโนมัติไว้คอลัมน์แรก)
-  var rows = SLIDE_SAMPLE.map(function (r, i) { return [i + 1].concat(r); });
-  sh.getRange(2, 1, rows.length, header.length).setValues(rows);
-
-  // ---- ดรอปดาวน์ "ชนิด" (คอลัมน์ D) ----
-  var typeValues = SLIDE_TYPES.map(function (t) { return t[0]; });
-  var typeRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(typeValues, true)
-    .setAllowInvalid(false)
-    .setHelpText('เลือกชนิดสไลด์ที่ต้องการแสดง')
-    .build();
-  sh.getRange(2, 4, 500, 1).setDataValidation(typeRule);
-
-  // ---- ดรอปดาวน์ "พารามิเตอร์" (คอลัมน์ E) ----
-  var paramRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(SLIDE_PARAMS, true)
-    .setAllowInvalid(true)   // อนุญาตเว้นว่าง/ใส่เลขเองได้ (เช่น agenda, site-org)
-    .setHelpText('ตำแหน่งติดเชื้อ (เฉพาะชนิด site-* และ mdr-of) — ชนิดอื่นเว้นว่างได้')
-    .build();
-  sh.getRange(2, 5, 500, 1).setDataValidation(paramRule);
+  // ดรอปดาวน์ — ใส่เฉพาะช่วงที่ใช้งานจริง (แถวตัวอย่าง + เผื่ออีก 60 แถว) ลดภาระ
+  var vEnd = sample.length + 60;
+  sh.getRange(2, 4, vEnd, 1).setDataValidation(
+    SpreadsheetApp.newDataValidation().requireValueInList(SLIDE_TYPES.map(function (t) { return t[0]; }), true).setAllowInvalid(false).setHelpText('เลือกชนิดสไลด์').build());
+  sh.getRange(2, 5, vEnd, 1).setDataValidation(
+    SpreadsheetApp.newDataValidation().requireValueInList(SLIDE_PARAMS, true).setAllowInvalid(true).setHelpText('ตำแหน่งติดเชื้อ/HAI/MDR — ชนิดอื่นเว้นว่างได้').build());
 
   // ความกว้างคอลัมน์
-  sh.setColumnWidth(1, 55);
-  sh.setColumnWidth(2, 130);
-  sh.setColumnWidth(3, 300);
-  sh.setColumnWidth(4, 150);
-  sh.setColumnWidth(5, 120);
-  sh.setColumnWidth(6, 260);
-
-  // ---- แผ่นคำอธิบายชนิด (ไว้ดูอ้างอิง) วางด้านขวา เริ่มคอลัมน์ H ----
-  sh.getRange(1, 8, 1, 2).setValues([['ชนิด (ค่า)', 'ความหมาย']])
-    .setFontWeight('bold').setBackground('#e2e8f0');
-  sh.getRange(2, 8, SLIDE_TYPES.length, 2).setValues(SLIDE_TYPES);
-  sh.setColumnWidth(8, 150);
-  sh.setColumnWidth(9, 420);
+  var widths = [55, 130, 300, 150, 120, 260, 20, 150, 420];
+  for (var c = 0; c < widths.length; c++) sh.setColumnWidth(c + 1, widths[c]);
 
   try { ss.toast('สร้างแท็บ "' + SLIDES_TAB + '" พร้อมดรอปดาวน์เรียบร้อย', 'สำเร็จ', 5); } catch (e) { }
-  Logger.log('สร้างแท็บ "%s" เรียบร้อย (%s แถว)', SLIDES_TAB, rows.length);
+  Logger.log('สร้างแท็บ "%s" เรียบร้อย (%s แถว)', SLIDES_TAB, sample.length);
+}
+
+/**
+ * ฉบับเบาพิเศษ: เขียนเฉพาะหัวคอลัมน์ + แถวตัวอย่าง (ไม่ใส่ดรอปดาวน์/ตารางอ้างอิง)
+ * ใช้เมื่อ createSlidesTab ช้าจนหมดเวลา (ชีตมีสูตรหนัก/IMPORTRANGE)
+ * พิมพ์ "ชนิด" เองได้ตามรายการในคำอธิบาย — เว็บอ่านได้เหมือนกันทุกประการ
+ */
+function createSlidesTabLite() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) ss = SpreadsheetApp.openById(SLIDES_SHEET_ID);
+  var sh = ss.getSheetByName(SLIDES_TAB);
+  if (sh) { sh.clear(); sh.clearDataValidations(); } else { sh = ss.insertSheet(SLIDES_TAB); }
+  var grid = [['ลำดับ', 'หัวข้อหลัก', 'หัวข้อรอง', 'ชนิด', 'พารามิเตอร์', 'หมายเหตุ']];
+  SLIDE_SAMPLE.forEach(function (r, i) { grid.push([i + 1].concat(r)); });
+  sh.getRange(1, 1, grid.length, 6).setValues(grid);   // เขียนครั้งเดียว ไม่มี validation
+  sh.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff');
+  sh.setFrozenRows(1);
+  Logger.log('createSlidesTabLite: เขียน %s แถว', SLIDE_SAMPLE.length);
 }
 
 // หมายเหตุ: โปรเจกต์นี้มี onOpen อยู่แล้วใน SurveillanceMatch.gs — ห้ามประกาศ onOpen ซ้ำ
