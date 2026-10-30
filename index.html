@@ -1107,7 +1107,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30e</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30f</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -1303,6 +1303,17 @@
                             <option value="haiCount">จำนวนเคส HAI</option>
                             <option value="mdrPct">% ดื้อยา (MDR)</option>
                             <option value="patientDay">วันนอนรวม</option>
+                            <optgroup label="อัตราเฉพาะตำแหน่ง (SITE)">
+                                <option value="rate_VAP">อัตรา VAP /1000 วันเครื่องช่วยหายใจ</option>
+                                <option value="rate_CAUTI">อัตรา CAUTI /1000 วันคาสาย</option>
+                                <option value="rate_CLABSI">อัตรา CLABSI /1000 วันคาสายหลอดเลือด</option>
+                                <option value="rate_SSI">อัตรา SSI /100 ผ่าตัด</option>
+                                <option value="rate_Omphalitis">อัตรา Omphalitis /100 เด็กเกิดมีชีพ</option>
+                                <option value="count_VAP">จำนวนเคส VAP</option>
+                                <option value="count_CAUTI">จำนวนเคส CAUTI</option>
+                                <option value="count_CLABSI">จำนวนเคส CLABSI</option>
+                                <option value="count_SSI">จำนวนเคส SSI</option>
+                            </optgroup>
                         </select>
                     </div>
                 </div>
@@ -5165,6 +5176,30 @@
             mdrPct:     { label: '% ดื้อยา (MDR)',          color: '#f43f5e', fmt: v => (v || 0) + '%' },
             patientDay: { label: 'วันนอนรวม',               color: '#8b5cf6', fmt: v => Math.round(v || 0).toLocaleString() }
         };
+        // Metric เพิ่มเติม: อัตรา/จำนวน แยกตามตำแหน่งติดเชื้อ (SITE)
+        const CMP_SITE_COLORS = { VAP: '#14b8a6', CAUTI: '#f97316', CLABSI: '#8b5cf6', SSI: '#3b82f6', Omphalitis: '#f43f5e' };
+        ['VAP', 'CAUTI', 'CLABSI', 'SSI', 'Omphalitis'].forEach(s => {
+            const meta = RATE_META[s];
+            CMP_METRIC['rate_' + s] = { label: 'อัตรา ' + s + ' ' + meta.unit, color: CMP_SITE_COLORS[s] || '#10b981', fmt: v => v == null ? '-' : v.toFixed(2) };
+        });
+        ['VAP', 'CAUTI', 'CLABSI', 'SSI'].forEach(s => {
+            CMP_METRIC['count_' + s] = { label: 'จำนวนเคส ' + s, color: CMP_SITE_COLORS[s] || '#0ea5e9', fmt: v => (v || 0).toLocaleString() };
+        });
+        // อัตรา/จำนวนเคสของตำแหน่ง site จากชุดแถว rows (ตัวหารตาม RATE_META, Omphalitis ใช้เด็กเกิดมีชีพแบบไม่อิงหอ)
+        function cmpSiteCount(rows, site) { return rows.filter(r => r.isHAI && r.siteType === site).length; }
+        function cmpSiteRate(rows, site) {
+            const n = cmpSiteCount(rows, site);
+            const meta = RATE_META[site] || RATE_META.HAI;
+            const den = meta.den === 'liveBirth'
+                ? FISCAL_MONTHS.reduce((a, m) => a + (liveBirthByMonthIgnoringWard()[m] || 0), 0)
+                : rows.reduce((a, r) => a + (r[meta.den] || 0), 0);
+            return den ? +(n / den * meta.factor).toFixed(2) : null;
+        }
+        // เติมค่า rate_* / count_* ให้ออบเจกต์ metric จากชุดแถว rows
+        function cmpEnrichSite(obj, rows) {
+            ['VAP', 'CAUTI', 'CLABSI', 'SSI', 'Omphalitis'].forEach(s => { obj['rate_' + s] = cmpSiteRate(rows, s); obj['count_' + s] = cmpSiteCount(rows, s); });
+            return obj;
+        }
         // แถวพื้นฐาน: ใช้ตัวกรองบน ยกเว้นมิติที่กำลังเปรียบเทียบ
         function cmpBaseRows(dim) {
             return rawData.filter(d =>
@@ -5186,7 +5221,7 @@
             const haiCount = hai.length;
             const pd = rows.reduce((a, r) => a + (r.patientDay || 0), 0);
             const mdr = hai.filter(r => r.isMDR).length;
-            return { haiCount, patientDay: pd, haiRate: pd ? +(haiCount / pd * 1000).toFixed(2) : null, mdrPct: haiCount ? Math.round(mdr / haiCount * 100) : 0 };
+            return cmpEnrichSite({ haiCount, patientDay: pd, haiRate: pd ? +(haiCount / pd * 1000).toFixed(2) : null, mdrPct: haiCount ? Math.round(mdr / haiCount * 100) : 0 }, rows);
         }
         // คำนวณตามมิติ (SITE ใช้ตัวหารเฉพาะตำแหน่งตาม RATE_META)
         function cmpMetricsFor(dim, v, base) {
@@ -5198,7 +5233,10 @@
                 const den = meta.den === 'liveBirth'
                     ? FISCAL_MONTHS.reduce((a, m) => a + (liveBirthByMonthIgnoringWard()[m] || 0), 0)
                     : base.reduce((a, r) => a + (r[meta.den] || 0), 0);
-                return { haiCount, patientDay: base.reduce((a, r) => a + (r.patientDay || 0), 0), haiRate: den ? +(haiCount / den * meta.factor).toFixed(2) : null, mdrPct: haiCount ? Math.round(mdr / haiCount * 100) : 0 };
+                const obj = { haiCount, patientDay: base.reduce((a, r) => a + (r.patientDay || 0), 0), haiRate: den ? +(haiCount / den * meta.factor).toFixed(2) : null, mdrPct: haiCount ? Math.round(mdr / haiCount * 100) : 0 };
+                // เมื่อมิติ=ตำแหน่ง: ให้ค่า rate_/count_ ของตำแหน่งนั้นตรงกับ v (ตำแหน่งอื่นเว้นว่าง)
+                ['VAP', 'CAUTI', 'CLABSI', 'SSI', 'Omphalitis'].forEach(s => { obj['rate_' + s] = (s === v ? obj.haiRate : null); obj['count_' + s] = (s === v ? haiCount : 0); });
+                return obj;
             }
             return cmpMetricsOf(base.filter(d => CMP_DIM_GET[dim](d) === v));
         }
