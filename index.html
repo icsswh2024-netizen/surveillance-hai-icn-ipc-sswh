@@ -50,12 +50,12 @@
         #presentOverlay.show { display: flex; }
         .pslide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center;
             padding: 64px 80px; color: #0f172a; font-family: 'Kanit', sans-serif;
-            background: radial-gradient(120% 120% at 100% 0%, #eef2ff 0%, #ffffff 42%, #f8fafc 100%); overflow: hidden; }
-        .pslide.dark { color: #f8fafc; background: radial-gradient(130% 130% at 0% 0%, #4338ca 0%, #1e1b4b 55%, #0f172a 100%); }
+            background: radial-gradient(120% 120% at 100% 0%, var(--p-bg1,#eef2ff) 0%, var(--p-bg2,#ffffff) 42%, var(--p-bg3,#f8fafc) 100%); overflow: hidden; }
+        .pslide.dark { color: #f8fafc; background: radial-gradient(130% 130% at 0% 0%, var(--p-d1,#4338ca) 0%, var(--p-d2,#1e1b4b) 55%, var(--p-d3,#0f172a) 100%); }
         .pslide .p-eyebrow { font-size: 18px; letter-spacing: .18em; text-transform: uppercase; opacity: .6; font-weight: 600; }
         .pslide .p-title { font-size: 58px; line-height: 1.08; font-weight: 700; margin-top: 6px; }
         .pslide .p-sub { font-size: 22px; opacity: .7; margin-top: 14px; }
-        .pslide .p-accent { height: 7px; width: 120px; border-radius: 9999px; background: linear-gradient(90deg,#6366f1,#a855f7); margin: 22px 0; }
+        .pslide .p-accent { height: 7px; width: 120px; border-radius: 9999px; background: linear-gradient(90deg,var(--p-a1,#6366f1),var(--p-a2,#a855f7)); margin: 22px 0; }
         .pslide .p-foot { position: absolute; bottom: 36px; left: 80px; right: 80px; display: flex; justify-content: space-between; font-size: 15px; opacity: .55; }
         .pstat { background: rgba(255,255,255,.72); border: 1px solid rgba(148,163,184,.25); border-radius: 24px; padding: 28px 30px; box-shadow: 0 10px 30px rgba(2,6,23,.06); backdrop-filter: blur(6px); }
         .pslide.dark .pstat { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.14); box-shadow: none; }
@@ -1107,7 +1107,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30h</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30i</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -1126,6 +1126,15 @@
                 <button id="presentPrev" class="hover:text-white px-2 text-lg leading-none" title="ก่อนหน้า (←)">‹</button>
                 <span id="presentPage" class="tabular-nums text-xs text-white/70">1 / 1</span>
                 <button id="presentNext" class="hover:text-white px-2 text-lg leading-none" title="ถัดไป (→)">›</button>
+                <span class="w-px h-4 bg-white/20"></span>
+                <select id="presentPalette" class="bg-white/15 text-white text-xs rounded-full px-2 py-1 focus:outline-none cursor-pointer" title="เลือกพาเลทสี">
+                    <option value="indigo" class="text-slate-800">🎨 คราม (เริ่มต้น)</option>
+                    <option value="bluegreen" class="text-slate-800">ฟ้าผสมเขียว</option>
+                    <option value="teal" class="text-slate-800">ฟ้าเขียว</option>
+                    <option value="pink" class="text-slate-800">ชมพู</option>
+                    <option value="red" class="text-slate-800">แดง</option>
+                    <option value="purple" class="text-slate-800">ม่วง</option>
+                </select>
                 <span class="w-px h-4 bg-white/20"></span>
                 <button id="presentFull" class="hover:text-white text-xs px-2" title="เต็มจอ (F)">⛶ เต็มจอ</button>
                 <button id="presentClose" class="hover:text-white text-xs px-2" title="ออก (Esc)">✕ ออก</button>
@@ -5823,6 +5832,37 @@
         /* ===================== โหมดนำเสนอ (สไลด์ 16:9 + Morph) ===================== */
         const HOSPITAL_NAME = 'โรงพยาบาลศรีสังวรสุโขทัย';
         let presentSlides = [], presentIdx = 0, presentChartInst = null;
+        // ===== พาเลทสีสำหรับการนำเสนอ =====
+        // a:แถบเน้น/ไล่เฉด, bg:พื้นหลังสไลด์ (อ่อน), d:พื้นหลังสไลด์ปก (เข้ม), chart:[HAI,VAP,CAUTI,SSI,MDR,extra]
+        const PRESENT_PALETTES = {
+            indigo:    { a: ['#6366f1', '#a855f7'], bg: ['#eef2ff', '#ffffff', '#f8fafc'], d: ['#4338ca', '#1e1b4b', '#0f172a'], chart: ['#4f46e5', '#14b8a6', '#f97316', '#3b82f6', '#e11d48', '#a855f7'] },
+            bluegreen: { a: ['#1e88e5', '#00bfa5'], bg: ['#e6eef2', '#ffffff', '#f4faf9'], d: ['#1565c0', '#00695c', '#0f172a'], chart: ['#1e88e5', '#26c6da', '#00bfa5', '#43a047', '#e11d48', '#8bc34a'] },
+            teal:      { a: ['#0d8f8c', '#2ec4b6'], bg: ['#e6f7f5', '#ffffff', '#f2fbfa'], d: ['#0f766e', '#115e59', '#0f172a'], chart: ['#0d8f8c', '#14b8b1', '#2ec4b6', '#0f766e', '#e11d48', '#7eddd0'] },
+            pink:      { a: ['#e64478', '#f06292'], bg: ['#fde7ef', '#ffffff', '#fdf2f6'], d: ['#ad1457', '#880e4f', '#1f0a14'], chart: ['#e64478', '#f06292', '#ba68c8', '#d81b60', '#c2185b', '#f48fb1'] },
+            red:       { a: ['#c8102e', '#f25c54'], bg: ['#fdeaea', '#ffffff', '#fdf3f3'], d: ['#b71c1c', '#7f1212', '#1a0808'], chart: ['#c8102e', '#e53935', '#f25c54', '#b71c1c', '#8b0000', '#ff8a80'] },
+            purple:    { a: ['#5c2d91', '#a06fd1'], bg: ['#efe8f7', '#ffffff', '#f7f3fb'], d: ['#4a2275', '#3e1f63', '#140a1f'], chart: ['#5c2d91', '#7b4bbe', '#a06fd1', '#3e1f63', '#c2185b', '#c88ad9'] }
+        };
+        let PRESENT_PAL = 'indigo';
+        try { PRESENT_PAL = localStorage.getItem('presentPalette') || 'indigo'; } catch (e) { }
+        if (!PRESENT_PALETTES[PRESENT_PAL]) PRESENT_PAL = 'indigo';
+        // คืนชุดสีกราฟของพาเลทปัจจุบัน (ให้ presentCtx ใช้แทน C เดิม)
+        function PRESENT_C() {
+            const c = (PRESENT_PALETTES[PRESENT_PAL] || PRESENT_PALETTES.indigo).chart;
+            return { HAI: c[0], VAP: c[1], CAUTI: c[2], SSI: c[3], MDR: c[4], EXTRA: c[5] };
+        }
+        // ใส่ตัวแปรสี CSS ลงบน overlay ตามพาเลท
+        function applyPresentPalette(key) {
+            if (!PRESENT_PALETTES[key]) key = 'indigo';
+            PRESENT_PAL = key;
+            try { localStorage.setItem('presentPalette', key); } catch (e) { }
+            const p = PRESENT_PALETTES[key];
+            const ov = document.getElementById('presentOverlay'); if (!ov) return;
+            const s = ov.style;
+            s.setProperty('--p-a1', p.a[0]); s.setProperty('--p-a2', p.a[1]);
+            s.setProperty('--p-bg1', p.bg[0]); s.setProperty('--p-bg2', p.bg[1]); s.setProperty('--p-bg3', p.bg[2]);
+            s.setProperty('--p-d1', p.d[0]); s.setProperty('--p-d2', p.d[1]); s.setProperty('--p-d3', p.d[2]);
+            const sel = document.getElementById('presentPalette'); if (sel && sel.value !== key) sel.value = key;
+        }
         function presentData() {
             const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
             const periodLabel = 'ปีงบ ' + fLabel('year') + ' · ' + fLabel('quarter') +
@@ -5914,7 +5954,7 @@
             const orgRows = (arr, color, off, lim) => { const tot = arr.reduce((s, x) => s + x.n, 0); const a = arr.slice(off || 0, (off || 0) + (lim || 999)); return a.length ? a.map((o, i) => '<tr><td style="opacity:.5">' + ((off || 0) + i + 1) + '</td><td>' + esc(o.org) + '</td><td class="r" style="color:' + color + ';font-weight:700">' + o.n + '</td><td class="r" style="opacity:.6">' + (tot ? Math.round(o.n / tot * 100) : 0) + '%</td></tr>').join('') : '<tr><td colspan="4" style="opacity:.5">— ไม่มี —</td></tr>'; };
             const siteWardSlide = (eye, title, key) => sec(eye, title, tbl(['#', 'หอผู้ป่วย', 'ตัวหาร', 'ครั้ง', 'อัตรา'], wardRows(d.perSite[key].ward)));
             const siteOrgSlide = (eye, title, key, color, off, lim) => sec(eye, title, tbl(['#', 'เชื้อก่อโรค', 'จำนวน', '%'], orgRows(d.perSite[key].orgs, color, off, lim)));
-            const C = { VAP: '#14b8a6', CAUTI: '#f97316', SSI: '#3b82f6', MDR: '#a855f7', HAI: '#4f46e5' };
+            const C = PRESENT_C();
             const agendaItems = ['อัตราการติดเชื้อในโรงพยาบาล', 'อัตราการติดเชื้อดื้อยาต้านจุลชีพ', 'อุบัติการณ์เข็มทิ่มตำในเจ้าหน้าที่', 'การติดเชื้อโคโรนาไวรัส (COVID-19)', 'วัณโรคในเจ้าหน้าที่', 'IC Round และการทำความสะอาดมือ', 'การทบทวนความรู้ของบุคลากร', 'มาตรการป้องกัน CAUTI / VAP'];
             const agenda = hi => '<ol class="p-anim" style="margin-top:20px;font-size:26px;line-height:2.1;padding-left:0;list-style:none">' + agendaItems.map((t, i) => '<li style="opacity:' + (hi == null || hi === i ? 1 : .4) + ';font-weight:' + (hi === i ? 700 : 400) + '">' + (i + 1) + '. ' + t + '</li>').join('') + '</ol>';
             const coverHtml = '<div class="pslide dark"><div class="p-anim"><div class="p-eyebrow">Healthcare-Associated Infection</div><h1 class="p-title" style="view-transition-name:pTitle">การประชุมสรุปผลการดำเนินงาน<br>ด้านการควบคุมและป้องกันการติดเชื้อ</h1><div class="p-accent" style="view-transition-name:pAccent"></div><div class="p-sub">' + HOSPITAL_NAME + ' · ' + d.periodLabel + '</div></div><div class="p-foot"><span>งานป้องกันและควบคุมการติดเชื้อ (IC)</span><span>' + new Date().toLocaleDateString('th-TH') + '</span></div></div>';
@@ -6145,6 +6185,7 @@
                 return;
             }
             const ov = document.getElementById('presentOverlay');
+            applyPresentPalette(PRESENT_PAL);   // ใส่สีพาเลทที่เลือกไว้
             // บังคับแสดงด้วย inline style (ชนะคลาส hidden ของ Tailwind ทุกกรณี)
             ov.classList.remove('hidden');
             ov.classList.add('show');
@@ -8596,6 +8637,7 @@
         document.getElementById('presentPrev').addEventListener('click', () => presentShow(presentIdx - 1));
         document.getElementById('presentNext').addEventListener('click', () => presentShow(presentIdx + 1));
         document.getElementById('presentClose').addEventListener('click', presentClose);
+        document.getElementById('presentPalette').addEventListener('change', e => { applyPresentPalette(e.target.value); presentBuild(); presentShow(presentIdx); });
         document.getElementById('presentFull').addEventListener('click', () => { const ov = document.getElementById('presentOverlay'); if (document.fullscreenElement) document.exitFullscreen(); else ov.requestFullscreen && ov.requestFullscreen(); });
         document.getElementById('presentStage').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); if ((e.clientX - r.left) < r.width * 0.35) presentShow(presentIdx - 1); else presentShow(presentIdx + 1); });
         document.addEventListener('keydown', presentKey);
