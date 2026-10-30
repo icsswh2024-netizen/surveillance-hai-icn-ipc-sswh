@@ -66,6 +66,41 @@
         .ptable th { text-align: left; font-weight: 600; opacity: .6; padding: 10px 14px; border-bottom: 2px solid rgba(148,163,184,.3); }
         .ptable td { padding: 10px 14px; border-bottom: 1px solid rgba(148,163,184,.18); }
         .ptable td.r, .ptable th.r { text-align: right; font-variant-numeric: tabular-nums; }
+        /* ===== แม่แบบ "IC เขียว" (เลียนแบบเด็ค รพ.ศรีสังวรสุโขทัย) ===== */
+        .pslide.ic { color: #fff; padding: 30px 48px 56px;
+            background: radial-gradient(130% 130% at 50% -10%, #0c948c 0%, #048581 48%, #036f6b 100%); justify-content: flex-start; }
+        .pslide.ic .ic-head { display: flex; align-items: center; gap: 20px; margin-top: 4px; }
+        .pslide.ic .ic-logo { width: 96px; height: 96px; flex: 0 0 auto; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,.2)); }
+        .pslide.ic .ic-titles { flex: 1 1 auto; min-width: 0; }
+        .pslide.ic .ic-title { font-size: 38px; line-height: 1.05; font-weight: 800; margin: 0; }
+        .pslide.ic .ic-title .hl { color: #ff914d; }
+        .pslide.ic .ic-sub { font-size: 24px; font-weight: 700; opacity: .96; margin-top: 2px; }
+        .pslide.ic .ic-divider { width: 5px; align-self: stretch; margin: 6px 6px; background: #fff; border-radius: 9999px; opacity: .9; }
+        .pslide.ic .ic-period { flex: 0 0 auto; text-align: left; font-size: 30px; font-weight: 800; line-height: 1.1; white-space: pre-line; }
+        .pslide.ic .ic-pill { background: #fff; color: #036f6b; font-weight: 700; font-size: 26px; text-align: center;
+            border-radius: 9999px; padding: 12px 34px; margin: 20px auto 6px; max-width: 92%; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+        .pslide.ic .ic-pill .hl { color: #ff6f3c; }
+        .pslide.ic .ic-body { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; min-height: 0; margin-top: 8px; }
+        .pslide.ic .ic-foot { position: absolute; left: 48px; bottom: 20px; font-size: 16px; opacity: .85; }
+        .pslide.ic .ic-deco { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; overflow: hidden; pointer-events: none; z-index: 0; }
+        .pslide.ic .ic-deco::before, .pslide.ic .ic-deco::after { content: ""; position: absolute; bottom: -40px; height: 120px; border-radius: 9999px; }
+        .pslide.ic .ic-deco::before { right: 8%; width: 46%; background: #14b19d; opacity: .95; }
+        .pslide.ic .ic-deco::after { right: 2%; width: 26%; background: #3fcbb6; opacity: .9; }
+        .pslide.ic .ic-body > * { position: relative; z-index: 1; }
+        .pslide.ic .ptable th { color: #e9fffb; opacity: .85; border-bottom-color: rgba(255,255,255,.35); }
+        .pslide.ic .ptable td { border-bottom-color: rgba(255,255,255,.16); }
+        .pslide.ic .pstat { background: rgba(255,255,255,.95); color: #0f172a; box-shadow: 0 10px 26px rgba(0,0,0,.18); }
+        .pslide.ic .ic-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px 26px; font-size: 18px; margin: 4px 0 10px; }
+        .pslide.ic .ic-legend span { display: inline-flex; align-items: center; gap: 8px; }
+        .pslide.ic .ic-legend i { width: 16px; height: 16px; border-radius: 9999px; display: inline-block; }
+        /* ปกแบบ IC */
+        .pslide.ic-cover { color: #fff; align-items: center; text-align: center; justify-content: center;
+            background: radial-gradient(130% 130% at 50% 0%, #0c948c 0%, #048581 52%, #036f6b 100%); }
+        .pslide.ic-cover .cv-logos { display: flex; gap: 40px; justify-content: center; align-items: center; margin-bottom: 18px; }
+        .pslide.ic-cover .cv-logos img { width: 150px; height: 150px; object-fit: contain; }
+        .pslide.ic-cover h1 { font-size: 60px; font-weight: 800; line-height: 1.1; margin: 0; }
+        .pslide.ic-cover .cv-sub { font-size: 26px; font-weight: 600; margin-top: 14px; opacity: .97; line-height: 1.5; }
+        .pslide.ic-cover .cv-foot { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg,#14b19d,#3fcbb6); color: #063f3b; font-weight: 600; font-size: 18px; padding: 14px 40px; text-align: left; }
         @keyframes pFadeUp { from { opacity: 0; transform: translateY(16px);} to { opacity: 1; transform: none; } }
         .p-anim > * { animation: pFadeUp .5s both; }
         .p-anim > *:nth-child(2) { animation-delay: .06s; }
@@ -1107,7 +1142,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30i</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30j</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -1127,7 +1162,8 @@
                 <span id="presentPage" class="tabular-nums text-xs text-white/70">1 / 1</span>
                 <button id="presentNext" class="hover:text-white px-2 text-lg leading-none" title="ถัดไป (→)">›</button>
                 <span class="w-px h-4 bg-white/20"></span>
-                <select id="presentPalette" class="bg-white/15 text-white text-xs rounded-full px-2 py-1 focus:outline-none cursor-pointer" title="เลือกพาเลทสี">
+                <select id="presentPalette" class="bg-white/15 text-white text-xs rounded-full px-2 py-1 focus:outline-none cursor-pointer" title="เลือกพาเลทสี/แม่แบบ">
+                    <option value="ic" class="text-slate-800">🏥 IC เขียว (รพ.ศรีสังวร)</option>
                     <option value="indigo" class="text-slate-800">🎨 คราม (เริ่มต้น)</option>
                     <option value="bluegreen" class="text-slate-800">ฟ้าผสมเขียว</option>
                     <option value="teal" class="text-slate-800">ฟ้าเขียว</option>
@@ -5840,7 +5876,9 @@
             teal:      { a: ['#0d8f8c', '#2ec4b6'], bg: ['#e6f7f5', '#ffffff', '#f2fbfa'], d: ['#0f766e', '#115e59', '#0f172a'], chart: ['#0d8f8c', '#14b8b1', '#2ec4b6', '#0f766e', '#e11d48', '#7eddd0'] },
             pink:      { a: ['#e64478', '#f06292'], bg: ['#fde7ef', '#ffffff', '#fdf2f6'], d: ['#ad1457', '#880e4f', '#1f0a14'], chart: ['#e64478', '#f06292', '#ba68c8', '#d81b60', '#c2185b', '#f48fb1'] },
             red:       { a: ['#c8102e', '#f25c54'], bg: ['#fdeaea', '#ffffff', '#fdf3f3'], d: ['#b71c1c', '#7f1212', '#1a0808'], chart: ['#c8102e', '#e53935', '#f25c54', '#b71c1c', '#8b0000', '#ff8a80'] },
-            purple:    { a: ['#5c2d91', '#a06fd1'], bg: ['#efe8f7', '#ffffff', '#f7f3fb'], d: ['#4a2275', '#3e1f63', '#140a1f'], chart: ['#5c2d91', '#7b4bbe', '#a06fd1', '#3e1f63', '#c2185b', '#c88ad9'] }
+            purple:    { a: ['#5c2d91', '#a06fd1'], bg: ['#efe8f7', '#ffffff', '#f7f3fb'], d: ['#4a2275', '#3e1f63', '#140a1f'], chart: ['#5c2d91', '#7b4bbe', '#a06fd1', '#3e1f63', '#c2185b', '#c88ad9'] },
+            // แม่แบบ IC เขียว (เลียนแบบเด็ค รพ.ศรีสังวรสุโขทัย) — พื้นหลัง/หัวสไลด์จัดการด้วย CSS, chart = สีเส้น/แท่งบนพื้นเขียว
+            ic:        { a: ['#ff914d', '#ffd54f'], bg: ['#048581', '#048581', '#036f6b'], d: ['#0c948c', '#048581', '#036f6b'], chart: ['#8bc34a', '#ffd54f', '#ff914d', '#ffffff', '#ff5252', '#4dd0e1'] }
         };
         let PRESENT_PAL = 'indigo';
         try { PRESENT_PAL = localStorage.getItem('presentPalette') || 'indigo'; } catch (e) { }
@@ -5861,6 +5899,11 @@
             s.setProperty('--p-a1', p.a[0]); s.setProperty('--p-a2', p.a[1]);
             s.setProperty('--p-bg1', p.bg[0]); s.setProperty('--p-bg2', p.bg[1]); s.setProperty('--p-bg3', p.bg[2]);
             s.setProperty('--p-d1', p.d[0]); s.setProperty('--p-d2', p.d[1]); s.setProperty('--p-d3', p.d[2]);
+            // แม่แบบ IC: พื้นเขียว → ตัวอักษร/เส้นกริดในกราฟเป็นสีขาว
+            if (typeof Chart !== 'undefined') {
+                if (key === 'ic') { Chart.defaults.color = '#ffffff'; Chart.defaults.borderColor = 'rgba(255,255,255,.18)'; }
+                else { Chart.defaults.color = '#475569'; Chart.defaults.borderColor = 'rgba(0,0,0,.1)'; }
+            }
             const sel = document.getElementById('presentPalette'); if (sel && sel.value !== key) sel.value = key;
         }
         function presentData() {
@@ -5941,7 +5984,14 @@
             const esc = d.esc;
             const slides = [];
             // ---------- ตัวช่วยสร้างสไลด์ ----------
-            const sec = (eye, title, body, chart, dark) => slides.push({ html: '<div class="pslide' + (dark ? ' dark' : '') + '"><div class="p-eyebrow">' + eye + '</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:36px">' + title + '</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' + body + foot + '</div>', chart });
+            const IC = (PRESENT_PAL === 'ic');
+            const icPeriod = 'ปีงบประมาณ\n' + fLabel('year');
+            const icHeadHtml = eye => '<div class="ic-head"><img class="ic-logo" src="assets/ic-logo.png" alt="IC"><div class="ic-titles"><h2 class="ic-title">' + eye + '</h2><div class="ic-sub">' + HOSPITAL_NAME + '</div></div><div class="ic-divider"></div><div class="ic-period">' + icPeriod + '</div></div>';
+            const sec = (eye, title, body, chart, dark) => {
+                if (!IC) { slides.push({ html: '<div class="pslide' + (dark ? ' dark' : '') + '"><div class="p-eyebrow">' + eye + '</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:36px">' + title + '</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' + body + foot + '</div>', chart }); return; }
+                if (dark) { slides.push({ html: '<div class="pslide ic" style="justify-content:center;text-align:center"><div class="p-anim" style="position:relative;z-index:1"><div class="ic-pill" style="display:inline-block;margin:0 auto">' + eye + '</div><h2 class="ic-title" style="font-size:50px;margin-top:22px">' + title + '</h2></div><div class="ic-deco"></div></div>', chart }); return; }
+                slides.push({ html: '<div class="pslide ic">' + icHeadHtml(eye) + '<div class="ic-pill">' + title + '</div><div class="ic-body p-anim">' + body + '</div><div class="ic-deco"></div></div>', chart });
+            };
             const ph = (eye, title, note) => sec(eye, title, '<div class="p-anim" style="margin-top:34px;font-size:22px;opacity:.5;line-height:1.9">' + (note || '📄 หัวข้อนี้ไม่มีข้อมูลในระบบ — เว้นไว้เติมเนื้อหา/ภาพจากเด็ค Canva') + '</div>');
             const tile = (n, l, s, accent) => '<div class="pstat"><div class="n" style="color:' + accent + '">' + n + '</div><div class="l">' + l + '</div><div class="s">' + s + '</div></div>';
             const tiles = arr => '<div class="p-anim" style="display:grid;grid-template-columns:repeat(' + arr.length + ',1fr);gap:22px;margin-top:26px">' + arr.join('') + '</div>';
@@ -5957,7 +6007,9 @@
             const C = PRESENT_C();
             const agendaItems = ['อัตราการติดเชื้อในโรงพยาบาล', 'อัตราการติดเชื้อดื้อยาต้านจุลชีพ', 'อุบัติการณ์เข็มทิ่มตำในเจ้าหน้าที่', 'การติดเชื้อโคโรนาไวรัส (COVID-19)', 'วัณโรคในเจ้าหน้าที่', 'IC Round และการทำความสะอาดมือ', 'การทบทวนความรู้ของบุคลากร', 'มาตรการป้องกัน CAUTI / VAP'];
             const agenda = hi => '<ol class="p-anim" style="margin-top:20px;font-size:26px;line-height:2.1;padding-left:0;list-style:none">' + agendaItems.map((t, i) => '<li style="opacity:' + (hi == null || hi === i ? 1 : .4) + ';font-weight:' + (hi === i ? 700 : 400) + '">' + (i + 1) + '. ' + t + '</li>').join('') + '</ol>';
-            const coverHtml = '<div class="pslide dark"><div class="p-anim"><div class="p-eyebrow">Healthcare-Associated Infection</div><h1 class="p-title" style="view-transition-name:pTitle">การประชุมสรุปผลการดำเนินงาน<br>ด้านการควบคุมและป้องกันการติดเชื้อ</h1><div class="p-accent" style="view-transition-name:pAccent"></div><div class="p-sub">' + HOSPITAL_NAME + ' · ' + d.periodLabel + '</div></div><div class="p-foot"><span>งานป้องกันและควบคุมการติดเชื้อ (IC)</span><span>' + new Date().toLocaleDateString('th-TH') + '</span></div></div>';
+            const coverHtml = IC
+                ? '<div class="pslide ic-cover"><div class="p-anim"><div class="cv-logos"><img src="assets/hospital-logo.png" alt="รพ."><img src="assets/ic-logo.png" alt="IC"></div><h1>การประชุมสรุปผลประจำปี' + (/ทุก|ทั้งหมด/.test(fLabel('year')) ? '' : ' ' + fLabel('year')) + '</h1><div class="cv-sub">การพยาบาลด้านการควบคุมและป้องกันการติดเชื้อ<br>' + HOSPITAL_NAME + '</div></div><div class="cv-foot">กลุ่มงานการพยาบาลด้านการควบคุมและป้องกันการติดเชื้อ</div></div>'
+                : '<div class="pslide dark"><div class="p-anim"><div class="p-eyebrow">Healthcare-Associated Infection</div><h1 class="p-title" style="view-transition-name:pTitle">การประชุมสรุปผลการดำเนินงาน<br>ด้านการควบคุมและป้องกันการติดเชื้อ</h1><div class="p-accent" style="view-transition-name:pAccent"></div><div class="p-sub">' + HOSPITAL_NAME + ' · ' + d.periodLabel + '</div></div><div class="p-foot"><span>งานป้องกันและควบคุมการติดเชื้อ (IC)</span><span>' + new Date().toLocaleDateString('th-TH') + '</span></div></div>';
             return { d, foot, fx, esc, slides, sec, ph, tile, tiles, tbl, chartBox, mkLine, mkBar, wardRows, orgRows, siteWardSlide, siteOrgSlide, C, agendaItems, agenda, coverHtml };
         }
         function presentDefaultSlides(d) {
