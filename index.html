@@ -1107,7 +1107,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30f</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30g</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -5837,7 +5837,7 @@
             };
             // หอผู้ป่วยเด่น (จาก reportMatrix)
             const m = reportMatrix(false);
-            const wards = m.list.map(w => ({ name: (REPORT_WARD_NAMES[w.unit] || w.unit), cases: repTotalCases(w), rate: w.den.patientDay ? (repTotalCases(w) / w.den.patientDay * 1000) : null }))
+            const wards = m.list.map(w => ({ name: (REPORT_WARD_NAMES[w.unit] || w.unit), cases: repTotalCases(w), rate: (w.den && w.den.patientDay) ? (repTotalCases(w) / w.den.patientDay * 1000) : null }))
                 .filter(w => w.cases > 0).sort((a, b) => b.cases - a.cases).slice(0, 8);
             // เชื้อ
             const orgsTop = orgOverallData().slice(0, 8);
@@ -5875,7 +5875,7 @@
             // SSI แยกประเภทแผล (wound class) + wound-class SSI cases
             const ssiWound = [1, 2, 3, 4].map(w => ({ cls: w, op: denTot.op, cases: cases.filter(c => c.siteType === 'SSI' && ssiClassOf(c) === String(w)).length }));
             // หอผู้ป่วยรวม (อัตรา HAI ทุกหอ)
-            const wardsAll = wardAgg.map(w => ({ name: REPORT_WARD_NAMES[w.unit] || w.unit, cases: repTotalCases(w), rate: w.den.patientDay ? repTotalCases(w) / w.den.patientDay * 1000 : null })).filter(w => w.cases > 0 || w.den.patientDay > 0).sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
+            const wardsAll = wardAgg.map(w => ({ name: REPORT_WARD_NAMES[w.unit] || w.unit, cases: repTotalCases(w), rate: (w.den && w.den.patientDay) ? repTotalCases(w) / w.den.patientDay * 1000 : null })).filter(w => w.cases > 0 || (w.den && w.den.patientDay > 0)).sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
             // MDR รายเดือน (เทียบ HAI) + SSI แยกอวัยวะ
             const mdrByMo = {}; FISCAL_MONTHS.forEach(mo => mdrByMo[mo] = 0); mdrCases.forEach(c => { if (c.month != null) mdrByMo[c.month] = (mdrByMo[c.month] || 0) + 1; });
             const mdrMonthly = { labels: months.map(mo => MONTH_LABELS[mo]), haiCounts: months.map(mo => byMonth[mo].HAI), mdrCounts: months.map(mo => mdrByMo[mo] || 0) };
@@ -6126,7 +6126,12 @@
         function presentOpen() {
             try {
                 presentBuild();
-            } catch (e) { console.error('presentBuild ล้มเหลว:', e); alert('สร้างสไลด์ไม่สำเร็จ: ' + e.message); return; }
+            } catch (e) {
+                console.error('presentBuild ล้มเหลว:', e);
+                const loc = (e.stack || '').split('\n').find(l => /index\.html|:\d+:\d+/.test(l)) || '';
+                alert('สร้างสไลด์ไม่สำเร็จ: ' + e.message + '\n' + loc.trim());
+                return;
+            }
             const ov = document.getElementById('presentOverlay');
             // บังคับแสดงด้วย inline style (ชนะคลาส hidden ของ Tailwind ทุกกรณี)
             ov.classList.remove('hidden');
