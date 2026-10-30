@@ -1142,7 +1142,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30k</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30l</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -5872,8 +5872,9 @@
         // key: 'HAI' หรือตำแหน่งติดเชื้อ (VAP/CAUTI/...), unit: 'year'|'quarter'|'month'
         function presentTimeSeries(key, unit) {
             key = (key || 'HAI').toString().trim() || 'HAI';
-            const K = key.toUpperCase() === 'HAI' ? 'HAI' : key;
-            const meta = RATE_META[K] || RATE_META[key] || RATE_META.HAI;
+            const up = key.toUpperCase();
+            const isMDRkey = up === 'MDR';
+            const meta = (isMDRkey || up === 'HAI') ? RATE_META.HAI : (RATE_META[up] || RATE_META[key] || RATE_META.HAI);
             const denKey = meta.den, factor = meta.factor;
             // ใช้ตัวกรองบนทั้งหมด ยกเว้นมิติเวลาที่กำลังพล็อต (เพื่อให้เห็นหลายปี/ไตรมาส/เดือน)
             const rows = rawData.filter(d =>
@@ -5893,32 +5894,66 @@
                 labels = groups.map(m => MONTH_LABELS[m]);
             }
             const field = unit === 'year' ? (r => r.year) : unit === 'quarter' ? (r => r.quarter) : (r => r.month);
-            const isK = key.toUpperCase() === 'HAI' ? (r => r.isHAI) : (r => r.isHAI && r.siteType === key);
+            const isK = isMDRkey ? (r => r.isHAI && r.isMDR) : (up === 'HAI' ? (r => r.isHAI) : (r => r.isHAI && r.siteType === key));
             const counts = groups.map(g => rows.filter(r => field(r) === g && isK(r)).length);
+            const totals = groups.map(g => rows.filter(r => field(r) === g && r.isHAI).length);   // HAI ทั้งหมดในช่วงนั้น (ตัวหารของร้อยละ)
             const rates = groups.map(g => {
                 const sub = rows.filter(r => field(r) === g);
                 const den = sub.reduce((a, r) => a + (r[denKey] || 0), 0);
                 const num = sub.filter(isK).length;
                 return den ? +(num / den * factor).toFixed(2) : 0;
             });
-            return { labels, counts, rates, unitLabel: { year: 'ปี', quarter: 'ไตรมาส', month: 'เดือน' }[unit], rateUnit: meta.unit };
+            const pcts = counts.map((c, i) => totals[i] ? +(c / totals[i] * 100).toFixed(1) : 0);
+            return { labels, counts, rates, pcts, unitLabel: { year: 'ปี', quarter: 'ไตรมาส', month: 'เดือน' }[unit], rateUnit: meta.unit };
         }
-        // callback สร้างกราฟ time-series พร้อมชื่อแกน X/Y (rate=เส้น, count=แท่ง)
+        // callback สร้างกราฟ time-series พร้อมชื่อแกน X/Y (rate=เส้น, count=แท่ง, pct=เส้น%)
         function presentTSChartCb(ts, label, color, mode) {
             return () => {
                 const ctx = document.getElementById('presentChart'); if (!ctx) return;
                 if (presentChartInst) presentChartInst.destroy();
-                const isCount = mode === 'count';
+                const data = mode === 'count' ? ts.counts : mode === 'pct' ? ts.pcts : ts.rates;
+                const yText = mode === 'count' ? 'จำนวน (ราย)' : mode === 'pct' ? 'ร้อยละ (%)' : ('อัตรา ' + (ts.rateUnit || ''));
                 presentChartInst = new Chart(ctx, {
-                    type: isCount ? 'bar' : 'line',
-                    data: { labels: ts.labels, datasets: [{ label, data: isCount ? ts.counts : ts.rates, borderColor: color, backgroundColor: color, borderWidth: 3, tension: .4, pointRadius: 4, borderRadius: 6 }] },
+                    type: mode === 'count' ? 'bar' : 'line',
+                    data: { labels: ts.labels, datasets: [{ label, data, borderColor: color, backgroundColor: color, borderWidth: 3, tension: .4, pointRadius: 4, borderRadius: 6 }] },
                     options: {
                         responsive: true, maintainAspectRatio: false,
                         plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } },
                         scales: {
-                            y: { beginAtZero: true, title: { display: true, text: isCount ? 'จำนวน (ราย)' : ('อัตรา ' + (ts.rateUnit || '')), font: { family: 'Kanit', size: 13 } } },
+                            y: { beginAtZero: true, title: { display: true, text: yText, font: { family: 'Kanit', size: 13 } } },
                             x: { grid: { display: false }, title: { display: true, text: ts.unitLabel, font: { family: 'Kanit', size: 13 } } }
                         }
+                    }
+                });
+            };
+        }
+        // โดนัท/วงกลม (สัดส่วน) — labels + data + ชุดสี
+        function presentPieCb(labels, data, colors, doughnut) {
+            return () => {
+                const ctx = document.getElementById('presentChart'); if (!ctx) return;
+                if (presentChartInst) presentChartInst.destroy();
+                presentChartInst = new Chart(ctx, {
+                    type: doughnut === false ? 'pie' : 'doughnut',
+                    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: 'rgba(255,255,255,.65)', borderWidth: 2 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'Kanit', size: 13 }, boxWidth: 14 } } } }
+                });
+            };
+        }
+        // กราฟแท่ง (แนวตั้ง/แนวนอน) พร้อมชื่อแกน
+        function presentBarCb(labels, data, label, color, horizontal, axMain, axVal) {
+            return () => {
+                const ctx = document.getElementById('presentChart'); if (!ctx) return;
+                if (presentChartInst) presentChartInst.destroy();
+                const valScale = { beginAtZero: true, title: { display: true, text: axVal, font: { family: 'Kanit', size: 13 } } };
+                const mainScale = { grid: { display: false }, title: { display: true, text: axMain, font: { family: 'Kanit', size: 13 } } };
+                presentChartInst = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels, datasets: [{ label, data, backgroundColor: color, borderRadius: 6 }] },
+                    options: {
+                        indexAxis: horizontal ? 'y' : 'x',
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: horizontal ? { x: valScale, y: mainScale } : { y: valScale, x: mainScale }
                     }
                 });
             };
@@ -6189,6 +6224,7 @@
             const ps = d.perSite[pk] || d.perSite[p];                // ชุดข้อมูลของตำแหน่งนั้น (ถ้ามี)
             const col = C[pk] || C.HAI;
             const num = parseInt(p, 10);                             // พารามิเตอร์ที่เป็นตัวเลข (เช่น ส่วนที่ของเชื้อ)
+            const PAL = [C.HAI, C.VAP, C.CAUTI, C.SSI, C.MDR, C.EXTRA, '#f59e0b', '#0ea5e9', '#7c3aed', '#10b981', '#ef4444', '#64748b'];
             switch (type) {
                 case 'cover': slides.push({ html: X.coverHtml }); break;
                 case 'agenda': sec(head || 'Agenda', title || 'หัวข้อการนำเสนอ', agenda(isFinite(num) ? num - 1 : null), null, true); break;
@@ -6217,14 +6253,32 @@
                 case 'summary': case 'สรุป': sec(head, title, '<ul class="p-anim" style="margin-top:10px;font-size:22px;line-height:1.9;list-style:none;padding:0">' + ['พบการติดเชื้อรวม <b>' + d.stat.totCases + ' ราย</b> อัตรา <b>' + fx(d.stat.hospRate) + '</b>/1,000 วันนอน', 'ดื้อยา (MDR) <b>' + d.stat.mdr + ' ราย</b> (' + d.stat.mdrPct + '%)'].map(b => '<li style="margin-bottom:6px">• ' + b + '</li>').join('') + '</ul>', null, true); break;
                 // ===== กราฟตามหน่วยเวลา: อัตรา/จำนวน × ปี/ไตรมาส/เดือน (แสดงแกน X/Y) =====
                 case 'rate-year': case 'rate-quarter': case 'rate-month':
-                case 'count-year': case 'count-quarter': case 'count-month': {
+                case 'count-year': case 'count-quarter': case 'count-month':
+                case 'pct-year': case 'pct-quarter': case 'pct-month': {
                     const unit = type.split('-')[1];                 // year/quarter/month
-                    const mode = type.split('-')[0];                 // rate/count
-                    const siteKey = p || 'HAI';
+                    const mode = type.split('-')[0];                 // rate/count/pct
+                    const siteKey = p || (mode === 'pct' ? 'MDR' : 'HAI');
                     const ts = presentTimeSeries(siteKey, unit);
-                    const lbl = (siteKey === 'HAI' ? 'HAI' : siteKey) + (mode === 'rate' ? ' (' + ts.rateUnit + ')' : ' (จำนวน)');
+                    const lbl = siteKey + (mode === 'rate' ? ' (' + ts.rateUnit + ')' : mode === 'pct' ? ' (ร้อยละ)' : ' (จำนวน)');
                     sec(head, title, chartBox, presentTSChartCb(ts, lbl, col, mode));
                     break;
+                }
+                // ===== กราฟหลากหลายขึ้น: โดนัท/วงกลม, แท่ง, แท่งแนวนอน =====
+                case 'pie-site': case 'donut-site':
+                    sec(head, title, chartBox, presentPieCb(d.siteRows.map(s => s.label), d.siteRows.map(s => s.n), PAL, type !== 'pie-site')); break;
+                case 'pie-org': case 'donut-org': {
+                    const arr = (ps ? ps.orgs : d.orgsTop).slice(0, 8);
+                    sec(head, title, chartBox, presentPieCb(arr.map(o => o.org), arr.map(o => o.n), PAL, type !== 'pie-org')); break;
+                }
+                case 'bar-site':
+                    sec(head, title, chartBox, presentBarCb(d.siteRows.map(s => s.label), d.siteRows.map(s => s.n), 'จำนวนเคส', col, false, 'ตำแหน่งติดเชื้อ', 'จำนวน (ราย)')); break;
+                case 'hbar-ward': {
+                    const arr = (ps ? ps.ward.map(w => ({ name: w.name, v: w.rate })) : d.wardsAll.map(w => ({ name: w.name, v: w.rate }))).slice(0, 12);
+                    sec(head, title, chartBox, presentBarCb(arr.map(a => a.name), arr.map(a => a.v), 'อัตรา', col, true, 'หอผู้ป่วย', 'อัตรา')); break;
+                }
+                case 'hbar-org': {
+                    const arr = (ps ? ps.orgs : d.orgsTop).slice(0, 10);
+                    sec(head, title, chartBox, presentBarCb(arr.map(o => o.org), arr.map(o => o.n), 'จำนวน', col, true, 'เชื้อก่อโรค', 'จำนวน (ครั้ง)')); break;
                 }
                 default: ph(head, title, row.note || ''); break;   // placeholder/text/ไม่รู้จัก
             }
@@ -6270,7 +6324,7 @@
                     }))
                     .filter(r => (r.title || r.type || r.section) !== '');
                 // ยอมรับเฉพาะเมื่อมีอย่างน้อย 1 แถวที่ชนิดเป็นค่าที่รู้จัก (กัน CSV จากชีตผิดแท็บ)
-                const KNOWN = new Set(['cover', 'agenda', 'kpi', 'site-table', 'trend', 'ward-all', 'site-rate', 'site-month-h1', 'site-month-h2', 'site-ward', 'site-org', 'ssi-wound', 'ssi-anat', 'omph-kpi', 'mdr-compare', 'mdr-kpi', 'mdr-org', 'mdr-site', 'mdr-of', 'device', 'device-cath', 'device-ven', 'org-top', 'needle', 'summary', 'placeholder', 'rate-year', 'rate-quarter', 'rate-month', 'count-year', 'count-quarter', 'count-month']);
+                const KNOWN = new Set(['cover', 'agenda', 'kpi', 'site-table', 'trend', 'ward-all', 'site-rate', 'site-month-h1', 'site-month-h2', 'site-ward', 'site-org', 'ssi-wound', 'ssi-anat', 'omph-kpi', 'mdr-compare', 'mdr-kpi', 'mdr-org', 'mdr-site', 'mdr-of', 'device', 'device-cath', 'device-ven', 'org-top', 'needle', 'summary', 'placeholder', 'rate-year', 'rate-quarter', 'rate-month', 'count-year', 'count-quarter', 'count-month', 'pct-year', 'pct-quarter', 'pct-month', 'pie-site', 'donut-site', 'pie-org', 'donut-org', 'bar-site', 'hbar-ward', 'hbar-org']);
                 SLIDES_CONFIG = cfg.some(r => KNOWN.has((r.type || '').toString().trim().toLowerCase())) ? cfg : [];
             } catch (e) { SLIDES_CONFIG = []; }
         }
