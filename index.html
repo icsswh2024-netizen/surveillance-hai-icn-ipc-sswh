@@ -1107,7 +1107,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30d</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30e</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -6072,19 +6072,28 @@
             stage.style.transform = 'scale(' + s + ')';
         }
         function presentShow(i) {
+            if (!presentSlides.length) return;
             presentIdx = (i + presentSlides.length) % presentSlides.length;
             const slideEl = document.getElementById('presentSlide');
-            const render = () => { slideEl.innerHTML = presentSlides[presentIdx].html; };
-            if (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(render);
-            else render();
+            const render = () => { slideEl.innerHTML = (presentSlides[presentIdx] || {}).html || ''; };
+            // บาง Safari/iPad startViewTransition มีแต่พังง่าย — ครอบ try/catch แล้ว fallback เป็น render ตรง ๆ
+            try {
+                if (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(render);
+                else render();
+            } catch (e) { render(); }
             document.getElementById('presentPage').textContent = (presentIdx + 1) + ' / ' + presentSlides.length;
             const ch = presentSlides[presentIdx].chart;
             if (ch) setTimeout(ch, 60);
         }
         function presentOpen() {
-            presentBuild();
+            try {
+                presentBuild();
+            } catch (e) { console.error('presentBuild ล้มเหลว:', e); alert('สร้างสไลด์ไม่สำเร็จ: ' + e.message); return; }
             const ov = document.getElementById('presentOverlay');
+            // บังคับแสดงด้วย inline style (ชนะคลาส hidden ของ Tailwind ทุกกรณี)
+            ov.classList.remove('hidden');
             ov.classList.add('show');
+            ov.style.display = 'flex';
             presentScale();
             presentShow(0);
             if (ov.requestFullscreen) { try { ov.requestFullscreen(); } catch (e) { } }
@@ -6092,6 +6101,8 @@
         function presentClose() {
             const ov = document.getElementById('presentOverlay');
             ov.classList.remove('show');
+            ov.classList.add('hidden');
+            ov.style.display = 'none';
             if (presentChartInst) { presentChartInst.destroy(); presentChartInst = null; }
             if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) { } }
         }
