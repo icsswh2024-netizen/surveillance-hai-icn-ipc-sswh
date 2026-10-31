@@ -35,6 +35,14 @@ function doGet(e) {
     const headers = sh ? sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function (x) { return String(x).trim(); }) : [];
     return recJson_({ ok: true, version: 'record-v1', lists: true, sheet: REC_SHEET, found: !!sh, headers: headers }, cb);
   }
+  if (action === 'monthlyHeaders') {
+    // คืนหัวคอลัมน์ของแท็บ MMW/HDU ให้ฟอร์มสร้างช่องกรอกอัตโนมัติ
+    const name = MONTHLY_SHEETS[String(e.parameter.sheet || '').toUpperCase()];
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sh = name ? ss.getSheetByName(name) : null;
+    const headers = sh ? sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function (x) { return String(x).trim(); }).filter(function (x) { return x !== ''; }) : [];
+    return recJson_({ ok: true, sheet: name || '', found: !!sh, headers: headers }, cb);
+  }
   return recJson_({ ok: true, version: 'record-v1', lists: true }, cb);
 }
 
@@ -66,6 +74,7 @@ function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (body.action === 'setList') return recSetList_(body);
+    if (body.action === 'addMonthly') return recAddMonthly_(body);   // บันทึกรายการหัตถการ/ยอดเดือน → แท็บ MMW/HDU
     if (body.action !== 'addCase') return recJson_({ ok: false, note: 'unknown action: ' + body.action });
     // รองรับทั้งบรรทัดเดียว (record) และหลายบรรทัด (records = เคส + เชื้อเพิ่มบรรทัดต่อ)
     const recs = Array.isArray(body.records) ? body.records : [body.record || {}];
@@ -91,4 +100,28 @@ function doPost(e) {
   } catch (err) {
     return recJson_({ ok: false, error: String(err) });
   }
+}
+
+// บันทึกรายการหัตถการ/ยอดประจำเดือน ต่อท้ายแท็บ MMW หรือ HDU (จับคู่ตามหัวคอลัมน์จริง)
+var MONTHLY_SHEETS = { MMW: 'MMW', HDU: 'HDU' };   // เพิ่มหน่วยใหม่ที่นี่ได้ในอนาคต
+function recAddMonthly_(body) {
+  const name = MONTHLY_SHEETS[String(body.sheet || '').toUpperCase()];
+  if (!name) return recJson_({ ok: false, note: 'sheet ไม่ถูกต้อง: ' + body.sheet });
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(name);
+  if (!sh) return recJson_({ ok: false, note: 'ไม่พบแท็บ "' + name + '"' });
+  const lastCol = sh.getLastColumn();
+  const headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (x) { return String(x).trim(); });
+  const hmap = {};
+  headers.forEach(function (h, i) { if (h !== '') hmap[recNorm_(h)] = i; });
+  const rec = body.record || {};
+  if (rec.Timestamp == null && rec.timestamp == null) rec.Timestamp = new Date();   // เติมเวลาอัตโนมัติ
+  const row = new Array(lastCol).fill('');
+  let matched = 0, unmatched = [];
+  Object.keys(rec).forEach(function (k) {
+    const idx = hmap[recNorm_(k)];
+    if (idx !== undefined) { row[idx] = rec[k]; matched++; } else if (String(rec[k]).trim() !== '') unmatched.push(k);
+  });
+  sh.appendRow(row);
+  return recJson_({ ok: true, action: 'addMonthly', sheet: name, matched: matched, unmatched: unmatched, lastRow: sh.getLastRow() });
 }

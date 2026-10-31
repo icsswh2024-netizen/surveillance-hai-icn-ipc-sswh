@@ -310,6 +310,10 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                 แบบบันทึกผู้ป่วย HAI
             </button>
+            <button id="menuProcedure" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                บันทึกรายการหัตถการ
+            </button>
         </nav>
         <div class="p-4 border-t border-slate-100 text-xs text-slate-400">
             <p>สถานะ: <span class="font-medium text-slate-600" id="lastUpdated">กำลังโหลด...</span></p>
@@ -1142,7 +1146,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-30l</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-31a</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2092,6 +2096,36 @@
                 </div>
             </div>
         </div><!-- /viewRecord -->
+
+        <!-- ===================== VIEW: บันทึกรายการหัตถการ (ยอดประจำเดือนรายหอ → แท็บ MMW/HDU) ===================== -->
+        <div id="viewProcedure" class="space-y-6" hidden>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">บันทึกรายการหัตถการ / ยอดประจำเดือน</h3>
+                        <p class="text-xs text-slate-400 mt-1">บันทึกเข้าชีตเดียวกัน (ไฟล์ 0-2569) แทน Google Form — ทุกหน่วยกรอกที่เดียว</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs font-medium text-slate-500">แบบฟอร์ม</label>
+                        <select id="pc_form" class="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <option value="MMW">MMW — วันคาอุปกรณ์ (หอผู้ป่วยทั่วไป)</option>
+                            <option value="HDU">HDU — หัตถการหน่วยไต</option>
+                        </select>
+                        <button id="pc_copylink" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-3 rounded-lg transition-colors font-medium" title="คัดลอกลิงก์เปิดฟอร์มนี้โดยตรง">🔗 คัดลอกลิงก์ฟอร์มนี้</button>
+                    </div>
+                </div>
+                <div class="p-6 space-y-5">
+                    <div id="pc_fields" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div class="col-span-full text-sm text-slate-400">กำลังโหลดช่องกรอกจากหัวคอลัมน์ของชีต...</div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100">
+                        <button id="pc_save" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-5 rounded-lg transition-colors font-semibold">💾 บันทึกลงชีต</button>
+                        <button id="pc_reload" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-3 rounded-lg transition-colors font-medium">↻ โหลดช่องกรอกใหม่</button>
+                        <span id="pc_status" class="text-xs text-slate-400"></span>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /viewProcedure -->
 
         <!-- ===================== VIEW: แก้ไข Dropdown (List-ทะเบียน-1) ===================== -->
         <div id="viewListEdit" class="space-y-6" hidden>
@@ -8647,6 +8681,80 @@
             const st = document.getElementById('rec_status'); st.textContent = '✅ ดาวน์โหลด CSV แล้ว'; st.className = 'text-xs text-emerald-600';
         }
 
+        /* ===== บันทึกรายการหัตถการ (ยอดประจำเดือน → แท็บ MMW/HDU) ===== */
+        let PC_HEADERS = [];
+        function pcStatus(msg, cls) { const st = document.getElementById('pc_status'); if (st) { st.textContent = msg; st.className = 'text-xs ' + (cls || 'text-slate-400'); } }
+        function pcIsNumeric(h) { return /จำนวน|วัน|ครั้ง|ราย|ใบ/.test(h); }
+        async function pcLoadFields() {
+            const form = document.getElementById('pc_form').value;
+            const wrap = document.getElementById('pc_fields');
+            wrap.innerHTML = '<div class="col-span-full text-sm text-slate-400">กำลังโหลดช่องกรอกจากหัวคอลัมน์ของชีต ' + form + '...</div>';
+            const url = recSaveUrl();
+            if (!url) { wrap.innerHTML = '<div class="col-span-full text-sm text-rose-600">⚠️ ยังไม่ได้ตั้งค่า URL ของ Apps Script (ไปที่เมนู “แบบบันทึกผู้ป่วย HAI” เพื่อวาง URL ก่อน)</div>'; return; }
+            let res = null; try { res = await jsonpFrom(url, 'action=monthlyHeaders&sheet=' + encodeURIComponent(form)); } catch (e) { }
+            if (!res || !res.ok || !res.headers || !res.headers.length) {
+                wrap.innerHTML = '<div class="col-span-full text-sm text-rose-600">⚠️ โหลดหัวคอลัมน์ไม่สำเร็จ — ตรวจว่า Deploy Apps Script เวอร์ชันล่าสุด (มี action monthlyHeaders) และมีแท็บ ' + form + '</div>';
+                return;
+            }
+            PC_HEADERS = res.headers;
+            wrap.innerHTML = PC_HEADERS.map(function (h) {
+                if (/^timestamp$/i.test(h)) return '';   // เวลาเติมอัตโนมัติฝั่งเซิร์ฟเวอร์
+                const id = 'pc_f_' + btoa(unescape(encodeURIComponent(h))).replace(/[^a-zA-Z0-9]/g, '');
+                const num = pcIsNumeric(h);
+                return '<div><label class="block text-xs font-medium text-slate-500 mb-1">' + h + '</label>' +
+                    '<input id="' + id + '" data-h="' + h.replace(/"/g, '&quot;') + '" type="' + (num ? 'number' : 'text') + '" ' + (num ? 'min="0" inputmode="numeric"' : '') +
+                    ' class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"></div>';
+            }).join('');
+            pcStatus('พร้อมกรอก · ' + form + ' (' + PC_HEADERS.length + ' คอลัมน์)', 'text-slate-400');
+        }
+        function pcCollect() {
+            const rec = {};
+            document.querySelectorAll('#pc_fields input[data-h]').forEach(function (el) {
+                const h = el.getAttribute('data-h'); const v = el.value.trim();
+                if (v !== '') rec[h] = v;
+            });
+            return rec;
+        }
+        async function pcSave() {
+            const form = document.getElementById('pc_form').value;
+            const rec = pcCollect();
+            if (!Object.keys(rec).length) { pcStatus('⚠️ ยังไม่ได้กรอกข้อมูล', 'text-rose-600'); return; }
+            if (!rec['หอผู้ป่วย'] && !rec['รายงานยอดประจำเดือน']) {
+                if (!confirm('ยังไม่ได้ระบุหอผู้ป่วย/เดือน จะบันทึกต่อไหม?')) return;
+            }
+            const url = recSaveUrl();
+            if (!url) { pcStatus('⚠️ ยังไม่ได้ตั้งค่า URL', 'text-rose-600'); return; }
+            pcStatus('กำลังบันทึกลงแท็บ ' + form + '...', 'text-slate-500');
+            try {
+                let ping = null; try { ping = await jsonpFrom(url, 'action=ping'); } catch (e) { }
+                if (!ping || !(ping.version === 'record-v1')) { pcStatus('⚠️ Apps Script ยังไม่พร้อม — Deploy เวอร์ชันล่าสุดก่อน', 'text-rose-600'); return; }
+                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'addMonthly', sheet: form, record: rec }) });
+                pcStatus('✅ บันทึกลงแท็บ ' + form + ' แล้ว · ' + (rec['หอผู้ป่วย'] || '') + ' ' + (rec['รายงานยอดประจำเดือน'] || ''), 'text-emerald-600');
+                document.querySelectorAll('#pc_fields input[data-h]').forEach(function (el) { el.value = ''; });
+            } catch (e) { pcStatus('⚠️ บันทึกไม่สำเร็จ: ' + e.message, 'text-rose-600'); }
+        }
+        function pcCopyLink() {
+            const form = document.getElementById('pc_form').value;
+            const link = location.origin + location.pathname + '?menu=procedure&form=' + form;
+            navigator.clipboard.writeText(link).then(
+                function () { pcStatus('✅ คัดลอกลิงก์แล้ว: ' + link, 'text-emerald-600'); },
+                function () { pcStatus('ลิงก์: ' + link, 'text-slate-500'); }
+            );
+        }
+        let pcBound = false;
+        function initProcedureView() {
+            if (!pcBound) {
+                document.getElementById('pc_form').addEventListener('change', pcLoadFields);
+                document.getElementById('pc_save').addEventListener('click', pcSave);
+                document.getElementById('pc_reload').addEventListener('click', pcLoadFields);
+                document.getElementById('pc_copylink').addEventListener('click', pcCopyLink);
+                pcBound = true;
+            }
+            // ลิงก์แยก: ?form=MMW/HDU → ตั้งค่าแบบฟอร์มให้อัตโนมัติ
+            try { const f = new URLSearchParams(location.search).get('form'); if (f) { const sel = document.getElementById('pc_form'); if ([...sel.options].some(o => o.value === f.toUpperCase())) sel.value = f.toUpperCase(); } } catch (e) { }
+            pcLoadFields();
+        }
+
         /* ===== แก้ไข Dropdown — อ่าน/เขียนแท็บ List-ทะเบียน-1 ===== */
         let LE_DATA = {}, LE_ORDER = [];
         function leStatus(msg, cls) { const st = document.getElementById('le_status'); if (st) { st.textContent = msg; st.className = 'text-xs ' + (cls || 'text-slate-400'); } }
@@ -8722,9 +8830,9 @@
         function switchView(view) {
             // ตัวกรองแยกรายเมนู: บันทึกของเมนูเดิม แล้วโหลดของเมนูใหม่ ก่อนเรนเดอร์
             if (view !== CURRENT_FILTER_VIEW) { saveViewFilters(CURRENT_FILTER_VIEW); loadViewFilters(view); CURRENT_FILTER_VIEW = view; }
-            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', report: 'viewReport', org: 'viewOrg', patient: 'viewPatient', compare: 'viewCompare', surv: 'viewSurv', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord', listedit: 'viewListEdit' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', patient: 'menuPatient', compare: 'menuCompare', surv: 'menuSurv', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
-            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', report: 'สรุปรายงาน', org: 'เชื้อก่อโรค HAI', patient: 'วิเคราะห์ผู้ป่วย', surv: 'ประสิทธิภาพการเฝ้าระวัง', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI', listedit: 'แก้ไข Dropdown (List)' };
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', report: 'viewReport', org: 'viewOrg', patient: 'viewPatient', compare: 'viewCompare', surv: 'viewSurv', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord', procedure: 'viewProcedure', listedit: 'viewListEdit' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', patient: 'menuPatient', compare: 'menuCompare', surv: 'menuSurv', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord', procedure: 'menuProcedure' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', report: 'สรุปรายงาน', org: 'เชื้อก่อโรค HAI', patient: 'วิเคราะห์ผู้ป่วย', surv: 'ประสิทธิภาพการเฝ้าระวัง', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI', procedure: 'บันทึกรายการหัตถการ', listedit: 'แก้ไข Dropdown (List)' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
@@ -8764,6 +8872,7 @@
             if (view === 'control') updateControlView();
             if (view === 'risk') refreshRisk();
             if (view === 'record') initRecordView();
+            if (view === 'procedure') initProcedureView();
             if (view === 'listedit') initListEdit();
         }
 
@@ -8850,6 +8959,7 @@
         document.getElementById('menuControl').addEventListener('click', () => switchView('control'));
         document.getElementById('menuRisk').addEventListener('click', () => switchView('risk'));
         document.getElementById('menuRecord').addEventListener('click', () => switchView('record'));
+        document.getElementById('menuProcedure').addEventListener('click', () => switchView('procedure'));
         document.getElementById('recOpenListEdit').addEventListener('click', () => switchView('listedit'));
         document.getElementById('leBack').addEventListener('click', () => switchView('record'));
         document.getElementById('btnExportRisk').addEventListener('click', exportRiskCSV);
@@ -8916,6 +9026,8 @@
                     new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ')';
                 updateDashboard();
                 updateWardTable();
+                // ลิงก์แยก: ?menu=procedure (&form=MMW/HDU) → เปิดหน้าบันทึกหัตถการให้เลย
+                try { const mv = new URLSearchParams(location.search).get('menu'); if (mv && document.getElementById('menu' + mv.charAt(0).toUpperCase() + mv.slice(1))) switchView(mv); } catch (e) { }
             } catch (err) {
                 console.error(err);
                 statusEl.textContent = '⚠️ ดึงข้อมูลจากชีต "ทะเบียน-1" ไม่สำเร็จ — ตรวจสอบสิทธิ์การเข้าถึง (ต้องตั้ง "ทุกคนที่มีลิงก์")';
@@ -9182,7 +9294,7 @@
         const SESS_KEY = 'authSession';
         const SESS_HOURS = 12;                 // อายุ session
         // map view key -> ปุ่มเมนูใน nav
-        const MENU_BTN = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', patient: 'menuPatient', compare: 'menuCompare', surv: 'menuSurv', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
+        const MENU_BTN = { procedure: 'menuProcedure', dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', patient: 'menuPatient', compare: 'menuCompare', surv: 'menuSurv', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
         const ALL_VIEWS = Object.keys(MENU_BTN);
 
         function loginUrl() {
