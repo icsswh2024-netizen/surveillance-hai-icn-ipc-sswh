@@ -74,7 +74,8 @@ function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (body.action === 'setList') return recSetList_(body);
-    if (body.action === 'addMonthly') return recAddMonthly_(body);   // บันทึกรายการหัตถการ/ยอดเดือน → แท็บ MMW/HDU
+    if (body.action === 'addMonthly') return recAddMonthly_(body);   // บันทึกรายการหัตถการ/ยอดเดือน → แท็บ MMW/HDU (เดิม)
+    if (body.action === 'addUnified') return recAddUnified_(body);    // บันทึกรวมทุกหน่วย → แท็บเดียว "หัตถการ"
     if (body.action !== 'addCase') return recJson_({ ok: false, note: 'unknown action: ' + body.action });
     // รองรับทั้งบรรทัดเดียว (record) และหลายบรรทัด (records = เคส + เชื้อเพิ่มบรรทัดต่อ)
     const recs = Array.isArray(body.records) ? body.records : [body.record || {}];
@@ -100,6 +101,48 @@ function doPost(e) {
   } catch (err) {
     return recJson_({ ok: false, error: String(err) });
   }
+}
+
+// ===== แท็บรวมทุกหน่วย "หัตถการ" (union ของ MMW + HDU) =====
+var PROC_SHEET = 'หัตถการ';
+var PROC_HEADERS = [
+  'Timestamp', 'หน่วยงาน', 'แบบฟอร์ม', 'รายงานยอดประจำเดือน',
+  // MMW: วันคาอุปกรณ์
+  'จำนวนแบบบันทึกใบ IC (ใบ)', 'จำนวนวันนอนทั้งหมด (วัน)',
+  'ผู้ป่วยคาสายสวนปัสสาวะ (ราย)', 'วันคาสายสวนปัสสาวะ (วัน)',
+  'ผู้ป่วยใส่เครื่องช่วยหายใจ (ราย)', 'วันใส่เครื่องช่วยหายใจ (วัน)',
+  'ผู้ป่วยใส่ ET/TT ไม่ใส่เครื่อง (ราย)', 'วัน ET/TT ไม่ใส่เครื่อง (วัน)',
+  'ผู้ป่วยใส่ CVC (ราย)', 'วันใส่ CVC (วัน)',
+  'ผู้ป่วยให้สารน้ำ (ราย)', 'วันให้สารน้ำ (วัน)',
+  'ผู้ป่วยให้ NSS Lock (ราย)', 'วันให้ NSS Lock (วัน)',
+  // HDU: หน่วยไต
+  'HD (ครั้ง)', 'CAPD (ครั้ง)', 'AVF,AVG (ครั้ง)', 'Perm (ครั้ง)', 'DLC (ครั้ง)',
+  'หน่วยไต2 HD (ครั้ง)', 'หน่วยไต2 AVF,AVG (ครั้ง)', 'หน่วยไต2 Perm (ครั้ง)', 'หน่วยไต2 DLC (ครั้ง)',
+  'CAPD ติดเชื้อ peritonitis (ราย)', 'CAPD ติดเชื้อ Exit site (ราย)',
+  'Tenckhoff catheter (ครั้ง)', 'ทำสาย Perm (ครั้ง)', 'ทำสาย DLC (ครั้ง)',
+  'วันคาสาย Perm (วัน)', 'วันคาสาย DLC (วัน)',
+  'หน่วยไต2 วันคาสาย Perm (วัน)', 'หน่วยไต2 วันคาสาย DLC (วัน)',
+  'ลงชื่อผู้รายงาน'
+];
+function recAddUnified_(body) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(PROC_SHEET);
+  if (!sh) { sh = ss.insertSheet(PROC_SHEET); sh.getRange(1, 1, 1, PROC_HEADERS.length).setValues([PROC_HEADERS]); sh.setFrozenRows(1); }
+  const lastCol = Math.max(sh.getLastColumn(), PROC_HEADERS.length);
+  let headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (x) { return String(x).trim(); });
+  if (!headers.join('').trim()) { sh.getRange(1, 1, 1, PROC_HEADERS.length).setValues([PROC_HEADERS]); headers = PROC_HEADERS.slice(); }
+  const hmap = {};
+  headers.forEach(function (h, i) { if (h !== '') hmap[recNorm_(h)] = i; });
+  const rec = body.record || {};
+  if (rec.Timestamp == null && rec.timestamp == null) rec.Timestamp = new Date();
+  const row = new Array(headers.length).fill('');
+  let matched = 0, unmatched = [];
+  Object.keys(rec).forEach(function (k) {
+    const idx = hmap[recNorm_(k)];
+    if (idx !== undefined) { row[idx] = rec[k]; matched++; } else if (String(rec[k]).trim() !== '') unmatched.push(k);
+  });
+  sh.appendRow(row);
+  return recJson_({ ok: true, action: 'addUnified', sheet: PROC_SHEET, matched: matched, unmatched: unmatched, lastRow: sh.getLastRow() });
 }
 
 // บันทึกรายการหัตถการ/ยอดประจำเดือน ต่อท้ายแท็บ MMW หรือ HDU (จับคู่ตามหัวคอลัมน์จริง)

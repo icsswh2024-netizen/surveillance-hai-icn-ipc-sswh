@@ -1146,7 +1146,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-31a</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-31b</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2103,7 +2103,7 @@
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-800">บันทึกรายการหัตถการ / ยอดประจำเดือน</h3>
-                        <p class="text-xs text-slate-400 mt-1">บันทึกเข้าชีตเดียวกัน (ไฟล์ 0-2569) แทน Google Form — ทุกหน่วยกรอกที่เดียว</p>
+                        <p class="text-xs text-slate-400 mt-1">ทุกหน่วยกรอกที่เดียว → รวมในแท็บเดียว “หัตถการ” (ไฟล์ 0-2569) แทน Google Form · สร้างแท็บให้อัตโนมัติเมื่อบันทึกครั้งแรก</p>
                     </div>
                     <div class="flex items-center gap-2">
                         <label class="text-xs font-medium text-slate-500">แบบฟอร์ม</label>
@@ -8681,31 +8681,40 @@
             const st = document.getElementById('rec_status'); st.textContent = '✅ ดาวน์โหลด CSV แล้ว'; st.className = 'text-xs text-emerald-600';
         }
 
-        /* ===== บันทึกรายการหัตถการ (ยอดประจำเดือน → แท็บ MMW/HDU) ===== */
-        let PC_HEADERS = [];
+        /* ===== บันทึกรายการหัตถการ — รวมทุกหน่วยในแท็บเดียว "หัตถการ" ===== */
+        // ฟิลด์ต้องตรงกับ PROC_HEADERS ใน RecordCode.gs เป๊ะ (ชื่อเดียวกัน)
+        const PC_SHARED = ['หน่วยงาน', 'รายงานยอดประจำเดือน'];
+        const PC_TAIL = ['ลงชื่อผู้รายงาน'];
+        const PC_GROUPS = {
+            MMW: ['จำนวนแบบบันทึกใบ IC (ใบ)', 'จำนวนวันนอนทั้งหมด (วัน)',
+                'ผู้ป่วยคาสายสวนปัสสาวะ (ราย)', 'วันคาสายสวนปัสสาวะ (วัน)',
+                'ผู้ป่วยใส่เครื่องช่วยหายใจ (ราย)', 'วันใส่เครื่องช่วยหายใจ (วัน)',
+                'ผู้ป่วยใส่ ET/TT ไม่ใส่เครื่อง (ราย)', 'วัน ET/TT ไม่ใส่เครื่อง (วัน)',
+                'ผู้ป่วยใส่ CVC (ราย)', 'วันใส่ CVC (วัน)',
+                'ผู้ป่วยให้สารน้ำ (ราย)', 'วันให้สารน้ำ (วัน)',
+                'ผู้ป่วยให้ NSS Lock (ราย)', 'วันให้ NSS Lock (วัน)'],
+            HDU: ['HD (ครั้ง)', 'CAPD (ครั้ง)', 'AVF,AVG (ครั้ง)', 'Perm (ครั้ง)', 'DLC (ครั้ง)',
+                'หน่วยไต2 HD (ครั้ง)', 'หน่วยไต2 AVF,AVG (ครั้ง)', 'หน่วยไต2 Perm (ครั้ง)', 'หน่วยไต2 DLC (ครั้ง)',
+                'CAPD ติดเชื้อ peritonitis (ราย)', 'CAPD ติดเชื้อ Exit site (ราย)',
+                'Tenckhoff catheter (ครั้ง)', 'ทำสาย Perm (ครั้ง)', 'ทำสาย DLC (ครั้ง)',
+                'วันคาสาย Perm (วัน)', 'วันคาสาย DLC (วัน)',
+                'หน่วยไต2 วันคาสาย Perm (วัน)', 'หน่วยไต2 วันคาสาย DLC (วัน)']
+        };
         function pcStatus(msg, cls) { const st = document.getElementById('pc_status'); if (st) { st.textContent = msg; st.className = 'text-xs ' + (cls || 'text-slate-400'); } }
-        function pcIsNumeric(h) { return /จำนวน|วัน|ครั้ง|ราย|ใบ/.test(h); }
-        async function pcLoadFields() {
+        function pcIsNumeric(h) { return /จำนวน|วัน|ครั้ง|ราย|ใบ|HD|CAPD|AVF|Perm|DLC|CVC|Tenckhoff/.test(h); }
+        function pcLoadFields() {
             const form = document.getElementById('pc_form').value;
             const wrap = document.getElementById('pc_fields');
-            wrap.innerHTML = '<div class="col-span-full text-sm text-slate-400">กำลังโหลดช่องกรอกจากหัวคอลัมน์ของชีต ' + form + '...</div>';
-            const url = recSaveUrl();
-            if (!url) { wrap.innerHTML = '<div class="col-span-full text-sm text-rose-600">⚠️ ยังไม่ได้ตั้งค่า URL ของ Apps Script (ไปที่เมนู “แบบบันทึกผู้ป่วย HAI” เพื่อวาง URL ก่อน)</div>'; return; }
-            let res = null; try { res = await jsonpFrom(url, 'action=monthlyHeaders&sheet=' + encodeURIComponent(form)); } catch (e) { }
-            if (!res || !res.ok || !res.headers || !res.headers.length) {
-                wrap.innerHTML = '<div class="col-span-full text-sm text-rose-600">⚠️ โหลดหัวคอลัมน์ไม่สำเร็จ — ตรวจว่า Deploy Apps Script เวอร์ชันล่าสุด (มี action monthlyHeaders) และมีแท็บ ' + form + '</div>';
-                return;
-            }
-            PC_HEADERS = res.headers;
-            wrap.innerHTML = PC_HEADERS.map(function (h) {
-                if (/^timestamp$/i.test(h)) return '';   // เวลาเติมอัตโนมัติฝั่งเซิร์ฟเวอร์
+            const list = PC_SHARED.concat(PC_GROUPS[form] || [], PC_TAIL);
+            wrap.innerHTML = list.map(function (h) {
+                const num = pcIsNumeric(h) && !/หน่วยงาน|รายงานยอด|ลงชื่อ/.test(h);
                 const id = 'pc_f_' + btoa(unescape(encodeURIComponent(h))).replace(/[^a-zA-Z0-9]/g, '');
-                const num = pcIsNumeric(h);
+                const ph = h === 'รายงานยอดประจำเดือน' ? ' placeholder="เช่น ต.ค. 2568"' : h === 'หน่วยงาน' ? ' placeholder="เช่น mmw, hdu, icu"' : '';
                 return '<div><label class="block text-xs font-medium text-slate-500 mb-1">' + h + '</label>' +
-                    '<input id="' + id + '" data-h="' + h.replace(/"/g, '&quot;') + '" type="' + (num ? 'number' : 'text') + '" ' + (num ? 'min="0" inputmode="numeric"' : '') +
+                    '<input id="' + id + '" data-h="' + h.replace(/"/g, '&quot;') + '" type="' + (num ? 'number' : 'text') + '"' + (num ? ' min="0" inputmode="numeric"' : '') + ph +
                     ' class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"></div>';
             }).join('');
-            pcStatus('พร้อมกรอก · ' + form + ' (' + PC_HEADERS.length + ' คอลัมน์)', 'text-slate-400');
+            pcStatus('พร้อมกรอก · แบบ ' + form + ' → แท็บรวม “หัตถการ” (' + list.length + ' ช่อง)', 'text-slate-400');
         }
         function pcCollect() {
             const rec = {};
@@ -8718,19 +8727,18 @@
         async function pcSave() {
             const form = document.getElementById('pc_form').value;
             const rec = pcCollect();
-            if (!Object.keys(rec).length) { pcStatus('⚠️ ยังไม่ได้กรอกข้อมูล', 'text-rose-600'); return; }
-            if (!rec['หอผู้ป่วย'] && !rec['รายงานยอดประจำเดือน']) {
-                if (!confirm('ยังไม่ได้ระบุหอผู้ป่วย/เดือน จะบันทึกต่อไหม?')) return;
-            }
+            rec['แบบฟอร์ม'] = form;   // บันทึกว่ามาจากแบบไหน (MMW/HDU)
+            if (Object.keys(rec).length <= 1) { pcStatus('⚠️ ยังไม่ได้กรอกข้อมูล', 'text-rose-600'); return; }
+            if (!rec['หน่วยงาน']) { pcStatus('⚠️ กรุณาระบุ “หน่วยงาน”', 'text-rose-600'); return; }
             const url = recSaveUrl();
             if (!url) { pcStatus('⚠️ ยังไม่ได้ตั้งค่า URL', 'text-rose-600'); return; }
-            pcStatus('กำลังบันทึกลงแท็บ ' + form + '...', 'text-slate-500');
+            pcStatus('กำลังบันทึกลงแท็บรวม “หัตถการ”...', 'text-slate-500');
             try {
                 let ping = null; try { ping = await jsonpFrom(url, 'action=ping'); } catch (e) { }
                 if (!ping || !(ping.version === 'record-v1')) { pcStatus('⚠️ Apps Script ยังไม่พร้อม — Deploy เวอร์ชันล่าสุดก่อน', 'text-rose-600'); return; }
-                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'addMonthly', sheet: form, record: rec }) });
-                pcStatus('✅ บันทึกลงแท็บ ' + form + ' แล้ว · ' + (rec['หอผู้ป่วย'] || '') + ' ' + (rec['รายงานยอดประจำเดือน'] || ''), 'text-emerald-600');
-                document.querySelectorAll('#pc_fields input[data-h]').forEach(function (el) { el.value = ''; });
+                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'addUnified', record: rec }) });
+                pcStatus('✅ บันทึกลงแท็บ “หัตถการ” แล้ว · ' + (rec['หน่วยงาน'] || '') + ' · ' + form + ' · ' + (rec['รายงานยอดประจำเดือน'] || ''), 'text-emerald-600');
+                document.querySelectorAll('#pc_fields input[data-h]').forEach(function (el) { if (!/หน่วยงาน|รายงานยอด/.test(el.getAttribute('data-h'))) el.value = ''; });
             } catch (e) { pcStatus('⚠️ บันทึกไม่สำเร็จ: ' + e.message, 'text-rose-600'); }
         }
         function pcCopyLink() {
