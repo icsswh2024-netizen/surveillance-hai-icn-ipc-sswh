@@ -1159,7 +1159,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01i</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01k</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -5989,6 +5989,8 @@
             return out.length ? out : ['#4f46e5'];
         }
         let HIST_PAL = ['#4f46e5', '#e11d48', '#f59e0b', '#14b8a6', '#8b5cf6', '#0ea5e9', '#22c55e', '#ec4899', '#64748b'];   // ค่าเริ่มต้น; applyPresentPalette จะตั้งตามธีม
+        // แปลงค่ารูปแบบกราฟ (ไทย/อังกฤษ) → โค้ดกลาง
+        function presentShapeNorm(s) { const x = (s == null ? '' : s).toString().trim().toLowerCase(); if (/พื้นที่|area/.test(x)) return 'area'; if (/โดนัท|donut|doughnut/.test(x)) return 'donut'; if (/วงกลม|pie/.test(x)) return 'pie'; if (/แนวนอน|hbar|horizontal/.test(x)) return 'hbar'; if (/แท่ง|bar/.test(x)) return 'bar'; if (/เส้น|line/.test(x)) return 'line'; return ''; }
         const histClean = s => String(s == null ? '' : s).replace(/^ปี\s*/, '').trim();
         const histNum = v => { const n = parseFloat(String(v).replace(/,/g, '')); return isFinite(n) ? n : null; };
         // ตัวกรองช่วงปี (จากช่องในแถบนำเสนอ) — เว้นว่าง = ทั้งหมด
@@ -6068,16 +6070,18 @@
             };
         }
 
-        // callback สร้างกราฟ time-series พร้อมชื่อแกน X/Y (rate=เส้น, count=แท่ง, pct=เส้น%)
-        function presentTSChartCb(ts, label, color, mode) {
+        // callback สร้างกราฟ time-series พร้อมชื่อแกน X/Y (rate=เส้น, count=แท่ง, pct=เส้น%) — shape เลือกรูปแบบเองได้
+        function presentTSChartCb(ts, label, color, mode, shape, canvasId) {
             return () => {
-                const ctx = document.getElementById('presentChart'); if (!ctx) return;
-                if (presentChartInst) presentChartInst.destroy();
+                const ctx = document.getElementById(canvasId || 'presentChart'); if (!ctx) return;
+                if (!canvasId && presentChartInst) presentChartInst.destroy();
                 const data = mode === 'count' ? ts.counts : mode === 'pct' ? ts.pcts : ts.rates;
                 const yText = mode === 'count' ? 'จำนวน (ราย)' : mode === 'pct' ? 'ร้อยละ (%)' : ('อัตรา ' + (ts.rateUnit || ''));
-                presentChartInst = new Chart(ctx, {
-                    type: mode === 'count' ? 'bar' : 'line',
-                    data: { labels: ts.labels, datasets: [{ label, data, borderColor: color, backgroundColor: color, borderWidth: 3, tension: .4, pointRadius: 4, borderRadius: 6 }] },
+                const ctype = shape === 'bar' ? 'bar' : shape === 'area' || shape === 'line' ? 'line' : (mode === 'count' ? 'bar' : 'line');
+                const isArea = shape === 'area';
+                const inst = new Chart(ctx, {
+                    type: ctype,
+                    data: { labels: ts.labels, datasets: [{ label, data, borderColor: color, backgroundColor: isArea ? hexA(color, .18) : color, borderWidth: 3, tension: .4, pointRadius: 4, fill: isArea, borderRadius: 6 }] },
                     options: {
                         responsive: true, maintainAspectRatio: false,
                         plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } },
@@ -6087,6 +6091,7 @@
                         }
                     }
                 });
+                if (canvasId) presentCharts.push(inst); else presentChartInst = inst;
             };
         }
         // โดนัท/วงกลม (สัดส่วน) — labels + data + ชุดสี
@@ -6380,19 +6385,62 @@
         }
         // ===== เด็คจากแท็บชีต "Slides" (ถ้ามี) — แต่ละแถว = 1 สไลด์ =====
         // สร้าง 1 สไลด์จาก config 1 แถว โดยใช้ตัวช่วยใน X (presentCtx)
+        // แปลงคอลัมน์แบบประกอบ (ตัวแปร/ค่า/ช่วงเวลา/ข้อมูลเก่า/รูปแบบ) → callback กราฟ
+        function presentResolveComposite(X, d, row) {
+            const C = X.C;
+            const nz = s => (s == null ? '' : s).toString().trim().toLowerCase();
+            const V = (row.variable || 'HAI').toString().trim().toUpperCase();
+            const mRaw = nz(row.metric), pRaw = nz(row.period), hRaw = nz(row.history), sRaw = nz(row.shape);
+            const metric = /ร้อย|pct|%|percent/.test(mRaw) ? 'pct' : /จำนวน|count|เคส|ครั้ง/.test(mRaw) ? 'count' : 'rate';
+            const period = /ปี|year/.test(pRaw) ? 'year' : /ไตรมาส|quarter|ไตร|q/.test(pRaw) ? 'quarter' : /เดือน|month/.test(pRaw) ? 'month' : '';
+            const useHist = /ใช้|yes|true|y|✓|✔|^1$|เก่า|ย้อน/.test(hRaw);
+            const shape = presentShapeNorm(sRaw);
+            const psKey = { VAP: 'VAP', CAUTI: 'CAUTI', CLABSI: 'CLABSI', SSI: 'SSI', HAP: 'HAP', BSI: 'BSI', OMPHALITIS: 'Omphalitis', UTI: 'UTI' }[V];
+            const col = C[V] || C.HAI;
+            const cy = presentCurYear(), PAL = presentThemePal();
+            // 1) สัดส่วน (โดนัท/วงกลม)
+            if (shape === 'pie' || shape === 'donut') {
+                const ps = d.perSite[V] || (psKey && d.perSite[psKey]);
+                if (ps && ps.orgs && ps.orgs.length) return presentPieCb(ps.orgs.slice(0, 8).map(o => o.org), ps.orgs.slice(0, 8).map(o => o.n), PAL, shape === 'donut');
+                return presentPieCb(d.siteRows.map(s => s.label), d.siteRows.map(s => s.n), PAL, shape === 'donut');
+            }
+            // 2) แท่งแนวนอน รายหอ
+            if (shape === 'hbar') {
+                const ps = d.perSite[V] || (psKey && d.perSite[psKey]);
+                const arr = (ps ? ps.ward.map(w => ({ name: w.name, v: metric === 'count' ? w.n : w.rate })) : d.wardsAll.map(w => ({ name: w.name, v: w.rate }))).slice(0, 12);
+                return presentBarCb(arr.map(a => a.name), arr.map(a => a.v), V, col, true, 'หอผู้ป่วย', metric === 'count' ? 'จำนวน' : 'อัตรา');
+            }
+            // 3) ใช้ข้อมูลเก่า (ย้อนหลังหลายปี)
+            if (useHist) {
+                const HTAB = { HAI: 'HAI', VAP: 'VAP', CAUTI: 'CAUTI', SSI: 'SSI', CLABSI: 'CLABSI' };
+                if (period === 'month' && (V === 'VAP' || V === 'CAUTI')) return presentHistGroupCb(V + '-M');   // รายเดือนเทียบปี
+                if (period === 'year' || period === '') {
+                    if (HTAB[V] && metric === 'rate') return presentHistTrendCb(HTAB[V], shape || 'line', presentLiveMap(d), cy);   // หลายเส้น+เกณฑ์
+                    if (HIST_METRIC[V]) { const lv = V === 'HAI' ? d.stat.hospRate : V === 'MDR' ? d.stat.mdrRate : (psKey && d.perSite[psKey] ? d.perSite[psKey].rate : null); return presentHistLiveCb(V, lv, cy, col); }
+                }
+                // ช่วงอื่นที่ไม่มีข้อมูลเก่า → ตกไปใช้ข้อมูลปัจจุบัน
+            }
+            // 4) ข้อมูลปัจจุบัน (รายเดือน/ไตรมาส/ปี)
+            const ts = presentTimeSeries(V, period || 'month');
+            const lbl = V + (metric === 'rate' ? ' (' + ts.rateUnit + ')' : metric === 'pct' ? ' (ร้อยละ)' : ' (จำนวน)');
+            return presentTSChartCb(ts, lbl, col, metric, shape);
+        }
         function presentConfigSlide(X, d, row) {
             const { sec, ph, tile, tiles, tbl, chartBox, mkLine, wardRows, orgRows, C, fx, esc, slides, agenda } = X;
             const head = row.section || '';            // หัวข้อหลัก (eyebrow)
             const title = row.title || '';             // หัวข้อรอง
-            const type = (row.type || '').toString().trim().toLowerCase();
+            let type = (row.type || '').toString().trim().toLowerCase();
+            if (!type && (row.variable || '').toString().trim()) type = 'chart';   // ไม่ใส่ชนิด แต่มีตัวแปร → โหมดประกอบเอง
             const p = (row.param || '').toString().trim();          // พารามิเตอร์ (เช่น VAP, CAUTI)
-            const shape = (row.shape || '').toString().trim().toLowerCase();   // รูปแบบกราฟที่ผู้ใช้เลือก (line/bar/area)
+            const shape = presentShapeNorm(row.shape);   // รูปแบบกราฟที่ผู้ใช้เลือก (line/bar/area) รองรับไทย/อังกฤษ
             const pk = p.toUpperCase();                              // key ตำแหน่งติดเชื้อ
             const ps = d.perSite[pk] || d.perSite[p];                // ชุดข้อมูลของตำแหน่งนั้น (ถ้ามี)
             const col = C[pk] || C.HAI;
             const num = parseInt(p, 10);                             // พารามิเตอร์ที่เป็นตัวเลข (เช่น ส่วนที่ของเชื้อ)
             const PAL = presentThemePal();
             switch (type) {
+                // ===== โหมดประกอบเอง: ตัวแปร + ค่า + ช่วงเวลา + ข้อมูลเก่า + รูปแบบ =====
+                case 'chart': case 'auto': case 'กราฟ': sec(head, title, chartBox, presentResolveComposite(X, d, row)); break;
                 case 'cover': slides.push({ html: X.coverHtml }); break;
                 case 'agenda': sec(head || 'Agenda', title || 'หัวข้อการนำเสนอ', agenda(isFinite(num) ? num - 1 : null), null, true); break;
                 case 'kpi': case 'ภาพรวม': sec(head, title, tiles([tile(d.stat.totCases, 'เคสติดเชื้อทั้งหมด', 'ราย', C.HAI), tile(fx(d.stat.hospRate), 'อัตราติดเชื้อ', '/1,000 วันนอน', C.VAP), tile(d.stat.mdr, 'ดื้อยา (MDR)', d.stat.mdrPct + '%', C.MDR), tile(fx(d.stat.ssiRate), 'SSI', '/100 ผ่าตัด', C.SSI)])); break;
@@ -6512,21 +6560,25 @@
                 if (!rows.length) { SLIDES_CONFIG = []; return; }
                 const get = (r, names) => { for (const n of names) { if (r[n] !== undefined && String(r[n]).trim() !== '') return String(r[n]).trim(); } return ''; };
                 const hasKey = (r, names) => names.some(n => n in r);
-                // ต้องเจอคอลัมน์ "ชนิด" (type) จริง ๆ ไม่งั้นถือว่าไม่ใช่แท็บ Slides → ใช้เด็คในตัว
-                if (!hasKey(rows[0], ['ชนิด', 'type', 'ชนิดข้อมูล'])) { SLIDES_CONFIG = []; return; }
+                // ต้องเจอคอลัมน์ "ชนิด" หรือ "ตัวแปร" (โหมดประกอบเอง) ไม่งั้นถือว่าไม่ใช่แท็บ Slides
+                if (!hasKey(rows[0], ['ชนิด', 'type', 'ชนิดข้อมูล', 'ตัวแปร', 'ตัวชี้วัด', 'variable'])) { SLIDES_CONFIG = []; return; }
                 const cfg = rows
                     .map(r => ({
                         section: get(r, ['หัวข้อหลัก', 'section', 'หมวด']),
                         title: get(r, ['หัวข้อรอง', 'title', 'หัวข้อ']),
                         type: get(r, ['ชนิด', 'type', 'ชนิดข้อมูล']),
                         param: get(r, ['พารามิเตอร์', 'param']),
+                        variable: get(r, ['ตัวแปร', 'ตัวชี้วัด', 'variable', 'var']),
+                        metric: get(r, ['ค่า', 'ค่าที่แสดง', 'metric']),
+                        period: get(r, ['ช่วงเวลา', 'ช่วง', 'period', 'เวลา']),
+                        history: get(r, ['ข้อมูลเก่า', 'ย้อนหลัง', 'history', 'เก่า']),
                         shape: get(r, ['กราฟ', 'รูปแบบ', 'shape', 'chart']),
                         note: get(r, ['หมายเหตุ', 'note', 'เนื้อหา'])
                     }))
-                    .filter(r => (r.title || r.type || r.section) !== '');
-                // ยอมรับเฉพาะเมื่อมีอย่างน้อย 1 แถวที่ชนิดเป็นค่าที่รู้จัก (กัน CSV จากชีตผิดแท็บ)
-                const KNOWN = new Set(['cover', 'agenda', 'kpi', 'site-table', 'trend', 'ward-all', 'site-rate', 'site-month-h1', 'site-month-h2', 'site-ward', 'site-org', 'ssi-wound', 'ssi-anat', 'omph-kpi', 'mdr-compare', 'mdr-kpi', 'mdr-org', 'mdr-site', 'mdr-of', 'device', 'device-cath', 'device-ven', 'org-top', 'needle', 'summary', 'placeholder', 'rate-year', 'rate-quarter', 'rate-month', 'count-year', 'count-quarter', 'count-month', 'pct-year', 'pct-quarter', 'pct-month', 'pie-site', 'donut-site', 'pie-org', 'donut-org', 'bar-site', 'hbar-ward', 'hbar-org', 'hist-trend', 'hist-bar', 'hist-group', 'hist-live', 'multi']);
-                SLIDES_CONFIG = cfg.some(r => KNOWN.has((r.type || '').toString().trim().toLowerCase())) ? cfg : [];
+                    .filter(r => (r.title || r.type || r.section || r.variable) !== '');
+                // ยอมรับเมื่อมีอย่างน้อย 1 แถวที่ชนิดรู้จัก หรือมีคอลัมน์ตัวแปร (โหมดประกอบเอง)
+                const KNOWN = new Set(['cover', 'agenda', 'kpi', 'site-table', 'trend', 'ward-all', 'site-rate', 'site-month-h1', 'site-month-h2', 'site-ward', 'site-org', 'ssi-wound', 'ssi-anat', 'omph-kpi', 'mdr-compare', 'mdr-kpi', 'mdr-org', 'mdr-site', 'mdr-of', 'device', 'device-cath', 'device-ven', 'org-top', 'needle', 'summary', 'placeholder', 'rate-year', 'rate-quarter', 'rate-month', 'count-year', 'count-quarter', 'count-month', 'pct-year', 'pct-quarter', 'pct-month', 'pie-site', 'donut-site', 'pie-org', 'donut-org', 'bar-site', 'hbar-ward', 'hbar-org', 'hist-trend', 'hist-bar', 'hist-group', 'hist-live', 'multi', 'chart', 'auto']);
+                SLIDES_CONFIG = cfg.some(r => KNOWN.has((r.type || '').toString().trim().toLowerCase()) || (r.variable || '').toString().trim() !== '') ? cfg : [];
             } catch (e) { SLIDES_CONFIG = []; }
         }
         function presentScale() {

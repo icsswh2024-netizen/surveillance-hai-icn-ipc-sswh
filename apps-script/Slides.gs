@@ -65,8 +65,12 @@ var SLIDE_TYPES = [
 ];
 
 // ตำแหน่งติดเชื้อที่ใช้เป็นพารามิเตอร์ของชนิด site-* และ mdr-of
-// รูปแบบกราฟ (คอลัมน์ "กราฟ") — ใช้กับ hist-trend เป็นหลัก
-var SLIDE_SHAPES = ['line', 'bar', 'area'];
+// ===== รายการสำหรับโหมดประกอบเอง =====
+var SLIDE_VARS = ['HAI', 'MDR', 'VAP', 'CAUTI', 'CLABSI', 'SSI', 'HAP', 'BSI', 'Omphalitis', 'UTI'];   // ตัวแปร
+var SLIDE_METRICS = ['อัตรา', 'จำนวน', 'ร้อยละ'];        // ค่าที่แสดง
+var SLIDE_PERIODS = ['ปี', 'ไตรมาส', 'เดือน'];           // ช่วงเวลา
+var SLIDE_HISTORY = ['ใช้', 'ไม่'];                       // ใช้ข้อมูลเก่า
+var SLIDE_SHAPES = ['เส้น', 'แท่ง', 'พื้นที่', 'โดนัท', 'วงกลม', 'แท่งแนวนอน'];   // รูปแบบกราฟ (ไทย; เว็บรองรับทั้งไทย/อังกฤษ)
 var SLIDE_PARAMS = ['HAI', 'MDR', 'VAP', 'CAUTI', 'CLABSI', 'SSI', 'HAP', 'BSI', 'Omphalitis', 'SSTI', 'UTI',
   // ชื่อแท็บในชีตย้อนหลัง "สรุปรายปี-HAI" (ใช้กับชนิด hist-*)
   'Site', 'HAI-ward', 'VAP-M', 'VAP-W', 'VAP-G', 'VAP-IPD', 'CAUTI-M', 'CAUTI-W', 'CAUTI-G',
@@ -187,35 +191,55 @@ function createSlidesTab() {
   var sh = ss.getSheetByName(SLIDES_TAB);
   if (sh) { sh.clear(); sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).clearDataValidations(); } else { sh = ss.insertSheet(SLIDES_TAB); }
 
-  // รวมทุกค่าลง "ครั้งเดียว" (A..I) เพื่อลดการ trigger คำนวณใหม่ (เช่นชีตที่มี IMPORTRANGE)
-  var sample = SLIDE_SAMPLE.map(function (r, i) { return [i + 1].concat(r); });   // A-F
-  var nData = Math.max(sample.length, SLIDE_TYPES.length);
-  // คอลัมน์หลัก A-G (เพิ่ม "กราฟ" ก่อน "หมายเหตุ") + ช่องว่าง H + ตารางอ้างอิง I-J
-  var grid = [['ลำดับ', 'หัวข้อหลัก', 'หัวข้อรอง', 'ชนิด', 'พารามิเตอร์', 'กราฟ', 'หมายเหตุ', '', 'ชนิด (ค่า)', 'ความหมาย']];
+  // ===== คอลัมน์แบบประกอบเอง (A..K) + ช่องว่าง L + ตารางอ้างอิง M..N =====
+  // [ลำดับ, หัวข้อหลัก, หัวข้อรอง, ชนิด, พารามิเตอร์, ตัวแปร, ค่า, ช่วงเวลา, ข้อมูลเก่า, กราฟ, หมายเหตุ]
+  var header = ['ลำดับ', 'หัวข้อหลัก', 'หัวข้อรอง', 'ชนิด', 'พารามิเตอร์', 'ตัวแปร', 'ค่า', 'ช่วงเวลา', 'ข้อมูลเก่า', 'กราฟ', 'หมายเหตุ'];
+  // แถวประกอบเอง (ไม่ต้องใส่ "ชนิด" — ใส่ ตัวแปร/ค่า/ช่วงเวลา/ข้อมูลเก่า/กราฟ แทน)
+  var COMPOSE = [
+    // section, title, variable, metric, period, history, shape
+    ['ภาพรวม', 'อัตรา HAI หลายปี (เก่า+ปัจจุบัน)', 'HAI', 'อัตรา', 'ปี', 'ใช้', 'เส้น'],
+    ['VAP', 'อัตรา VAP รายเดือน', 'VAP', 'อัตรา', 'เดือน', 'ไม่', 'เส้น'],
+    ['CAUTI', 'อัตรา CAUTI รายไตรมาส', 'CAUTI', 'อัตรา', 'ไตรมาส', 'ไม่', 'แท่ง'],
+    ['ดื้อยา', 'ร้อยละ MDR รายปี', 'MDR', 'ร้อยละ', 'ปี', 'ไม่', 'เส้น'],
+    ['เชื้อ', 'สัดส่วนเชื้อ CAUTI', 'CAUTI', 'จำนวน', '', '', 'โดนัท']
+  ];
+  // รวมแถว: composable ก่อน แล้วตามด้วย SLIDE_SAMPLE (ชนิดเฉพาะ cover/agenda/kpi/...)
+  var rowsMain = [];
+  COMPOSE.forEach(function (c) { rowsMain.push(['', c[0], c[1], '', '', c[2], c[3], c[4], c[5], c[6], '']); });     // ชนิด/พารามิเตอร์ ว่าง
+  SLIDE_SAMPLE.forEach(function (r) { rowsMain.push(['', r[0], r[1], r[2], r[3], '', '', '', '', '', r[4]]); });    // ตัวแปร..กราฟ ว่าง
+  var nData = Math.max(rowsMain.length, SLIDE_TYPES.length);
+  var grid = [header.concat(['', 'ชนิด (ค่า)', 'ความหมาย'])];
   for (var i = 0; i < nData; i++) {
-    var a = sample[i] || ['', '', '', '', '', ''];     // [ลำดับ, หัวข้อหลัก, หัวข้อรอง, ชนิด, พารามิเตอร์, หมายเหตุ]
+    var a = rowsMain[i] || ['', '', '', '', '', '', '', '', '', '', ''];
     var t = SLIDE_TYPES[i] || ['', ''];
-    grid.push([a[0], a[1], a[2], a[3], a[4], '', a[5], '', t[0], t[1]]);   // แทรก "กราฟ" (ว่าง) ก่อนหมายเหตุ
+    a[0] = i < rowsMain.length ? (i + 1) : '';   // เลขลำดับ
+    grid.push(a.concat(['', t[0], t[1]]));        // + ช่องว่าง L + อ้างอิง M,N
   }
-  sh.getRange(1, 1, grid.length, 10).setValues(grid);   // เขียนทีเดียว
+  sh.getRange(1, 1, grid.length, 14).setValues(grid);   // เขียนทีเดียว
 
-  // จัดรูปแบบหัวคอลัมน์ (ไม่ trigger คำนวณใหม่)
-  sh.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff').setHorizontalAlignment('center');
-  sh.getRange(1, 9, 1, 2).setFontWeight('bold').setBackground('#e2e8f0');
+  // จัดรูปแบบหัวคอลัมน์
+  sh.getRange(1, 1, 1, 11).setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff').setHorizontalAlignment('center');
+  sh.getRange(1, 13, 1, 2).setFontWeight('bold').setBackground('#e2e8f0');
   sh.setFrozenRows(1);
 
-  // ดรอปดาวน์ — ใส่เฉพาะช่วงที่ใช้งานจริง (แถวตัวอย่าง + เผื่ออีก 60 แถว) ลดภาระ
-  var vEnd = sample.length + 60;
-  sh.getRange(2, 4, vEnd, 1).setDataValidation(
-    SpreadsheetApp.newDataValidation().requireValueInList(SLIDE_TYPES.map(function (t) { return t[0]; }), true).setAllowInvalid(false).setHelpText('เลือกชนิดสไลด์').build());
-  sh.getRange(2, 5, vEnd, 1).setDataValidation(
-    SpreadsheetApp.newDataValidation().requireValueInList(SLIDE_PARAMS, true).setAllowInvalid(true).setHelpText('ตำแหน่งติดเชื้อ/HAI/MDR หรือแท็บย้อนหลัง — ชนิดอื่นเว้นว่างได้').build());
-  sh.getRange(2, 6, vEnd, 1).setDataValidation(   // คอลัมน์ "กราฟ" (รูปแบบ)
-    SpreadsheetApp.newDataValidation().requireValueInList(SLIDE_SHAPES, true).setAllowInvalid(true).setHelpText('รูปแบบกราฟ (ใช้กับ hist-trend) — เว้นว่าง=ค่าเริ่มต้น').build());
+  // ดรอปดาวน์ — เฉพาะช่วงที่ใช้งาน (แถวตัวอย่าง + เผื่ออีก 80 แถว)
+  var vEnd = rowsMain.length + 80;
+  function dv(col, list, allowInvalid, help) {
+    sh.getRange(2, col, vEnd, 1).setDataValidation(
+      SpreadsheetApp.newDataValidation().requireValueInList(list, true).setAllowInvalid(allowInvalid).setHelpText(help).build());
+  }
+  dv(4, SLIDE_TYPES.map(function (t) { return t[0]; }), true, 'ชนิดเฉพาะ (cover/agenda/kpi/...) — เว้นว่างถ้าใช้แบบประกอบเอง');
+  dv(5, SLIDE_PARAMS, true, 'พารามิเตอร์ของชนิดเฉพาะ (เช่น hist-trend ใส่ชื่อแท็บ)');
+  dv(6, SLIDE_VARS, true, 'ตัวแปรที่ต้องการ (HAI/VAP/CAUTI/...)');
+  dv(7, SLIDE_METRICS, true, 'ค่าที่แสดง: อัตรา/จำนวน/ร้อยละ');
+  dv(8, SLIDE_PERIODS, true, 'ช่วงเวลา: ปี/ไตรมาส/เดือน');
+  dv(9, SLIDE_HISTORY, true, 'ใช้ข้อมูลเก่า (ย้อนหลัง) หรือไม่');
+  dv(10, SLIDE_SHAPES, true, 'รูปแบบกราฟ');
 
   // ความกว้างคอลัมน์
-  var widths = [55, 130, 290, 150, 120, 90, 240, 20, 150, 420];
+  var widths = [50, 120, 260, 130, 110, 110, 80, 90, 90, 110, 200, 18, 150, 420];
   for (var c = 0; c < widths.length; c++) sh.setColumnWidth(c + 1, widths[c]);
+  var sample = rowsMain;   // สำหรับ log ท้ายฟังก์ชัน
 
   try { ss.toast('สร้างแท็บ "' + SLIDES_TAB + '" พร้อมดรอปดาวน์เรียบร้อย', 'สำเร็จ', 5); } catch (e) { }
   Logger.log('สร้างแท็บ "%s" เรียบร้อย (%s แถว)', SLIDES_TAB, sample.length);
@@ -231,10 +255,10 @@ function createSlidesTabLite() {
   if (!ss) ss = SpreadsheetApp.openById(SLIDES_SHEET_ID);
   var sh = ss.getSheetByName(SLIDES_TAB);
   if (sh) { sh.clear(); sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).clearDataValidations(); } else { sh = ss.insertSheet(SLIDES_TAB); }
-  var grid = [['ลำดับ', 'หัวข้อหลัก', 'หัวข้อรอง', 'ชนิด', 'พารามิเตอร์', 'กราฟ', 'หมายเหตุ']];
-  SLIDE_SAMPLE.forEach(function (r, i) { grid.push([i + 1, r[0], r[1], r[2], r[3], '', r[4]]); });
-  sh.getRange(1, 1, grid.length, 7).setValues(grid);   // เขียนครั้งเดียว ไม่มี validation
-  sh.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff');
+  var grid = [['ลำดับ', 'หัวข้อหลัก', 'หัวข้อรอง', 'ชนิด', 'พารามิเตอร์', 'ตัวแปร', 'ค่า', 'ช่วงเวลา', 'ข้อมูลเก่า', 'กราฟ', 'หมายเหตุ']];
+  SLIDE_SAMPLE.forEach(function (r, i) { grid.push([i + 1, r[0], r[1], r[2], r[3], '', '', '', '', '', r[4]]); });
+  sh.getRange(1, 1, grid.length, 11).setValues(grid);   // เขียนครั้งเดียว ไม่มี validation
+  sh.getRange(1, 1, 1, 11).setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff');
   sh.setFrozenRows(1);
   Logger.log('createSlidesTabLite: เขียน %s แถว', SLIDE_SAMPLE.length);
 }
