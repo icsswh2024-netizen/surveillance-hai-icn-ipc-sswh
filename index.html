@@ -52,19 +52,31 @@
             padding: 64px 80px; color: #0f172a; font-family: 'Kanit', sans-serif;
             background: radial-gradient(120% 120% at 100% 0%, var(--p-bg1,#eef2ff) 0%, var(--p-bg2,#ffffff) 42%, var(--p-bg3,#f8fafc) 100%); overflow: hidden; }
         .pslide.dark { color: #f8fafc; background: radial-gradient(130% 130% at 0% 0%, var(--p-d1,#4338ca) 0%, var(--p-d2,#1e1b4b) 55%, var(--p-d3,#0f172a) 100%); }
-        .pslide .p-eyebrow { font-size: 18px; letter-spacing: .18em; text-transform: uppercase; opacity: .6; font-weight: 600; }
-        .pslide .p-title { font-size: 58px; line-height: 1.08; font-weight: 700; margin-top: 6px; }
-        .pslide .p-sub { font-size: 22px; opacity: .7; margin-top: 14px; }
-        .pslide .p-accent { height: 7px; width: 120px; border-radius: 9999px; background: linear-gradient(90deg,var(--p-a1,#6366f1),var(--p-a2,#a855f7)); margin: 22px 0; }
-        .pslide .p-foot { position: absolute; bottom: 36px; left: 80px; right: 80px; display: flex; justify-content: space-between; font-size: 15px; opacity: .55; }
-        .pstat { background: rgba(255,255,255,.72); border: 1px solid rgba(148,163,184,.25); border-radius: 24px; padding: 28px 30px; box-shadow: 0 10px 30px rgba(2,6,23,.06); backdrop-filter: blur(6px); }
-        .pslide.dark .pstat { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.14); box-shadow: none; }
-        .pstat .n { font-size: 56px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
-        .pstat .l { font-size: 17px; opacity: .7; margin-top: 10px; }
+        /* เรืองแสงนุ่ม ๆ มุมบนขวา (เฉพาะสไลด์โทนสว่าง) ให้ดูพรีเมียม */
+        .pslide:not(.ic):not(.dark):not(.ic-cover)::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+            background: radial-gradient(55% 45% at 100% 0%, rgba(99,102,241,.08) 0%, rgba(99,102,241,0) 60%), radial-gradient(50% 45% at 0% 100%, rgba(168,85,247,.06) 0%, rgba(168,85,247,0) 55%); }
+        .pslide > * { position: relative; z-index: 1; }
+        .pslide .p-eyebrow { font-size: 16px; letter-spacing: .22em; text-transform: uppercase; font-weight: 700; color: var(--p-a1,#6366f1); opacity: .9; }
+        .pslide .p-title { font-size: 56px; line-height: 1.08; font-weight: 800; letter-spacing: -.012em; margin-top: 8px; }
+        .pslide .p-sub { font-size: 22px; opacity: .72; margin-top: 14px; }
+        .pslide .p-accent { height: 6px; width: 104px; border-radius: 9999px; background: linear-gradient(90deg,var(--p-a1,#6366f1),var(--p-a2,#a855f7)); margin: 20px 0; box-shadow: 0 6px 16px -4px rgba(99,102,241,.5); }
+        .pslide .p-foot { position: absolute; bottom: 34px; left: 80px; right: 80px; display: flex; justify-content: space-between; font-size: 15px; opacity: .5; letter-spacing: .01em; }
+        /* การ์ดนุ่มพรีเมียม (ใช้กับกราฟ/ตาราง) */
+        .pcard { background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.66)); border: 1px solid rgba(255,255,255,.6);
+            border-radius: 26px; box-shadow: 0 28px 56px -32px rgba(2,6,23,.35), inset 0 1px 0 rgba(255,255,255,.7); backdrop-filter: blur(10px); padding: 18px 20px; }
+        .pslide.dark .pcard, .pslide.ic .pcard { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.16); box-shadow: 0 24px 50px -30px rgba(0,0,0,.4); }
+        .pstat { background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.72)); border: 1px solid rgba(255,255,255,.6); border-radius: 28px; padding: 30px 32px; box-shadow: 0 26px 52px -30px rgba(2,6,23,.32), inset 0 1px 0 rgba(255,255,255,.7); backdrop-filter: blur(10px); }
+        .pslide.dark .pstat { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.14); box-shadow: 0 24px 50px -30px rgba(0,0,0,.4); }
+        .pstat .n { font-size: 56px; font-weight: 800; line-height: 1; letter-spacing: -.025em; }
+        .pstat .l { font-size: 17px; opacity: .72; margin-top: 10px; font-weight: 500; }
         .pstat .s { font-size: 14px; opacity: .5; margin-top: 4px; }
         .ptable { width: 100%; border-collapse: collapse; font-size: 20px; }
-        .ptable th { text-align: left; font-weight: 600; opacity: .6; padding: 10px 14px; border-bottom: 2px solid rgba(148,163,184,.3); }
-        .ptable td { padding: 10px 14px; border-bottom: 1px solid rgba(148,163,184,.18); }
+        .ptable th { text-align: left; font-weight: 700; opacity: .55; padding: 11px 14px; font-size: 15px; letter-spacing: .03em; border-bottom: 2px solid rgba(148,163,184,.28); }
+        .ptable td { padding: 11px 14px; border-bottom: 1px solid rgba(148,163,184,.14); }
+        .ptable tbody tr { transition: background .15s; }
+        .ptable tbody tr:nth-child(even) { background: rgba(148,163,184,.055); }
+        .ptable tbody tr:hover { background: rgba(99,102,241,.07); }
+        .pslide.ic .ptable tbody tr:nth-child(even) { background: rgba(255,255,255,.06); }
         .ptable td.r, .ptable th.r { text-align: right; font-variant-numeric: tabular-nums; }
         /* ===== แม่แบบ "IC เขียว" (เลียนแบบเด็ค รพ.ศรีสังวรสุโขทัย) ===== */
         .pslide.ic { color: #fff; padding: 30px 48px 56px;
@@ -101,11 +113,12 @@
         .pslide.ic-cover h1 { font-size: 60px; font-weight: 800; line-height: 1.1; margin: 0; }
         .pslide.ic-cover .cv-sub { font-size: 26px; font-weight: 600; margin-top: 14px; opacity: .97; line-height: 1.5; }
         .pslide.ic-cover .cv-foot { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg,#14b19d,#3fcbb6); color: #063f3b; font-weight: 600; font-size: 18px; padding: 14px 40px; text-align: left; }
-        @keyframes pFadeUp { from { opacity: 0; transform: translateY(16px);} to { opacity: 1; transform: none; } }
-        .p-anim > * { animation: pFadeUp .5s both; }
-        .p-anim > *:nth-child(2) { animation-delay: .06s; }
-        .p-anim > *:nth-child(3) { animation-delay: .12s; }
-        .p-anim > *:nth-child(4) { animation-delay: .18s; }
+        @keyframes pFadeUp { from { opacity: 0; transform: translateY(20px) scale(.985); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
+        .p-anim > * { animation: pFadeUp .62s cubic-bezier(.22,.7,.3,1) both; }
+        .p-anim > *:nth-child(2) { animation-delay: .08s; }
+        .p-anim > *:nth-child(3) { animation-delay: .16s; }
+        .p-anim > *:nth-child(4) { animation-delay: .24s; }
+        .p-anim > *:nth-child(5) { animation-delay: .32s; }
         /* View Transitions: morph ของหัวข้อ/แถบ + crossfade ส่วนอื่น */
         ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .5s; }
         @media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
@@ -1146,7 +1159,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01d</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01e</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -6221,8 +6234,8 @@
             const ph = (eye, title, note) => sec(eye, title, '<div class="p-anim" style="margin-top:34px;font-size:22px;opacity:.5;line-height:1.9">' + (note || '📄 หัวข้อนี้ไม่มีข้อมูลในระบบ — เว้นไว้เติมเนื้อหา/ภาพจากเด็ค Canva') + '</div>');
             const tile = (n, l, s, accent) => '<div class="pstat"><div class="n" style="color:' + accent + '">' + n + '</div><div class="l">' + l + '</div><div class="s">' + s + '</div></div>';
             const tiles = arr => '<div class="p-anim" style="display:grid;grid-template-columns:repeat(' + arr.length + ',1fr);gap:22px;margin-top:26px">' + arr.join('') + '</div>';
-            const tbl = (headers, bodyRows) => '<div class="p-anim" style="margin-top:6px;max-width:1040px;max-height:540px;overflow:auto"><table class="ptable"><thead><tr>' + headers.map((h, i) => '<th' + (i ? ' class="r"' : '') + '>' + h + '</th>').join('') + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div>';
-            const chartBox = '<div style="flex:1;position:relative;margin-top:6px"><canvas id="presentChart"></canvas></div>';
+            const tbl = (headers, bodyRows) => '<div class="p-anim pcard" style="margin-top:8px;max-width:1080px;max-height:548px;overflow:auto"><table class="ptable"><thead><tr>' + headers.map((h, i) => '<th' + (i ? ' class="r"' : '') + '>' + h + '</th>').join('') + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div>';
+            const chartBox = '<div class="pcard" style="flex:1;position:relative;margin-top:8px;min-height:0"><canvas id="presentChart"></canvas></div>';
             const mkLine = (labels, data, label, color) => () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label, data, borderColor: color, backgroundColor: color, borderWidth: 3, tension: .4, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); };
             const mkBar = (labels, data, label, color) => () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label, data, backgroundColor: color, borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); };
             // แถวตาราง
@@ -6426,7 +6439,7 @@
                     const specs = p.split(';').map(s => s.trim()).filter(Boolean);
                     const n = specs.length || 1;
                     const cols = n <= 1 ? 1 : 2;
-                    const cells = specs.map((sp, i) => '<div style="position:relative;min-height:0"><canvas id="pcm_' + i + '"></canvas></div>').join('');
+                    const cells = specs.map((sp, i) => '<div class="pcard" style="position:relative;min-height:0;padding:12px 14px"><canvas id="pcm_' + i + '"></canvas></div>').join('');
                     const body = '<div class="p-anim" style="flex:1;display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:14px 20px;margin-top:6px;min-height:0">' + cells + '</div>';
                     const liveMap = presentLiveMap(d), cy = presentCurYear();
                     const cb = () => specs.forEach((sp, i) => {
