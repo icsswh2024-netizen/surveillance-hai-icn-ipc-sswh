@@ -26,7 +26,7 @@
     <!-- Google Fonts: Inter and Noto Sans Thai -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Kanit:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Kanit:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         body {
@@ -49,7 +49,7 @@
         /* ===== โหมดนำเสนอ (สไลด์ 16:9 + Morph) ===== */
         #presentOverlay.show { display: flex; }
         .pslide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center;
-            padding: 64px 80px; color: #0f172a; font-family: 'Kanit', sans-serif;
+            padding: 64px 80px; color: #0f172a; font-family: 'Anuphan', 'Kanit', sans-serif;
             background: radial-gradient(120% 120% at 100% 0%, var(--p-bg1,#eef2ff) 0%, var(--p-bg2,#ffffff) 42%, var(--p-bg3,#f8fafc) 100%); overflow: hidden; }
         .pslide.dark { color: #f8fafc; background: radial-gradient(130% 130% at 0% 0%, var(--p-d1,#4338ca) 0%, var(--p-d2,#1e1b4b) 55%, var(--p-d3,#0f172a) 100%); }
         /* เรืองแสงนุ่ม ๆ มุมบนขวา (เฉพาะสไลด์โทนสว่าง) ให้ดูพรีเมียม */
@@ -1159,7 +1159,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01e</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01f</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -1172,6 +1172,7 @@
         <div id="presentOverlay" class="fixed inset-0 z-[100] bg-slate-950 hidden items-center justify-center overflow-hidden">
             <div id="presentStage" class="relative shadow-2xl" style="width:1280px;height:720px;transform-origin:center center">
                 <div id="presentSlide" class="absolute inset-0"></div>
+                <div id="presentSlideNo" class="pointer-events-none" style="position:absolute;left:50%;transform:translateX(-50%);bottom:12px;font-family:'Anuphan','Kanit',sans-serif;font-size:14px;font-weight:600;letter-spacing:.05em;opacity:.5;z-index:3"></div>
             </div>
             <!-- แถบควบคุม -->
             <div class="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-full px-4 py-2 text-white/90 text-sm select-none">
@@ -5919,6 +5920,7 @@
 
         /* ===================== โหมดนำเสนอ (สไลด์ 16:9 + Morph) ===================== */
         const HOSPITAL_NAME = 'โรงพยาบาลศรีสังวรสุโขทัย';
+        const GROUP_NAME = 'กลุ่มงานการพยาบาลด้านการควบคุมและป้องกันการติดเชื้อ';
         let presentSlides = [], presentIdx = 0, presentChartInst = null, presentCharts = [];
         function presentDestroyCharts() { if (presentChartInst) { try { presentChartInst.destroy(); } catch (e) { } presentChartInst = null; } presentCharts.forEach(function (c) { try { c.destroy(); } catch (e) { } }); presentCharts = []; }
         // ===== ชุดข้อมูลตามหน่วยเวลา (ปี/ไตรมาส/เดือน) สำหรับกราฟในแท็บ Slides =====
@@ -6218,7 +6220,7 @@
             return { esc, periodLabel, siteRows, stat, wards, orgsTop, mdrOrgs, monthly, perSite, mdrSiteRows, device, needle, ssiWound, wardsAll, denTot, mdrMonthly, ssiAnat, mdrBy };
         }
         function presentCtx(d) {
-            const foot = '<div class="p-foot"><span>' + HOSPITAL_NAME + '</span><span>' + d.periodLabel + '</span></div>';
+            const foot = '<div class="p-foot"><span>' + HOSPITAL_NAME + '</span><span>' + GROUP_NAME + '</span></div>';
             const fx = v => v == null ? '—' : v.toFixed(2);
             const esc = d.esc;
             const slides = [];
@@ -6229,7 +6231,7 @@
             const sec = (eye, title, body, chart, dark) => {
                 if (!IC) { slides.push({ html: '<div class="pslide' + (dark ? ' dark' : '') + '"><div class="p-eyebrow">' + eye + '</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:36px">' + title + '</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' + body + foot + '</div>', chart }); return; }
                 if (dark) { slides.push({ html: '<div class="pslide ic" style="justify-content:center;text-align:center"><div class="p-anim" style="position:relative;z-index:1"><div class="ic-pill" style="display:inline-block;margin:0 auto">' + eye + '</div><h2 class="ic-title" style="font-size:50px;margin-top:22px">' + title + '</h2></div><div class="ic-deco"></div></div>', chart }); return; }
-                slides.push({ html: '<div class="pslide ic">' + icHeadHtml(eye) + '<div class="ic-pill">' + title + '</div><div class="ic-body p-anim">' + body + '</div><div class="ic-deco"></div></div>', chart });
+                slides.push({ html: '<div class="pslide ic">' + icHeadHtml(eye) + '<div class="ic-pill">' + title + '</div><div class="ic-body p-anim">' + body + '</div><div class="ic-foot">' + GROUP_NAME + '</div><div class="ic-deco"></div></div>', chart });
             };
             const ph = (eye, title, note) => sec(eye, title, '<div class="p-anim" style="margin-top:34px;font-size:22px;opacity:.5;line-height:1.9">' + (note || '📄 หัวข้อนี้ไม่มีข้อมูลในระบบ — เว้นไว้เติมเนื้อหา/ภาพจากเด็ค Canva') + '</div>');
             const tile = (n, l, s, accent) => '<div class="pstat"><div class="n" style="color:' + accent + '">' + n + '</div><div class="l">' + l + '</div><div class="s">' + s + '</div></div>';
@@ -6529,6 +6531,14 @@
                 else render();
             } catch (e) { render(); }
             document.getElementById('presentPage').textContent = (presentIdx + 1) + ' / ' + presentSlides.length;
+            // เลขหน้าบนสไลด์ (ซ่อนที่หน้าปก) — สีปรับตามพื้นสว่าง/เข้ม
+            const noEl = document.getElementById('presentSlideNo');
+            if (noEl) {
+                const h = (presentSlides[presentIdx] || {}).html || '';
+                const darkish = /pslide ic|pslide dark|ic-cover/.test(h);
+                noEl.style.color = darkish ? 'rgba(255,255,255,.72)' : 'rgba(15,23,42,.5)';
+                noEl.textContent = presentIdx === 0 ? '' : (presentIdx + 1) + ' / ' + presentSlides.length;
+            }
             const ch = presentSlides[presentIdx].chart;
             if (ch) setTimeout(ch, 60);
         }
@@ -6542,6 +6552,7 @@
                 return;
             }
             const ov = document.getElementById('presentOverlay');
+            if (typeof Chart !== 'undefined') { try { Chart.defaults.font.family = "'Anuphan','Kanit',sans-serif"; } catch (e) { } }   // ฟอนต์ไม่มีหัวในกราฟ
             applyPresentPalette(PRESENT_PAL);   // ใส่สีพาเลทที่เลือกไว้
             // บังคับแสดงด้วย inline style (ชนะคลาส hidden ของ Tailwind ทุกกรณี)
             ov.classList.remove('hidden');
