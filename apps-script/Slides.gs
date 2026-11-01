@@ -65,6 +65,8 @@ var SLIDE_TYPES = [
 ];
 
 // ตำแหน่งติดเชื้อที่ใช้เป็นพารามิเตอร์ของชนิด site-* และ mdr-of
+// รูปแบบกราฟ (คอลัมน์ "กราฟ") — ใช้กับ hist-trend เป็นหลัก
+var SLIDE_SHAPES = ['line', 'bar', 'area'];
 var SLIDE_PARAMS = ['HAI', 'MDR', 'VAP', 'CAUTI', 'CLABSI', 'SSI', 'HAP', 'BSI', 'Omphalitis', 'SSTI', 'UTI',
   // ชื่อแท็บในชีตย้อนหลัง "สรุปรายปี-HAI" (ใช้กับชนิด hist-*)
   'Site', 'HAI-ward', 'VAP-M', 'VAP-W', 'VAP-G', 'VAP-IPD', 'CAUTI-M', 'CAUTI-W', 'CAUTI-G',
@@ -188,17 +190,18 @@ function createSlidesTab() {
   // รวมทุกค่าลง "ครั้งเดียว" (A..I) เพื่อลดการ trigger คำนวณใหม่ (เช่นชีตที่มี IMPORTRANGE)
   var sample = SLIDE_SAMPLE.map(function (r, i) { return [i + 1].concat(r); });   // A-F
   var nData = Math.max(sample.length, SLIDE_TYPES.length);
-  var grid = [['ลำดับ', 'หัวข้อหลัก', 'หัวข้อรอง', 'ชนิด', 'พารามิเตอร์', 'หมายเหตุ', '', 'ชนิด (ค่า)', 'ความหมาย']];
+  // คอลัมน์หลัก A-G (เพิ่ม "กราฟ" ก่อน "หมายเหตุ") + ช่องว่าง H + ตารางอ้างอิง I-J
+  var grid = [['ลำดับ', 'หัวข้อหลัก', 'หัวข้อรอง', 'ชนิด', 'พารามิเตอร์', 'กราฟ', 'หมายเหตุ', '', 'ชนิด (ค่า)', 'ความหมาย']];
   for (var i = 0; i < nData; i++) {
-    var a = sample[i] || ['', '', '', '', '', ''];
+    var a = sample[i] || ['', '', '', '', '', ''];     // [ลำดับ, หัวข้อหลัก, หัวข้อรอง, ชนิด, พารามิเตอร์, หมายเหตุ]
     var t = SLIDE_TYPES[i] || ['', ''];
-    grid.push([a[0], a[1], a[2], a[3], a[4], a[5], '', t[0], t[1]]);
+    grid.push([a[0], a[1], a[2], a[3], a[4], '', a[5], '', t[0], t[1]]);   // แทรก "กราฟ" (ว่าง) ก่อนหมายเหตุ
   }
-  sh.getRange(1, 1, grid.length, 9).setValues(grid);   // เขียนทีเดียว
+  sh.getRange(1, 1, grid.length, 10).setValues(grid);   // เขียนทีเดียว
 
   // จัดรูปแบบหัวคอลัมน์ (ไม่ trigger คำนวณใหม่)
-  sh.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff').setHorizontalAlignment('center');
-  sh.getRange(1, 8, 1, 2).setFontWeight('bold').setBackground('#e2e8f0');
+  sh.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff').setHorizontalAlignment('center');
+  sh.getRange(1, 9, 1, 2).setFontWeight('bold').setBackground('#e2e8f0');
   sh.setFrozenRows(1);
 
   // ดรอปดาวน์ — ใส่เฉพาะช่วงที่ใช้งานจริง (แถวตัวอย่าง + เผื่ออีก 60 แถว) ลดภาระ
@@ -206,10 +209,12 @@ function createSlidesTab() {
   sh.getRange(2, 4, vEnd, 1).setDataValidation(
     SpreadsheetApp.newDataValidation().requireValueInList(SLIDE_TYPES.map(function (t) { return t[0]; }), true).setAllowInvalid(false).setHelpText('เลือกชนิดสไลด์').build());
   sh.getRange(2, 5, vEnd, 1).setDataValidation(
-    SpreadsheetApp.newDataValidation().requireValueInList(SLIDE_PARAMS, true).setAllowInvalid(true).setHelpText('ตำแหน่งติดเชื้อ/HAI/MDR — ชนิดอื่นเว้นว่างได้').build());
+    SpreadsheetApp.newDataValidation().requireValueInList(SLIDE_PARAMS, true).setAllowInvalid(true).setHelpText('ตำแหน่งติดเชื้อ/HAI/MDR หรือแท็บย้อนหลัง — ชนิดอื่นเว้นว่างได้').build());
+  sh.getRange(2, 6, vEnd, 1).setDataValidation(   // คอลัมน์ "กราฟ" (รูปแบบ)
+    SpreadsheetApp.newDataValidation().requireValueInList(SLIDE_SHAPES, true).setAllowInvalid(true).setHelpText('รูปแบบกราฟ (ใช้กับ hist-trend) — เว้นว่าง=ค่าเริ่มต้น').build());
 
   // ความกว้างคอลัมน์
-  var widths = [55, 130, 300, 150, 120, 260, 20, 150, 420];
+  var widths = [55, 130, 290, 150, 120, 90, 240, 20, 150, 420];
   for (var c = 0; c < widths.length; c++) sh.setColumnWidth(c + 1, widths[c]);
 
   try { ss.toast('สร้างแท็บ "' + SLIDES_TAB + '" พร้อมดรอปดาวน์เรียบร้อย', 'สำเร็จ', 5); } catch (e) { }
@@ -226,10 +231,10 @@ function createSlidesTabLite() {
   if (!ss) ss = SpreadsheetApp.openById(SLIDES_SHEET_ID);
   var sh = ss.getSheetByName(SLIDES_TAB);
   if (sh) { sh.clear(); sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).clearDataValidations(); } else { sh = ss.insertSheet(SLIDES_TAB); }
-  var grid = [['ลำดับ', 'หัวข้อหลัก', 'หัวข้อรอง', 'ชนิด', 'พารามิเตอร์', 'หมายเหตุ']];
-  SLIDE_SAMPLE.forEach(function (r, i) { grid.push([i + 1].concat(r)); });
-  sh.getRange(1, 1, grid.length, 6).setValues(grid);   // เขียนครั้งเดียว ไม่มี validation
-  sh.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff');
+  var grid = [['ลำดับ', 'หัวข้อหลัก', 'หัวข้อรอง', 'ชนิด', 'พารามิเตอร์', 'กราฟ', 'หมายเหตุ']];
+  SLIDE_SAMPLE.forEach(function (r, i) { grid.push([i + 1, r[0], r[1], r[2], r[3], '', r[4]]); });
+  sh.getRange(1, 1, grid.length, 7).setValues(grid);   // เขียนครั้งเดียว ไม่มี validation
+  sh.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff');
   sh.setFrozenRows(1);
   Logger.log('createSlidesTabLite: เขียน %s แถว', SLIDE_SAMPLE.length);
 }
