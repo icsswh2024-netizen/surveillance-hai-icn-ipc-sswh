@@ -1159,7 +1159,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01f</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01g</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -1182,6 +1182,7 @@
                 <span class="w-px h-4 bg-white/20"></span>
                 <select id="presentPalette" class="bg-white/15 text-white text-xs rounded-full px-2 py-1 focus:outline-none cursor-pointer" title="เลือกพาเลทสี/แม่แบบ">
                     <option value="ic" class="text-slate-800">🏥 IC เขียว (รพ.ศรีสังวร)</option>
+                    <option value="greenblue" class="text-slate-800">🌿 เขียวฟ้า (ซอฟต์)</option>
                     <option value="indigo" class="text-slate-800">🎨 คราม (เริ่มต้น)</option>
                     <option value="bluegreen" class="text-slate-800">ฟ้าผสมเขียว</option>
                     <option value="teal" class="text-slate-800">ฟ้าเขียว</option>
@@ -6118,6 +6119,8 @@
             pink:      { a: ['#e64478', '#f06292'], bg: ['#fde7ef', '#ffffff', '#fdf2f6'], d: ['#ad1457', '#880e4f', '#1f0a14'], chart: ['#e64478', '#f06292', '#ba68c8', '#d81b60', '#c2185b', '#f48fb1'] },
             red:       { a: ['#c8102e', '#f25c54'], bg: ['#fdeaea', '#ffffff', '#fdf3f3'], d: ['#b71c1c', '#7f1212', '#1a0808'], chart: ['#c8102e', '#e53935', '#f25c54', '#b71c1c', '#8b0000', '#ff8a80'] },
             purple:    { a: ['#5c2d91', '#a06fd1'], bg: ['#efe8f7', '#ffffff', '#f7f3fb'], d: ['#4a2275', '#3e1f63', '#140a1f'], chart: ['#5c2d91', '#7b4bbe', '#a06fd1', '#3e1f63', '#c2185b', '#c88ad9'] },
+            // เขียวฟ้า ซอฟต์ปานกลาง สะอาดตา (teal–sky)
+            greenblue: { a: ['#2fb3a0', '#4aa3d8'], bg: ['#edf7f6', '#ffffff', '#f2f9fb'], d: ['#2f93a0', '#1f7488', '#123f4e'], chart: ['#2fb3a0', '#4aa3d8', '#6cc4b0', '#86bce2', '#2a8fa0', '#9bd0c6'] },
             // แม่แบบ IC เขียว (เลียนแบบเด็ค รพ.ศรีสังวรสุโขทัย) — พื้นหลัง/หัวสไลด์จัดการด้วย CSS, chart = สีเส้น/แท่งบนพื้นเขียว
             ic:        { a: ['#ff914d', '#ffd54f'], bg: ['#048581', '#048581', '#036f6b'], d: ['#0c948c', '#048581', '#036f6b'], chart: ['#8bc34a', '#ffd54f', '#ff914d', '#ffffff', '#ff5252', '#4dd0e1'] }
         };
