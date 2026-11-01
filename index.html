@@ -1146,7 +1146,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01a</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01b</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -1175,6 +1175,11 @@
                     <option value="red" class="text-slate-800">แดง</option>
                     <option value="purple" class="text-slate-800">ม่วง</option>
                 </select>
+                <span class="w-px h-4 bg-white/20"></span>
+                <span class="text-xs text-white/70">ปี</span>
+                <input id="presentYrFrom" type="number" placeholder="จาก" title="ปีเริ่ม (พ.ศ.) — เว้นว่าง=ทั้งหมด" class="w-16 bg-white/15 text-white text-xs rounded-full px-2 py-1 focus:outline-none placeholder-white/50">
+                <span class="text-xs text-white/50">–</span>
+                <input id="presentYrTo" type="number" placeholder="ถึง" title="ปีสิ้นสุด (พ.ศ.)" class="w-16 bg-white/15 text-white text-xs rounded-full px-2 py-1 focus:outline-none placeholder-white/50">
                 <span class="w-px h-4 bg-white/20"></span>
                 <button id="presentFull" class="hover:text-white text-xs px-2" title="เต็มจอ (F)">⛶ เต็มจอ</button>
                 <button id="presentClose" class="hover:text-white text-xs px-2" title="ออก (Esc)">✕ ออก</button>
@@ -5959,13 +5964,37 @@
         const HIST_PAL = ['#4f46e5', '#e11d48', '#f59e0b', '#14b8a6', '#8b5cf6', '#0ea5e9', '#22c55e', '#ec4899', '#64748b', '#f97316', '#06b6d4', '#a3e635'];
         const histClean = s => String(s == null ? '' : s).replace(/^ปี\s*/, '').trim();
         const histNum = v => { const n = parseFloat(String(v).replace(/,/g, '')); return isFinite(n) ? n : null; };
+        // ตัวกรองช่วงปี (จากช่องในแถบนำเสนอ) — เว้นว่าง = ทั้งหมด
+        function histYrRange() { const f = parseInt((document.getElementById('presentYrFrom') || {}).value, 10), t = parseInt((document.getElementById('presentYrTo') || {}).value, 10); return { from: isFinite(f) ? f : null, to: isFinite(t) ? t : null }; }
+        function histYrPass(yLabel) { const y = parseInt(histClean(yLabel), 10); if (!isFinite(y)) return true; const r = histYrRange(); if (r.from != null && y < r.from) return false; if (r.to != null && y > r.to) return false; return true; }
+        // แมปตัวชี้วัด → (แท็บ, คอลัมน์) ในชีตย้อนหลัง + คีย์ perSite สำหรับค่าปีปัจจุบัน
+        const HIST_METRIC = { HAI: ['HAI', 'HAI', null], MDR: ['HAI', 'HAI-MDR', null], VAP: ['Site', 'VAP', 'VAP'], CAUTI: ['Site', 'CAUTI', 'CAUTI'], CLABSI: ['Site', 'CLABSI', 'CLABSI'], SSI: ['Site', 'SSI', 'SSI'], HAP: ['Site', 'HAP', 'HAP'], BSI: ['Site', 'BSI', 'BSI'], OMPHALITIS: ['Site', 'Omphalitis', 'Omphalitis'], UTI: ['Site', 'UTI', 'UTI'] };
+        // เส้นเดียว: ปีเก่าจากชีตย้อนหลัง + ปีปัจจุบันจากค่าที่คำนวณสด (liveVal)
+        function presentHistLiveCb(metric, liveVal, curYear, color) {
+            return async () => {
+                const ctx = document.getElementById('presentChart'); if (!ctx) return;
+                const map = HIST_METRIC[metric] || HIST_METRIC.HAI;
+                let m; try { m = await histFetchMatrix(map[0]); } catch (e) { return; }
+                if (!m || m.length < 2) return;
+                const colIdx = m[0].findIndex(h => String(h).trim() === map[1]); if (colIdx < 0) return;
+                let pts = m.filter((r, i) => i > 0 && (r[0] || '').trim() !== '').map(r => ({ year: histClean(r[0]), v: histNum(r[colIdx]) }));
+                if (liveVal != null && curYear) { const cy = String(curYear); const ex = pts.find(p => p.year === cy); const lv = +(+liveVal).toFixed(2); if (ex) ex.v = lv; else pts.push({ year: cy, v: lv }); }
+                pts = pts.filter(p => histYrPass(p.year));
+                if (presentChartInst) presentChartInst.destroy();
+                presentChartInst = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: pts.map(p => p.year), datasets: [{ label: metric + ' (เก่า+ปัจจุบัน)', data: pts.map(p => p.v), borderColor: color || '#4f46e5', backgroundColor: color || '#4f46e5', borderWidth: 3, tension: .35, pointRadius: 5, spanGaps: true }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 13 } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา', font: { family: 'Kanit', size: 13 } } }, x: { grid: { display: false }, title: { display: true, text: 'ปี', font: { family: 'Kanit', size: 13 } } } } }
+                });
+            };
+        }
         // กราฟเส้น: แกน X = คอลัมน์แรก (ปี), แต่ละคอลัมน์ที่เหลือ = 1 เส้น
         function presentHistTrendCb(tab, chartType) {
             return async () => {
                 const ctx = document.getElementById('presentChart'); if (!ctx) return;
                 let m; try { m = await histFetchMatrix(tab); } catch (e) { return; }
                 if (!m || m.length < 2) return;
-                const hdr = m[0], body = m.filter((r, i) => i > 0 && (r[0] || '').trim() !== '');
+                const hdr = m[0], body = m.filter((r, i) => i > 0 && (r[0] || '').trim() !== '' && histYrPass(r[0]));
                 const labels = body.map(r => histClean(r[0]));
                 const series = hdr.slice(1).map((name, ci) => ({ label: String(name).trim(), data: body.map(r => histNum(r[ci + 1])) })).filter(s => s.label !== '');
                 if (presentChartInst) presentChartInst.destroy();
@@ -5982,13 +6011,14 @@
                 const ctx = document.getElementById('presentChart'); if (!ctx) return;
                 let m; try { m = await histFetchMatrix(tab); } catch (e) { return; }
                 if (!m || m.length < 2) return;
-                const years = m[0].slice(1).map(histClean);
+                const allYears = m[0].slice(1).map(histClean);
+                const yrIdx = allYears.map((y, i) => i).filter(i => allYears[i] !== '' && histYrPass(allYears[i]));   // คอลัมน์ปีที่อยู่ในช่วง
                 const cats = m.filter((r, i) => i > 0 && (r[0] || '').trim() !== '');
                 const labels = cats.map(r => String(r[0]).trim());
                 if (presentChartInst) presentChartInst.destroy();
                 presentChartInst = new Chart(ctx, {
                     type: 'bar',
-                    data: { labels, datasets: years.map((y, ci) => ({ label: y, data: cats.map(r => histNum(r[ci + 1])), backgroundColor: HIST_PAL[ci % HIST_PAL.length], borderRadius: 4 })).filter(d => d.label !== '') },
+                    data: { labels, datasets: yrIdx.map(function (ci, k) { return { label: allYears[ci], data: cats.map(r => histNum(r[ci + 1])), backgroundColor: HIST_PAL[k % HIST_PAL.length], borderRadius: 4 }; }) },
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 12 } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา', font: { family: 'Kanit', size: 12 } } }, x: { grid: { display: false } } } }
                 });
             };
@@ -6372,6 +6402,14 @@
                 case 'hist-trend': sec(head, title, chartBox, presentHistTrendCb(p || 'HAI', 'line')); break;
                 case 'hist-bar': sec(head, title, chartBox, presentHistTrendCb(p || 'HAI', 'bar')); break;
                 case 'hist-group': sec(head, title, chartBox, presentHistGroupCb(p || 'HAI-ward')); break;
+                case 'hist-live': {   // เส้นเดียว: ปีเก่า (ชีตย้อนหลัง) + ปีปัจจุบัน (คำนวณสด)
+                    const mk = (p || 'HAI').toUpperCase();
+                    const psKey = { VAP: 'VAP', CAUTI: 'CAUTI', CLABSI: 'CLABSI', SSI: 'SSI', HAP: 'HAP', BSI: 'BSI', OMPHALITIS: 'Omphalitis', UTI: 'UTI' }[mk];
+                    const liveVal = mk === 'HAI' ? d.stat.hospRate : mk === 'MDR' ? d.stat.mdrRate : (psKey && d.perSite[psKey] ? d.perSite[psKey].rate : null);
+                    const curYear = (function () { const ys = {}; rawData.forEach(r => { if (r.year) ys[r.year] = (ys[r.year] || 0) + 1; }); return Object.keys(ys).sort((a, b) => ys[b] - ys[a])[0] || ''; })();
+                    sec(head, title, chartBox, presentHistLiveCb(mk, liveVal, curYear, C[mk] || C.HAI));
+                    break;
+                }
                 default: ph(head, title, row.note || ''); break;   // placeholder/text/ไม่รู้จัก
             }
         }
@@ -6416,7 +6454,7 @@
                     }))
                     .filter(r => (r.title || r.type || r.section) !== '');
                 // ยอมรับเฉพาะเมื่อมีอย่างน้อย 1 แถวที่ชนิดเป็นค่าที่รู้จัก (กัน CSV จากชีตผิดแท็บ)
-                const KNOWN = new Set(['cover', 'agenda', 'kpi', 'site-table', 'trend', 'ward-all', 'site-rate', 'site-month-h1', 'site-month-h2', 'site-ward', 'site-org', 'ssi-wound', 'ssi-anat', 'omph-kpi', 'mdr-compare', 'mdr-kpi', 'mdr-org', 'mdr-site', 'mdr-of', 'device', 'device-cath', 'device-ven', 'org-top', 'needle', 'summary', 'placeholder', 'rate-year', 'rate-quarter', 'rate-month', 'count-year', 'count-quarter', 'count-month', 'pct-year', 'pct-quarter', 'pct-month', 'pie-site', 'donut-site', 'pie-org', 'donut-org', 'bar-site', 'hbar-ward', 'hbar-org', 'hist-trend', 'hist-bar', 'hist-group']);
+                const KNOWN = new Set(['cover', 'agenda', 'kpi', 'site-table', 'trend', 'ward-all', 'site-rate', 'site-month-h1', 'site-month-h2', 'site-ward', 'site-org', 'ssi-wound', 'ssi-anat', 'omph-kpi', 'mdr-compare', 'mdr-kpi', 'mdr-org', 'mdr-site', 'mdr-of', 'device', 'device-cath', 'device-ven', 'org-top', 'needle', 'summary', 'placeholder', 'rate-year', 'rate-quarter', 'rate-month', 'count-year', 'count-quarter', 'count-month', 'pct-year', 'pct-quarter', 'pct-month', 'pie-site', 'donut-site', 'pie-org', 'donut-org', 'bar-site', 'hbar-ward', 'hbar-org', 'hist-trend', 'hist-bar', 'hist-group', 'hist-live']);
                 SLIDES_CONFIG = cfg.some(r => KNOWN.has((r.type || '').toString().trim().toLowerCase())) ? cfg : [];
             } catch (e) { SLIDES_CONFIG = []; }
         }
@@ -8985,6 +9023,7 @@
         document.getElementById('presentNext').addEventListener('click', () => presentShow(presentIdx + 1));
         document.getElementById('presentClose').addEventListener('click', presentClose);
         document.getElementById('presentPalette').addEventListener('change', e => { applyPresentPalette(e.target.value); presentBuild(); presentShow(presentIdx); });
+        ['presentYrFrom', 'presentYrTo'].forEach(function (id) { const el = document.getElementById(id); if (el) el.addEventListener('change', function () { presentBuild(); presentShow(presentIdx); }); });
         document.getElementById('presentFull').addEventListener('click', () => { const ov = document.getElementById('presentOverlay'); if (document.fullscreenElement) document.exitFullscreen(); else ov.requestFullscreen && ov.requestFullscreen(); });
         document.getElementById('presentStage').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); if ((e.clientX - r.left) < r.width * 0.35) presentShow(presentIdx - 1); else presentShow(presentIdx + 1); });
         document.addEventListener('keydown', presentKey);
