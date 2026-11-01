@@ -1159,7 +1159,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01l</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01m</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2492,6 +2492,8 @@
             afterDatasetsDraw(chart) {
                 const ctx = chart.ctx;
                 const chartType = chart.config.type;
+                const area = chart.chartArea;
+                const placed = [];   // เก็บตำแหน่งที่วาดแล้ว กันป้ายทับกัน (จุดซ้อนที่มองไม่เห็น)
                 chart.data.datasets.forEach((ds, di) => {
                     const dsType = ds.type || chartType;
                     // ใส่ badge เฉพาะกราฟเส้น/แท่ง (ยกเว้นโดนัท/polar ที่มีป้ายอยู่แล้ว) และไม่ปิดด้วย _noBadge/_badge:false
@@ -2499,8 +2501,6 @@
                     if (ds._noBadge || ds._badge === false) return;
                     const meta = chart.getDatasetMeta(di);
                     if (meta.hidden) return;
-                    const area = chart.chartArea;
-                    // สีป้าย: ใช้ _badgeColor ถ้ามี ไม่งั้นทำสีเข้มจากสีทึบของเส้น (_legendColor/borderColor ที่เป็น hex)
                     let badgeColor = ds._badgeColor;
                     if (!badgeColor) {
                         const base = ds._legendColor || (typeof ds.borderColor === 'string' ? ds.borderColor : (typeof ds.backgroundColor === 'string' ? ds.backgroundColor : '#334155'));
@@ -2510,19 +2510,32 @@
                         const v = ds.data[i];
                         if (v == null || v === 0) return; // ข้ามค่าว่าง/ศูนย์ กันรก
                         if (area && (pt.y < area.top - 0.5 || pt.y > area.bottom + 0.5)) return; // จุดเกินสเกล -> ไม่วาดป้าย
-                        // จัดรูปตัวเลข: ทศนิยมโชว์ 2 ตำแหน่ง (สำหรับกราฟอัตรา), จำนวนเต็มโชว์ตามเดิม
                         const txt = (typeof v === 'number' && !Number.isInteger(v)) ? v.toFixed(2) : String(v);
                         ctx.save();
-                        ctx.font = 'bold 10px Kanit, sans-serif';
+                        ctx.font = 'bold 10px Anuphan, Kanit, sans-serif';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        const r = Math.max(10, ctx.measureText(txt).width / 2 + 6); // วงกลมพอดีข้อความ
+                        const r = Math.max(10, ctx.measureText(txt).width / 2 + 6);
+                        // หาตำแหน่งแนวตั้งที่ไม่ทับป้ายอื่น (ขยับขึ้น/ลงสลับกัน)
+                        let by = pt.y;
+                        for (let tries = 0; tries < 10; tries++) {
+                            const clash = placed.some(p => Math.abs(p.x - pt.x) < (p.r + r - 2) && Math.abs(p.y - by) < (p.r + r - 2));
+                            if (!clash) break;
+                            const step = Math.ceil((tries + 1) / 2) * (r * 1.7);
+                            by = pt.y + (tries % 2 ? step : -step);
+                            if (area) by = Math.max(area.top + r, Math.min(area.bottom - r, by));
+                        }
+                        if (Math.abs(by - pt.y) > r) {   // ถ้าต้องขยับ วาดเส้นโยงเล็ก ๆ
+                            ctx.strokeStyle = badgeColor; ctx.lineWidth = 1.2; ctx.globalAlpha = .5;
+                            ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(pt.x, by); ctx.stroke(); ctx.globalAlpha = 1;
+                        }
+                        placed.push({ x: pt.x, y: by, r });
                         ctx.beginPath();
-                        ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-                        ctx.fillStyle = (ds._badgeColors && ds._badgeColors[i]) || badgeColor; // สีเฉพาะจุด (เช่น จุดหลุด=แดง)
+                        ctx.arc(pt.x, by, r, 0, Math.PI * 2);
+                        ctx.fillStyle = (ds._badgeColors && ds._badgeColors[i]) || badgeColor;
                         ctx.fill();
                         ctx.fillStyle = '#fff';
-                        ctx.fillText(txt, pt.x, pt.y);
+                        ctx.fillText(txt, pt.x, by);
                         ctx.restore();
                     });
                 });
@@ -6099,11 +6112,19 @@
             return () => {
                 const ctx = document.getElementById('presentChart'); if (!ctx) return;
                 if (presentChartInst) presentChartInst.destroy();
-                presentChartInst = new Chart(ctx, {
+                const inst = new Chart(ctx, {
                     type: doughnut === false ? 'pie' : 'doughnut',
                     data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: 'rgba(255,255,255,.65)', borderWidth: 2 }] },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'Kanit', size: 13 }, boxWidth: 14 } } } }
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right', labels: { font: { family: 'Anuphan', size: 13 }, boxWidth: 14 } },
+                            // ป้าย % บนชิ้นโดนัท/วงกลม (เฉพาะชิ้นที่ ≥ 4% กันรก)
+                            datalabels: { display: ctx2 => { const a = ctx2.dataset.data; const t = a.reduce((x, y) => x + (+y || 0), 0); return t && (+a[ctx2.dataIndex] / t) >= 0.04; }, color: '#fff', font: { family: 'Anuphan', weight: 'bold', size: 12 }, formatter: (v, c) => { const t = c.dataset.data.reduce((a, b) => a + (+b || 0), 0); return t ? Math.round(v / t * 100) + '%' : ''; } }
+                        }
+                    }
                 });
+                presentChartInst = inst;
             };
         }
         // กราฟแท่ง (แนวตั้ง/แนวนอน) พร้อมชื่อแกน
