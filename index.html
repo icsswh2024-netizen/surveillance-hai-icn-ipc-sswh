@@ -54,7 +54,7 @@
         .pslide.dark { color: #f8fafc; background: radial-gradient(130% 130% at 0% 0%, var(--p-d1,#4338ca) 0%, var(--p-d2,#1e1b4b) 55%, var(--p-d3,#0f172a) 100%); }
         /* เรืองแสงนุ่ม ๆ มุมบนขวา (เฉพาะสไลด์โทนสว่าง) ให้ดูพรีเมียม */
         .pslide:not(.ic):not(.dark):not(.ic-cover)::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
-            background: radial-gradient(55% 45% at 100% 0%, rgba(99,102,241,.08) 0%, rgba(99,102,241,0) 60%), radial-gradient(50% 45% at 0% 100%, rgba(168,85,247,.06) 0%, rgba(168,85,247,0) 55%); }
+            background: radial-gradient(55% 45% at 100% 0%, var(--p-glow1, rgba(99,102,241,.08)) 0%, transparent 60%), radial-gradient(50% 45% at 0% 100%, var(--p-glow2, rgba(168,85,247,.06)) 0%, transparent 55%); }
         .pslide > * { position: relative; z-index: 1; }
         .pslide .p-eyebrow { font-size: 16px; letter-spacing: .22em; text-transform: uppercase; font-weight: 700; color: var(--p-a1,#6366f1); opacity: .9; }
         .pslide .p-title { font-size: 56px; line-height: 1.08; font-weight: 800; letter-spacing: -.012em; margin-top: 8px; }
@@ -1159,7 +1159,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01g</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01h</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -5978,7 +5978,17 @@
             if (f.length || row.length) { row.push(f); rows.push(row); }
             HIST_CACHE[tab] = rows; return rows;
         }
-        const HIST_PAL = ['#4f46e5', '#e11d48', '#f59e0b', '#14b8a6', '#8b5cf6', '#0ea5e9', '#22c55e', '#ec4899', '#64748b', '#f97316', '#06b6d4', '#a3e635'];
+        // hex → rgba (มีทั้ง 3/6 หลัก)
+        function hexA(hex, a) { let h = String(hex || '').replace('#', ''); if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2]; const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16); return 'rgba(' + (r || 0) + ',' + (g || 0) + ',' + (b || 0) + ',' + a + ')'; }
+        // ชุดสีกราฟตามพาเลทที่เลือก (ขยายเป็นหลายเฉดด้วย lighten/darken) — ให้ทุกกราฟไปทางเดียวกัน
+        function presentThemePal() {
+            const base = ((PRESENT_PALETTES[PRESENT_PAL] || PRESENT_PALETTES.indigo).chart || []).filter(c => c && String(c)[0] === '#');
+            const out = base.slice();
+            base.forEach(c => out.push(lighten(c, 0.24)));
+            base.forEach(c => out.push(darken(c, 0.78)));
+            return out.length ? out : ['#4f46e5'];
+        }
+        let HIST_PAL = ['#4f46e5', '#e11d48', '#f59e0b', '#14b8a6', '#8b5cf6', '#0ea5e9', '#22c55e', '#ec4899', '#64748b'];   // ค่าเริ่มต้น; applyPresentPalette จะตั้งตามธีม
         const histClean = s => String(s == null ? '' : s).replace(/^ปี\s*/, '').trim();
         const histNum = v => { const n = parseFloat(String(v).replace(/,/g, '')); return isFinite(n) ? n : null; };
         // ตัวกรองช่วงปี (จากช่องในแถบนำเสนอ) — เว้นว่าง = ทั้งหมด
@@ -6143,6 +6153,8 @@
             s.setProperty('--p-a1', p.a[0]); s.setProperty('--p-a2', p.a[1]);
             s.setProperty('--p-bg1', p.bg[0]); s.setProperty('--p-bg2', p.bg[1]); s.setProperty('--p-bg3', p.bg[2]);
             s.setProperty('--p-d1', p.d[0]); s.setProperty('--p-d2', p.d[1]); s.setProperty('--p-d3', p.d[2]);
+            s.setProperty('--p-glow1', hexA(p.a[0], .09)); s.setProperty('--p-glow2', hexA(p.a[1], .07));   // แสงพื้นหลังตามธีม
+            HIST_PAL = presentThemePal();   // ชุดสีกราฟตามธีม (กราฟย้อนหลัง/หลายสี)
             // แม่แบบ IC: พื้นเขียว → ตัวอักษร/เส้นกริดในกราฟเป็นสีขาว
             if (typeof Chart !== 'undefined') {
                 if (key === 'ic') { Chart.defaults.color = '#ffffff'; Chart.defaults.borderColor = 'rgba(255,255,255,.18)'; }
@@ -6266,7 +6278,7 @@
 
             /* ===== 2. อัตราการติดเชื้อในโรงพยาบาล ===== */
             const S2 = 'อัตราการติดเชื้อในโรงพยาบาล';
-            sec(S2, 'เปรียบเทียบอัตราการติดเชื้อในโรงพยาบาลโดยรวม', chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { data: { labels: d.monthly.labels, datasets: [{ type: 'bar', label: 'จำนวนเคส', data: d.monthly.counts, backgroundColor: 'rgba(99,102,241,.35)', borderRadius: 8, yAxisID: 'y' }, { type: 'line', label: 'อัตรา /1,000 วันนอน', data: d.monthly.rates, borderColor: C.HAI, backgroundColor: C.HAI, borderWidth: 3, tension: .4, pointRadius: 4, yAxisID: 'y1' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true, position: 'left', title: { display: true, text: 'จำนวนเคส' } }, y1: { beginAtZero: true, position: 'right', grid: { display: false }, title: { display: true, text: 'อัตรา/1,000' } }, x: { grid: { display: false } } } } }); });
+            sec(S2, 'เปรียบเทียบอัตราการติดเชื้อในโรงพยาบาลโดยรวม', chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { data: { labels: d.monthly.labels, datasets: [{ type: 'bar', label: 'จำนวนเคส', data: d.monthly.counts, backgroundColor: hexA(C.HAI, .3), borderRadius: 8, yAxisID: 'y' }, { type: 'line', label: 'อัตรา /1,000 วันนอน', data: d.monthly.rates, borderColor: C.HAI, backgroundColor: C.HAI, borderWidth: 3, tension: .4, pointRadius: 4, yAxisID: 'y1' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true, position: 'left', title: { display: true, text: 'จำนวนเคส' } }, y1: { beginAtZero: true, position: 'right', grid: { display: false }, title: { display: true, text: 'อัตรา/1,000' } }, x: { grid: { display: false } } } } }); });
             sec(S2, 'อัตราการติดเชื้อ จำแนกตามตำแหน่งการติดเชื้อ', tbl(['ตำแหน่ง', 'จำนวน (ราย)', 'อัตรา'], d.siteRows.length ? d.siteRows.map(s => '<tr><td>' + esc(s.label) + '</td><td class="r">' + s.n + '</td><td class="r">' + fx(s.rate) + ' <span style="opacity:.5">' + s.unit + '</span></td></tr>').join('') : '<tr><td colspan="3" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>'));
             ph(S2, 'อัตราการติดเชื้อ จำแนกตามหอผู้ป่วยอายุรกรรม', 'ดูอัตรารายหอทั้งหมดในสไลด์ "จำแนกตามหอผู้ป่วยโดยรวม" · การแยกกลุ่มอายุรกรรมอยู่ในเด็ค Canva');
             ph(S2, 'อัตราการติดเชื้อ จำแนกตามหอผู้ป่วยศัลยกรรม', 'ดูอัตรารายหอทั้งหมดในสไลด์ "จำแนกตามหอผู้ป่วยโดยรวม"');
@@ -6308,7 +6320,7 @@
             /* ===== 6. เชื้อดื้อยา MDR ===== */
             const S6 = 'เชื้อดื้อยาต้านจุลชีพ (MDR)';
             sec('Agenda', 'หัวข้อถัดไป: การติดเชื้อดื้อยาต้านจุลชีพ', agenda(1), null, true);
-            sec(S6, 'เปรียบเทียบอัตราการติดเชื้อกับการติดเชื้อดื้อยา', chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'bar', data: { labels: d.mdrMonthly.labels, datasets: [{ label: 'HAI (เคส)', data: d.mdrMonthly.haiCounts, backgroundColor: 'rgba(79,70,229,.5)', borderRadius: 6 }, { label: 'MDR (เคส)', data: d.mdrMonthly.mdrCounts, backgroundColor: '#e11d48', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); });
+            sec(S6, 'เปรียบเทียบอัตราการติดเชื้อกับการติดเชื้อดื้อยา', chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'bar', data: { labels: d.mdrMonthly.labels, datasets: [{ label: 'HAI (เคส)', data: d.mdrMonthly.haiCounts, backgroundColor: hexA(C.HAI, .5), borderRadius: 6 }, { label: 'MDR (เคส)', data: d.mdrMonthly.mdrCounts, backgroundColor: C.MDR, borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); });
             sec(S6, 'อัตราการติดเชื้อดื้อยาต้านจุลชีพในโรงพยาบาล', tiles([tile(d.stat.mdr, 'เชื้อดื้อยา (MDR)', 'ราย (' + d.stat.mdrPct + '% ของ HAI)', '#e11d48'), tile(fx(d.stat.mdrRate), 'อัตรา MDR', '/1,000 วันนอน', '#a855f7')]));
             sec(S6, 'ร้อยละของเชื้อที่เป็นสาเหตุของการติดเชื้อดื้อยา', tbl(['#', 'เชื้อก่อโรค', 'จำนวน', '%'], orgRows(d.mdrOrgs, '#e11d48', 0, 20)));
             sec(S6, 'การติดเชื้อดื้อยา จำแนกตามตำแหน่งการติดเชื้อ', tbl(['ตำแหน่ง', 'จำนวน (ราย)'], d.mdrSiteRows.length ? d.mdrSiteRows.map(s => '<tr><td>' + esc(s.label) + '</td><td class="r">' + s.n + '</td></tr>').join('') : '<tr><td colspan="2" style="opacity:.5">— ไม่มี —</td></tr>'));
@@ -6379,13 +6391,13 @@
             const ps = d.perSite[pk] || d.perSite[p];                // ชุดข้อมูลของตำแหน่งนั้น (ถ้ามี)
             const col = C[pk] || C.HAI;
             const num = parseInt(p, 10);                             // พารามิเตอร์ที่เป็นตัวเลข (เช่น ส่วนที่ของเชื้อ)
-            const PAL = [C.HAI, C.VAP, C.CAUTI, C.SSI, C.MDR, C.EXTRA, '#f59e0b', '#0ea5e9', '#7c3aed', '#10b981', '#ef4444', '#64748b'];
+            const PAL = presentThemePal();
             switch (type) {
                 case 'cover': slides.push({ html: X.coverHtml }); break;
                 case 'agenda': sec(head || 'Agenda', title || 'หัวข้อการนำเสนอ', agenda(isFinite(num) ? num - 1 : null), null, true); break;
-                case 'kpi': case 'ภาพรวม': sec(head, title, tiles([tile(d.stat.totCases, 'เคสติดเชื้อทั้งหมด', 'ราย', '#4f46e5'), tile(fx(d.stat.hospRate), 'อัตราติดเชื้อ', '/1,000 วันนอน', '#0ea5e9'), tile(d.stat.mdr, 'ดื้อยา (MDR)', d.stat.mdrPct + '%', '#e11d48'), tile(fx(d.stat.ssiRate), 'SSI', '/100 ผ่าตัด', '#7c3aed')])); break;
+                case 'kpi': case 'ภาพรวม': sec(head, title, tiles([tile(d.stat.totCases, 'เคสติดเชื้อทั้งหมด', 'ราย', C.HAI), tile(fx(d.stat.hospRate), 'อัตราติดเชื้อ', '/1,000 วันนอน', C.VAP), tile(d.stat.mdr, 'ดื้อยา (MDR)', d.stat.mdrPct + '%', C.MDR), tile(fx(d.stat.ssiRate), 'SSI', '/100 ผ่าตัด', C.SSI)])); break;
                 case 'site-table': case 'ตำแหน่ง': sec(head, title, tbl(['ตำแหน่ง', 'จำนวน (ราย)', 'อัตรา'], d.siteRows.map(s => '<tr><td>' + esc(s.label) + '</td><td class="r">' + s.n + '</td><td class="r">' + fx(s.rate) + ' <span style="opacity:.5">' + s.unit + '</span></td></tr>').join('') || '<tr><td colspan="3" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>')); break;
-                case 'trend': case 'แนวโน้ม': sec(head, title, chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { data: { labels: d.monthly.labels, datasets: [{ type: 'bar', label: 'จำนวนเคส', data: d.monthly.counts, backgroundColor: 'rgba(99,102,241,.35)', borderRadius: 8, yAxisID: 'y' }, { type: 'line', label: 'อัตรา /1,000', data: d.monthly.rates, borderColor: C.HAI, backgroundColor: C.HAI, borderWidth: 3, tension: .4, pointRadius: 4, yAxisID: 'y1' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true, position: 'left' }, y1: { beginAtZero: true, position: 'right', grid: { display: false } }, x: { grid: { display: false } } } } }); }); break;
+                case 'trend': case 'แนวโน้ม': sec(head, title, chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { data: { labels: d.monthly.labels, datasets: [{ type: 'bar', label: 'จำนวนเคส', data: d.monthly.counts, backgroundColor: hexA(C.HAI, .3), borderRadius: 8, yAxisID: 'y' }, { type: 'line', label: 'อัตรา /1,000', data: d.monthly.rates, borderColor: C.HAI, backgroundColor: C.HAI, borderWidth: 3, tension: .4, pointRadius: 4, yAxisID: 'y1' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true, position: 'left' }, y1: { beginAtZero: true, position: 'right', grid: { display: false } }, x: { grid: { display: false } } } } }); }); break;
                 case 'ward-all': case 'รายหอ': sec(head, title, tbl(['#', 'หอผู้ป่วย', 'จำนวนเคส', 'อัตรา/1000'], d.wardsAll.map((w, i) => '<tr><td style="opacity:.5">' + (i + 1) + '</td><td>' + esc(w.name) + '</td><td class="r">' + w.cases + '</td><td class="r">' + fx(w.rate) + '</td></tr>').join('') || '<tr><td colspan="4" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>')); break;
                 case 'site-rate': sec(head, title, chartBox, ps ? mkLine(ps.monthly.labels, ps.monthly.rates, pk + ' ' + (ps.unit || ''), col) : null); if (!ps) ph(head, title, 'ไม่พบตำแหน่ง "' + p + '"'); break;
                 case 'site-month-h1': sec(head, title, chartBox, ps ? mkLine(ps.mH1.labels, ps.mH1.rates, pk, col) : null); break;
@@ -6395,7 +6407,7 @@
                 case 'ssi-wound': sec(head, title, tbl(['ประเภทแผล', 'จำนวนผ่าตัด', 'SSI (ครั้ง)', 'อัตรา/100'], d.ssiWound.map(w => '<tr><td>Class ' + w.cls + '</td><td class="r" style="opacity:.6">' + (w.op || 0).toLocaleString() + '</td><td class="r">' + w.cases + '</td><td class="r">' + fx(w.op ? w.cases / w.op * 100 : null) + '</td></tr>').join(''))); break;
                 case 'ssi-anat': sec(head, title, tbl(['อวัยวะ/หัตถการ', 'จำนวน (ครั้ง)'], d.ssiAnat.some(a => a.n) ? d.ssiAnat.map(a => '<tr><td>' + a.label + '</td><td class="r">' + a.n + '</td></tr>').join('') : '<tr><td colspan="2" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>')); break;
                 case 'omph-kpi': sec(head, title, tiles([tile(d.perSite.Omphalitis.n, 'จำนวนเคส', 'ราย', '#f43f5e'), tile(fx(d.perSite.Omphalitis.rate), 'อัตรา', '/100 เด็กเกิดมีชีพ', '#f59e0b')])); break;
-                case 'mdr-compare': sec(head, title, chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'bar', data: { labels: d.mdrMonthly.labels, datasets: [{ label: 'HAI', data: d.mdrMonthly.haiCounts, backgroundColor: 'rgba(79,70,229,.5)', borderRadius: 6 }, { label: 'MDR', data: d.mdrMonthly.mdrCounts, backgroundColor: '#e11d48', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); }); break;
+                case 'mdr-compare': sec(head, title, chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'bar', data: { labels: d.mdrMonthly.labels, datasets: [{ label: 'HAI', data: d.mdrMonthly.haiCounts, backgroundColor: hexA(C.HAI, .5), borderRadius: 6 }, { label: 'MDR', data: d.mdrMonthly.mdrCounts, backgroundColor: C.MDR, borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); }); break;
                 case 'mdr-kpi': sec(head, title, tiles([tile(d.stat.mdr, 'เชื้อดื้อยา (MDR)', d.stat.mdrPct + '% ของ HAI', '#e11d48'), tile(fx(d.stat.mdrRate), 'อัตรา MDR', '/1,000 วันนอน', '#a855f7')])); break;
                 case 'mdr-org': sec(head, title, tbl(['#', 'เชื้อก่อโรค', 'จำนวน', '%'], orgRows(d.mdrOrgs, '#e11d48', 0, 20))); break;
                 case 'mdr-site': sec(head, title, tbl(['ตำแหน่ง', 'จำนวน (ราย)'], d.mdrSiteRows.map(s => '<tr><td>' + esc(s.label) + '</td><td class="r">' + s.n + '</td></tr>').join('') || '<tr><td colspan="2" style="opacity:.5">— ไม่มี —</td></tr>')); break;
