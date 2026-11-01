@@ -1146,7 +1146,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-10-31b</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01a</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -5940,6 +5940,60 @@
             const pcts = counts.map((c, i) => totals[i] ? +(c / totals[i] * 100).toFixed(1) : 0);
             return { labels, counts, rates, pcts, unitLabel: { year: 'ปี', quarter: 'ไตรมาส', month: 'เดือน' }[unit], rateUnit: meta.unit };
         }
+        // ===== ข้อมูลย้อนหลัง จากชีต "สรุปรายปี-HAI" (อ่านตรงจากไฟล์แยก) =====
+        const HIST_SHEET_ID = '1t8lVr9i6MRQlcnC7rE2BPptON32Q_7EeNdHehbtE_UQ';
+        const HIST_CACHE = {};
+        async function histFetchMatrix(tab) {
+            if (HIST_CACHE[tab]) return HIST_CACHE[tab];
+            const url = 'https://docs.google.com/spreadsheets/d/' + HIST_SHEET_ID + '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(tab) + '&_=' + Date.now();
+            const text = await (await fetch(url)).text();
+            const rows = []; let row = [], f = '', q = false;
+            for (let i = 0; i < text.length; i++) {
+                const c = text[i];
+                if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+                else { if (c === '"') q = true; else if (c === ',') { row.push(f); f = ''; } else if (c === '\n') { row.push(f); rows.push(row); row = []; f = ''; } else if (c === '\r') { } else f += c; }
+            }
+            if (f.length || row.length) { row.push(f); rows.push(row); }
+            HIST_CACHE[tab] = rows; return rows;
+        }
+        const HIST_PAL = ['#4f46e5', '#e11d48', '#f59e0b', '#14b8a6', '#8b5cf6', '#0ea5e9', '#22c55e', '#ec4899', '#64748b', '#f97316', '#06b6d4', '#a3e635'];
+        const histClean = s => String(s == null ? '' : s).replace(/^ปี\s*/, '').trim();
+        const histNum = v => { const n = parseFloat(String(v).replace(/,/g, '')); return isFinite(n) ? n : null; };
+        // กราฟเส้น: แกน X = คอลัมน์แรก (ปี), แต่ละคอลัมน์ที่เหลือ = 1 เส้น
+        function presentHistTrendCb(tab, chartType) {
+            return async () => {
+                const ctx = document.getElementById('presentChart'); if (!ctx) return;
+                let m; try { m = await histFetchMatrix(tab); } catch (e) { return; }
+                if (!m || m.length < 2) return;
+                const hdr = m[0], body = m.filter((r, i) => i > 0 && (r[0] || '').trim() !== '');
+                const labels = body.map(r => histClean(r[0]));
+                const series = hdr.slice(1).map((name, ci) => ({ label: String(name).trim(), data: body.map(r => histNum(r[ci + 1])) })).filter(s => s.label !== '');
+                if (presentChartInst) presentChartInst.destroy();
+                presentChartInst = new Chart(ctx, {
+                    type: chartType === 'bar' ? 'bar' : 'line',
+                    data: { labels, datasets: series.map((s, i) => ({ label: s.label, data: s.data, borderColor: HIST_PAL[i % HIST_PAL.length], backgroundColor: HIST_PAL[i % HIST_PAL.length], borderWidth: 3, tension: .35, pointRadius: 4, spanGaps: true, borderRadius: 6 })) },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 13 } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา', font: { family: 'Kanit', size: 13 } } }, x: { grid: { display: false }, title: { display: true, text: 'ปี', font: { family: 'Kanit', size: 13 } } } } }
+                });
+            };
+        }
+        // กราฟแท่งเทียบรายปี: แถวแรก(B..) = ปี, คอลัมน์แรก = หมวด (หอ/เดือน/เชื้อ) → 1 ชุดสีต่อปี
+        function presentHistGroupCb(tab) {
+            return async () => {
+                const ctx = document.getElementById('presentChart'); if (!ctx) return;
+                let m; try { m = await histFetchMatrix(tab); } catch (e) { return; }
+                if (!m || m.length < 2) return;
+                const years = m[0].slice(1).map(histClean);
+                const cats = m.filter((r, i) => i > 0 && (r[0] || '').trim() !== '');
+                const labels = cats.map(r => String(r[0]).trim());
+                if (presentChartInst) presentChartInst.destroy();
+                presentChartInst = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels, datasets: years.map((y, ci) => ({ label: y, data: cats.map(r => histNum(r[ci + 1])), backgroundColor: HIST_PAL[ci % HIST_PAL.length], borderRadius: 4 })).filter(d => d.label !== '') },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 12 } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา', font: { family: 'Kanit', size: 12 } } }, x: { grid: { display: false } } } }
+                });
+            };
+        }
+
         // callback สร้างกราฟ time-series พร้อมชื่อแกน X/Y (rate=เส้น, count=แท่ง, pct=เส้น%)
         function presentTSChartCb(ts, label, color, mode) {
             return () => {
@@ -6314,6 +6368,10 @@
                     const arr = (ps ? ps.orgs : d.orgsTop).slice(0, 10);
                     sec(head, title, chartBox, presentBarCb(arr.map(o => o.org), arr.map(o => o.n), 'จำนวน', col, true, 'เชื้อก่อโรค', 'จำนวน (ครั้ง)')); break;
                 }
+                // ===== ข้อมูลย้อนหลังหลายปี (จากชีต สรุปรายปี-HAI) — พารามิเตอร์ = ชื่อแท็บ =====
+                case 'hist-trend': sec(head, title, chartBox, presentHistTrendCb(p || 'HAI', 'line')); break;
+                case 'hist-bar': sec(head, title, chartBox, presentHistTrendCb(p || 'HAI', 'bar')); break;
+                case 'hist-group': sec(head, title, chartBox, presentHistGroupCb(p || 'HAI-ward')); break;
                 default: ph(head, title, row.note || ''); break;   // placeholder/text/ไม่รู้จัก
             }
         }
@@ -6358,7 +6416,7 @@
                     }))
                     .filter(r => (r.title || r.type || r.section) !== '');
                 // ยอมรับเฉพาะเมื่อมีอย่างน้อย 1 แถวที่ชนิดเป็นค่าที่รู้จัก (กัน CSV จากชีตผิดแท็บ)
-                const KNOWN = new Set(['cover', 'agenda', 'kpi', 'site-table', 'trend', 'ward-all', 'site-rate', 'site-month-h1', 'site-month-h2', 'site-ward', 'site-org', 'ssi-wound', 'ssi-anat', 'omph-kpi', 'mdr-compare', 'mdr-kpi', 'mdr-org', 'mdr-site', 'mdr-of', 'device', 'device-cath', 'device-ven', 'org-top', 'needle', 'summary', 'placeholder', 'rate-year', 'rate-quarter', 'rate-month', 'count-year', 'count-quarter', 'count-month', 'pct-year', 'pct-quarter', 'pct-month', 'pie-site', 'donut-site', 'pie-org', 'donut-org', 'bar-site', 'hbar-ward', 'hbar-org']);
+                const KNOWN = new Set(['cover', 'agenda', 'kpi', 'site-table', 'trend', 'ward-all', 'site-rate', 'site-month-h1', 'site-month-h2', 'site-ward', 'site-org', 'ssi-wound', 'ssi-anat', 'omph-kpi', 'mdr-compare', 'mdr-kpi', 'mdr-org', 'mdr-site', 'mdr-of', 'device', 'device-cath', 'device-ven', 'org-top', 'needle', 'summary', 'placeholder', 'rate-year', 'rate-quarter', 'rate-month', 'count-year', 'count-quarter', 'count-month', 'pct-year', 'pct-quarter', 'pct-month', 'pie-site', 'donut-site', 'pie-org', 'donut-org', 'bar-site', 'hbar-ward', 'hbar-org', 'hist-trend', 'hist-bar', 'hist-group']);
                 SLIDES_CONFIG = cfg.some(r => KNOWN.has((r.type || '').toString().trim().toLowerCase())) ? cfg : [];
             } catch (e) { SLIDES_CONFIG = []; }
         }
