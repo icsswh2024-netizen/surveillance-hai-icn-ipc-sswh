@@ -1146,7 +1146,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01c</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01d</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -5906,7 +5906,8 @@
 
         /* ===================== โหมดนำเสนอ (สไลด์ 16:9 + Morph) ===================== */
         const HOSPITAL_NAME = 'โรงพยาบาลศรีสังวรสุโขทัย';
-        let presentSlides = [], presentIdx = 0, presentChartInst = null;
+        let presentSlides = [], presentIdx = 0, presentChartInst = null, presentCharts = [];
+        function presentDestroyCharts() { if (presentChartInst) { try { presentChartInst.destroy(); } catch (e) { } presentChartInst = null; } presentCharts.forEach(function (c) { try { c.destroy(); } catch (e) { } }); presentCharts = []; }
         // ===== ชุดข้อมูลตามหน่วยเวลา (ปี/ไตรมาส/เดือน) สำหรับกราฟในแท็บ Slides =====
         // key: 'HAI' หรือตำแหน่งติดเชื้อ (VAP/CAUTI/...), unit: 'year'|'quarter'|'month'
         function presentTimeSeries(key, unit) {
@@ -5970,9 +5971,9 @@
         // แมปตัวชี้วัด → (แท็บ, คอลัมน์) ในชีตย้อนหลัง + คีย์ perSite สำหรับค่าปีปัจจุบัน
         const HIST_METRIC = { HAI: ['HAI', 'HAI', null], MDR: ['HAI', 'HAI-MDR', null], VAP: ['Site', 'VAP', 'VAP'], CAUTI: ['Site', 'CAUTI', 'CAUTI'], CLABSI: ['Site', 'CLABSI', 'CLABSI'], SSI: ['Site', 'SSI', 'SSI'], HAP: ['Site', 'HAP', 'HAP'], BSI: ['Site', 'BSI', 'BSI'], OMPHALITIS: ['Site', 'Omphalitis', 'Omphalitis'], UTI: ['Site', 'UTI', 'UTI'] };
         // เส้นเดียว: ปีเก่าจากชีตย้อนหลัง + ปีปัจจุบันจากค่าที่คำนวณสด (liveVal)
-        function presentHistLiveCb(metric, liveVal, curYear, color) {
+        function presentHistLiveCb(metric, liveVal, curYear, color, canvasId) {
             return async () => {
-                const ctx = document.getElementById('presentChart'); if (!ctx) return;
+                const ctx = document.getElementById(canvasId || 'presentChart'); if (!ctx) return;
                 const map = HIST_METRIC[metric] || HIST_METRIC.HAI;
                 let m; try { m = await histFetchMatrix(map[0]); } catch (e) { return; }
                 if (!m || m.length < 2) return;
@@ -5980,12 +5981,11 @@
                 let pts = m.filter((r, i) => i > 0 && (r[0] || '').trim() !== '').map(r => ({ year: histClean(r[0]), v: histNum(r[colIdx]) }));
                 if (liveVal != null && curYear) { const cy = String(curYear); const ex = pts.find(p => p.year === cy); const lv = +(+liveVal).toFixed(2); if (ex) ex.v = lv; else pts.push({ year: cy, v: lv }); }
                 pts = pts.filter(p => histYrPass(p.year));
-                if (presentChartInst) presentChartInst.destroy();
-                presentChartInst = new Chart(ctx, {
+                presentCharts.push(new Chart(ctx, {
                     type: 'line',
                     data: { labels: pts.map(p => p.year), datasets: [{ label: metric + ' (เก่า+ปัจจุบัน)', data: pts.map(p => p.v), borderColor: color || '#4f46e5', backgroundColor: color || '#4f46e5', borderWidth: 3, tension: .35, pointRadius: 5, spanGaps: true }] },
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 13 } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา', font: { family: 'Kanit', size: 13 } } }, x: { grid: { display: false }, title: { display: true, text: 'ปี', font: { family: 'Kanit', size: 13 } } } } }
-                });
+                }));
             };
         }
         // ค่าปีปัจจุบันที่คำนวณสด (ชื่อคอลัมน์ → อัตรา) + ปีปัจจุบัน — ให้กราฟย้อนหลังต่อถึงปัจจุบันเอง
@@ -5993,11 +5993,12 @@
         function presentLiveMap(d) { const mp = { 'HAI': d.stat.hospRate, 'HAI-MDR': d.stat.mdrRate }; ['VAP', 'CAUTI', 'CLABSI', 'SSI', 'HAP', 'BSI', 'UTI', 'Omphalitis'].forEach(k => { if (d.perSite[k] && d.perSite[k].rate != null) mp[k] = d.perSite[k].rate; }); return mp; }
         const histIsBench = n => /ประเทศ|เกณฑ์|สคร/.test(n);
         // กราฟเส้น/แท่ง: X=ปี, แต่ละคอลัมน์=1 เส้น; เติมค่าปีปัจจุบันสดให้คอลัมน์ที่ตรงกับ liveMap; เส้นเกณฑ์=เส้นประ
-        function presentHistTrendCb(tab, chartType, liveMap, curYear) {
+        function presentHistTrendCb(tab, chartType, liveMap, curYear, canvasId) {
             return async () => {
-                const ctx = document.getElementById('presentChart'); if (!ctx) return;
+                const ctx = document.getElementById(canvasId || 'presentChart'); if (!ctx) return;
                 let m; try { m = await histFetchMatrix(tab); } catch (e) { return; }
                 if (!m || m.length < 2) return;
+                const isArea = chartType === 'area', isBar = chartType === 'bar';
                 const hdr = m[0], body = m.filter((r, i) => i > 0 && (r[0] || '').trim() !== '' && histYrPass(r[0]));
                 const labels = body.map(r => histClean(r[0]));
                 const series = hdr.slice(1).map((name, ci) => {
@@ -6009,37 +6010,35 @@
                     });
                     return { label: nm, data: data, bench: histIsBench(nm) };
                 }).filter(s => s.label !== '');
-                if (presentChartInst) presentChartInst.destroy();
                 let ci = 0;
-                presentChartInst = new Chart(ctx, {
-                    type: chartType === 'bar' ? 'bar' : 'line',
+                presentCharts.push(new Chart(ctx, {
+                    type: isBar ? 'bar' : 'line',
                     data: {
                         labels, datasets: series.map(s => {
                             if (s.bench) return { label: s.label, data: s.data, borderColor: '#94a3b8', backgroundColor: '#94a3b8', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, tension: .2, spanGaps: true };
                             const col = HIST_PAL[ci++ % HIST_PAL.length];
-                            return { label: s.label, data: s.data, borderColor: col, backgroundColor: col, borderWidth: 3, tension: .35, pointRadius: 4, spanGaps: true, borderRadius: 6 };
+                            return { label: s.label, data: s.data, borderColor: col, backgroundColor: isArea ? fadeFill(ctx.getContext('2d'), col) : col, borderWidth: 3, tension: .35, pointRadius: 4, spanGaps: true, fill: isArea, borderRadius: 6 };
                         })
                     },
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 13 } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา', font: { family: 'Kanit', size: 13 } } }, x: { grid: { display: false }, title: { display: true, text: 'ปี', font: { family: 'Kanit', size: 13 } } } } }
-                });
+                }));
             };
         }
         // กราฟแท่งเทียบรายปี: แถวแรก(B..) = ปี, คอลัมน์แรก = หมวด (หอ/เดือน/เชื้อ) → 1 ชุดสีต่อปี
-        function presentHistGroupCb(tab) {
+        function presentHistGroupCb(tab, canvasId) {
             return async () => {
-                const ctx = document.getElementById('presentChart'); if (!ctx) return;
+                const ctx = document.getElementById(canvasId || 'presentChart'); if (!ctx) return;
                 let m; try { m = await histFetchMatrix(tab); } catch (e) { return; }
                 if (!m || m.length < 2) return;
                 const allYears = m[0].slice(1).map(histClean);
                 const yrIdx = allYears.map((y, i) => i).filter(i => allYears[i] !== '' && histYrPass(allYears[i]));   // คอลัมน์ปีที่อยู่ในช่วง
                 const cats = m.filter((r, i) => i > 0 && (r[0] || '').trim() !== '');
                 const labels = cats.map(r => String(r[0]).trim());
-                if (presentChartInst) presentChartInst.destroy();
-                presentChartInst = new Chart(ctx, {
+                presentCharts.push(new Chart(ctx, {
                     type: 'bar',
                     data: { labels, datasets: yrIdx.map(function (ci, k) { return { label: allYears[ci], data: cats.map(r => histNum(r[ci + 1])), backgroundColor: HIST_PAL[k % HIST_PAL.length], borderRadius: 4 }; }) },
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 12 } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา', font: { family: 'Kanit', size: 12 } } }, x: { grid: { display: false } } } }
-                });
+                }));
             };
         }
 
@@ -6357,6 +6356,7 @@
             const title = row.title || '';             // หัวข้อรอง
             const type = (row.type || '').toString().trim().toLowerCase();
             const p = (row.param || '').toString().trim();          // พารามิเตอร์ (เช่น VAP, CAUTI)
+            const shape = (row.shape || '').toString().trim().toLowerCase();   // รูปแบบกราฟที่ผู้ใช้เลือก (line/bar/area)
             const pk = p.toUpperCase();                              // key ตำแหน่งติดเชื้อ
             const ps = d.perSite[pk] || d.perSite[p];                // ชุดข้อมูลของตำแหน่งนั้น (ถ้ามี)
             const col = C[pk] || C.HAI;
@@ -6418,9 +6418,30 @@
                     sec(head, title, chartBox, presentBarCb(arr.map(o => o.org), arr.map(o => o.n), 'จำนวน', col, true, 'เชื้อก่อโรค', 'จำนวน (ครั้ง)')); break;
                 }
                 // ===== ข้อมูลย้อนหลังหลายปี (จากชีต สรุปรายปี-HAI) — พารามิเตอร์ = ชื่อแท็บ =====
-                case 'hist-trend': sec(head, title, chartBox, presentHistTrendCb(p || 'HAI', 'line', presentLiveMap(d), presentCurYear())); break;
-                case 'hist-bar': sec(head, title, chartBox, presentHistTrendCb(p || 'HAI', 'bar', presentLiveMap(d), presentCurYear())); break;
+                case 'hist-trend': sec(head, title, chartBox, presentHistTrendCb(p || 'HAI', shape || 'line', presentLiveMap(d), presentCurYear())); break;
+                case 'hist-bar': sec(head, title, chartBox, presentHistTrendCb(p || 'HAI', shape || 'bar', presentLiveMap(d), presentCurYear())); break;
                 case 'hist-group': sec(head, title, chartBox, presentHistGroupCb(p || 'HAI-ward')); break;
+                // ===== หลายกราฟในสไลด์เดียว (ตาราง) — พารามิเตอร์ = รายการคั่นด้วย ; เช่น "hist-trend:HAI ; hist-group:VAP-M" =====
+                case 'multi': {
+                    const specs = p.split(';').map(s => s.trim()).filter(Boolean);
+                    const n = specs.length || 1;
+                    const cols = n <= 1 ? 1 : 2;
+                    const cells = specs.map((sp, i) => '<div style="position:relative;min-height:0"><canvas id="pcm_' + i + '"></canvas></div>').join('');
+                    const body = '<div class="p-anim" style="flex:1;display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:14px 20px;margin-top:6px;min-height:0">' + cells + '</div>';
+                    const liveMap = presentLiveMap(d), cy = presentCurYear();
+                    const cb = () => specs.forEach((sp, i) => {
+                        const cid = 'pcm_' + i;
+                        const parts = sp.split(':'); const t = (parts[0] || '').trim().toLowerCase(); const pp = (parts[1] || '').trim();
+                        if (t === 'hist-trend' || t === 'hist-line') presentHistTrendCb(pp || 'HAI', 'line', liveMap, cy, cid)();
+                        else if (t === 'hist-bar') presentHistTrendCb(pp || 'HAI', 'bar', liveMap, cy, cid)();
+                        else if (t === 'hist-area') presentHistTrendCb(pp || 'HAI', 'area', liveMap, cy, cid)();
+                        else if (t === 'hist-group') presentHistGroupCb(pp || 'HAI-ward', cid)();
+                        else if (t === 'hist-live') { const mk = (pp || 'HAI').toUpperCase(); const psk = { VAP: 'VAP', CAUTI: 'CAUTI', CLABSI: 'CLABSI', SSI: 'SSI', HAP: 'HAP', BSI: 'BSI', OMPHALITIS: 'Omphalitis', UTI: 'UTI' }[mk]; const lv = mk === 'HAI' ? d.stat.hospRate : mk === 'MDR' ? d.stat.mdrRate : (psk && d.perSite[psk] ? d.perSite[psk].rate : null); presentHistLiveCb(mk, lv, cy, C[mk] || C.HAI, cid)(); }
+                        else presentHistTrendCb(parts[0] || 'HAI', 'line', liveMap, cy, cid)();   // แค่ชื่อแท็บก็ได้
+                    });
+                    sec(head, title, body, cb);
+                    break;
+                }
                 case 'hist-live': {   // เส้นเดียว: ปีเก่า (ชีตย้อนหลัง) + ปีปัจจุบัน (คำนวณสด)
                     const mk = (p || 'HAI').toUpperCase();
                     const psKey = { VAP: 'VAP', CAUTI: 'CAUTI', CLABSI: 'CLABSI', SSI: 'SSI', HAP: 'HAP', BSI: 'BSI', OMPHALITIS: 'Omphalitis', UTI: 'UTI' }[mk];
@@ -6469,11 +6490,12 @@
                         title: get(r, ['หัวข้อรอง', 'title', 'หัวข้อ']),
                         type: get(r, ['ชนิด', 'type', 'ชนิดข้อมูล']),
                         param: get(r, ['พารามิเตอร์', 'param']),
+                        shape: get(r, ['กราฟ', 'รูปแบบ', 'shape', 'chart']),
                         note: get(r, ['หมายเหตุ', 'note', 'เนื้อหา'])
                     }))
                     .filter(r => (r.title || r.type || r.section) !== '');
                 // ยอมรับเฉพาะเมื่อมีอย่างน้อย 1 แถวที่ชนิดเป็นค่าที่รู้จัก (กัน CSV จากชีตผิดแท็บ)
-                const KNOWN = new Set(['cover', 'agenda', 'kpi', 'site-table', 'trend', 'ward-all', 'site-rate', 'site-month-h1', 'site-month-h2', 'site-ward', 'site-org', 'ssi-wound', 'ssi-anat', 'omph-kpi', 'mdr-compare', 'mdr-kpi', 'mdr-org', 'mdr-site', 'mdr-of', 'device', 'device-cath', 'device-ven', 'org-top', 'needle', 'summary', 'placeholder', 'rate-year', 'rate-quarter', 'rate-month', 'count-year', 'count-quarter', 'count-month', 'pct-year', 'pct-quarter', 'pct-month', 'pie-site', 'donut-site', 'pie-org', 'donut-org', 'bar-site', 'hbar-ward', 'hbar-org', 'hist-trend', 'hist-bar', 'hist-group', 'hist-live']);
+                const KNOWN = new Set(['cover', 'agenda', 'kpi', 'site-table', 'trend', 'ward-all', 'site-rate', 'site-month-h1', 'site-month-h2', 'site-ward', 'site-org', 'ssi-wound', 'ssi-anat', 'omph-kpi', 'mdr-compare', 'mdr-kpi', 'mdr-org', 'mdr-site', 'mdr-of', 'device', 'device-cath', 'device-ven', 'org-top', 'needle', 'summary', 'placeholder', 'rate-year', 'rate-quarter', 'rate-month', 'count-year', 'count-quarter', 'count-month', 'pct-year', 'pct-quarter', 'pct-month', 'pie-site', 'donut-site', 'pie-org', 'donut-org', 'bar-site', 'hbar-ward', 'hbar-org', 'hist-trend', 'hist-bar', 'hist-group', 'hist-live', 'multi']);
                 SLIDES_CONFIG = cfg.some(r => KNOWN.has((r.type || '').toString().trim().toLowerCase())) ? cfg : [];
             } catch (e) { SLIDES_CONFIG = []; }
         }
@@ -6485,6 +6507,7 @@
         function presentShow(i) {
             if (!presentSlides.length) return;
             presentIdx = (i + presentSlides.length) % presentSlides.length;
+            presentDestroyCharts();   // ล้างกราฟเดิมทุกตัว (รวมหลายกราฟในสไลด์เดียว)
             const slideEl = document.getElementById('presentSlide');
             const render = () => { slideEl.innerHTML = (presentSlides[presentIdx] || {}).html || ''; };
             // บาง Safari/iPad startViewTransition มีแต่พังง่าย — ครอบ try/catch แล้ว fallback เป็น render ตรง ๆ
@@ -6520,7 +6543,7 @@
             ov.classList.remove('show');
             ov.classList.add('hidden');
             ov.style.display = 'none';
-            if (presentChartInst) { presentChartInst.destroy(); presentChartInst = null; }
+            presentDestroyCharts();
             if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) { } }
         }
         function presentKey(e) {
