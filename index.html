@@ -1146,7 +1146,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01b</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01c</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -5988,19 +5988,38 @@
                 });
             };
         }
-        // กราฟเส้น: แกน X = คอลัมน์แรก (ปี), แต่ละคอลัมน์ที่เหลือ = 1 เส้น
-        function presentHistTrendCb(tab, chartType) {
+        // ค่าปีปัจจุบันที่คำนวณสด (ชื่อคอลัมน์ → อัตรา) + ปีปัจจุบัน — ให้กราฟย้อนหลังต่อถึงปัจจุบันเอง
+        function presentCurYear() { const ys = {}; rawData.forEach(r => { if (r.year) ys[r.year] = (ys[r.year] || 0) + 1; }); return Object.keys(ys).sort((a, b) => ys[b] - ys[a])[0] || ''; }
+        function presentLiveMap(d) { const mp = { 'HAI': d.stat.hospRate, 'HAI-MDR': d.stat.mdrRate }; ['VAP', 'CAUTI', 'CLABSI', 'SSI', 'HAP', 'BSI', 'UTI', 'Omphalitis'].forEach(k => { if (d.perSite[k] && d.perSite[k].rate != null) mp[k] = d.perSite[k].rate; }); return mp; }
+        const histIsBench = n => /ประเทศ|เกณฑ์|สคร/.test(n);
+        // กราฟเส้น/แท่ง: X=ปี, แต่ละคอลัมน์=1 เส้น; เติมค่าปีปัจจุบันสดให้คอลัมน์ที่ตรงกับ liveMap; เส้นเกณฑ์=เส้นประ
+        function presentHistTrendCb(tab, chartType, liveMap, curYear) {
             return async () => {
                 const ctx = document.getElementById('presentChart'); if (!ctx) return;
                 let m; try { m = await histFetchMatrix(tab); } catch (e) { return; }
                 if (!m || m.length < 2) return;
                 const hdr = m[0], body = m.filter((r, i) => i > 0 && (r[0] || '').trim() !== '' && histYrPass(r[0]));
                 const labels = body.map(r => histClean(r[0]));
-                const series = hdr.slice(1).map((name, ci) => ({ label: String(name).trim(), data: body.map(r => histNum(r[ci + 1])) })).filter(s => s.label !== '');
+                const series = hdr.slice(1).map((name, ci) => {
+                    const nm = String(name).trim();
+                    const data = body.map(r => {
+                        const y = histClean(r[0]); let v = histNum(r[ci + 1]);
+                        if (liveMap && liveMap[nm] != null && y === String(curYear)) v = +(+liveMap[nm]).toFixed(2);  // ทับด้วยค่าปีปัจจุบันสด
+                        return v;
+                    });
+                    return { label: nm, data: data, bench: histIsBench(nm) };
+                }).filter(s => s.label !== '');
                 if (presentChartInst) presentChartInst.destroy();
+                let ci = 0;
                 presentChartInst = new Chart(ctx, {
                     type: chartType === 'bar' ? 'bar' : 'line',
-                    data: { labels, datasets: series.map((s, i) => ({ label: s.label, data: s.data, borderColor: HIST_PAL[i % HIST_PAL.length], backgroundColor: HIST_PAL[i % HIST_PAL.length], borderWidth: 3, tension: .35, pointRadius: 4, spanGaps: true, borderRadius: 6 })) },
+                    data: {
+                        labels, datasets: series.map(s => {
+                            if (s.bench) return { label: s.label, data: s.data, borderColor: '#94a3b8', backgroundColor: '#94a3b8', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, tension: .2, spanGaps: true };
+                            const col = HIST_PAL[ci++ % HIST_PAL.length];
+                            return { label: s.label, data: s.data, borderColor: col, backgroundColor: col, borderWidth: 3, tension: .35, pointRadius: 4, spanGaps: true, borderRadius: 6 };
+                        })
+                    },
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 13 } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'อัตรา', font: { family: 'Kanit', size: 13 } } }, x: { grid: { display: false }, title: { display: true, text: 'ปี', font: { family: 'Kanit', size: 13 } } } } }
                 });
             };
@@ -6399,8 +6418,8 @@
                     sec(head, title, chartBox, presentBarCb(arr.map(o => o.org), arr.map(o => o.n), 'จำนวน', col, true, 'เชื้อก่อโรค', 'จำนวน (ครั้ง)')); break;
                 }
                 // ===== ข้อมูลย้อนหลังหลายปี (จากชีต สรุปรายปี-HAI) — พารามิเตอร์ = ชื่อแท็บ =====
-                case 'hist-trend': sec(head, title, chartBox, presentHistTrendCb(p || 'HAI', 'line')); break;
-                case 'hist-bar': sec(head, title, chartBox, presentHistTrendCb(p || 'HAI', 'bar')); break;
+                case 'hist-trend': sec(head, title, chartBox, presentHistTrendCb(p || 'HAI', 'line', presentLiveMap(d), presentCurYear())); break;
+                case 'hist-bar': sec(head, title, chartBox, presentHistTrendCb(p || 'HAI', 'bar', presentLiveMap(d), presentCurYear())); break;
                 case 'hist-group': sec(head, title, chartBox, presentHistGroupCb(p || 'HAI-ward')); break;
                 case 'hist-live': {   // เส้นเดียว: ปีเก่า (ชีตย้อนหลัง) + ปีปัจจุบัน (คำนวณสด)
                     const mk = (p || 'HAI').toUpperCase();
