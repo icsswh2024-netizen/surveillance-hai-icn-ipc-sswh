@@ -66,7 +66,11 @@ var SLIDE_TYPES = [
 
 // ตำแหน่งติดเชื้อที่ใช้เป็นพารามิเตอร์ของชนิด site-* และ mdr-of
 // ===== รายการสำหรับโหมดประกอบเอง =====
-var SLIDE_VARS = ['HAI', 'MDR', 'VAP', 'CAUTI', 'CLABSI', 'SSI', 'HAP', 'BSI', 'Omphalitis', 'UTI'];   // ตัวแปร
+var SLIDE_VARS = ['HAI', 'MDR', 'VAP', 'CAUTI', 'CLABSI', 'SSI', 'HAP', 'BSI', 'Omphalitis', 'UTI',
+  'หอ', 'เชื้อ', 'กลุ่มงาน',                                  // มิติเปรียบเทียบ (รายหอ/เชื้อก่อโรค/กลุ่มงาน)
+  'VAP,CAUTI,SSI', 'VAP,CAUTI,CLABSI,SSI',                     // หลายตัวแปรในกราฟเดียว (คั่นด้วย ,)
+  'Site', 'HAI-ward', 'VAP-M', 'VAP-W', 'VAP-G', 'VAP-IPD',    // ชื่อแท็บย้อนหลัง (ดึงทั้งแท็บ)
+  'CAUTI-M', 'CAUTI-W', 'CAUTI-G', 'SSI-C', 'SSI-W', 'SSI-G', 'SSI-O', 'OMP-W', 'BSI-HDU'];   // ตัวแปร
 var SLIDE_METRICS = ['อัตรา', 'จำนวน', 'ร้อยละ'];        // ค่าที่แสดง
 var SLIDE_PERIODS = ['ปี', 'ไตรมาส', 'เดือน'];           // ช่วงเวลา
 var SLIDE_HISTORY = ['ใช้', 'ไม่'];                       // ใช้ข้อมูลเก่า
