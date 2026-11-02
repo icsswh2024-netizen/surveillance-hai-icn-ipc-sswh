@@ -1161,7 +1161,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02e</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02i</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -6010,7 +6010,35 @@
         }
         let HIST_PAL = ['#4f46e5', '#e11d48', '#f59e0b', '#14b8a6', '#8b5cf6', '#0ea5e9', '#22c55e', '#ec4899', '#64748b'];   // ค่าเริ่มต้น; applyPresentPalette จะตั้งตามธีม
         // แปลงค่ารูปแบบกราฟ (ไทย/อังกฤษ) → โค้ดกลาง
-        function presentShapeNorm(s) { const x = (s == null ? '' : s).toString().trim().toLowerCase(); if (/พื้นที่|area/.test(x)) return 'area'; if (/โดนัท|donut|doughnut/.test(x)) return 'donut'; if (/วงกลม|pie/.test(x)) return 'pie'; if (/แนวนอน|hbar|horizontal/.test(x)) return 'hbar'; if (/แท่ง|bar/.test(x)) return 'bar'; if (/เส้น|line/.test(x)) return 'line'; return ''; }
+        function presentShapeNorm(s) { const x = (s == null ? '' : s).toString().trim().toLowerCase(); if (/ผสม|combo|แท่ง\s*\+\s*เส้น|เส้น\s*\+\s*แท่ง|bar\s*\+\s*line|line\s*\+\s*bar|คอมโบ/.test(x)) return 'combo'; if (/พื้นที่|area/.test(x)) return 'area'; if (/โดนัท|donut|doughnut/.test(x)) return 'donut'; if (/วงกลม|pie/.test(x)) return 'pie'; if (/แนวนอน|hbar|horizontal/.test(x)) return 'hbar'; if (/แท่ง|bar/.test(x)) return 'bar'; if (/เส้น|line/.test(x)) return 'line'; return ''; }
+        // combo: แท่ง = จำนวนครั้ง + เส้น = อัตรา (2 แกน Y) ของตัวแปรเดียว
+        function presentComboCb(key, period, color, canvasId) {
+            return () => {
+                const ctx = document.getElementById(canvasId || 'presentChart'); if (!ctx) return;
+                if (!canvasId && presentChartInst) presentChartInst.destroy();
+                const ts = presentTimeSeries(key, period || 'month');
+                const K = (key || 'HAI').toString().toUpperCase();
+                const inst = new Chart(ctx, {
+                    data: {
+                        labels: ts.labels,
+                        datasets: [
+                            { type: 'bar', label: K + ' จำนวนครั้ง (ราย)', data: ts.counts, backgroundColor: hexA(color, .32), borderColor: hexA(color, .5), borderWidth: 1, borderRadius: 6, yAxisID: 'y', order: 2 },
+                            { type: 'line', label: K + ' อัตรา (' + (ts.rateUnit || '') + ')', data: ts.rates, borderColor: color, backgroundColor: color, borderWidth: 3, tension: .4, pointRadius: 4, yAxisID: 'y1', order: 1 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 }, usePointStyle: true } } },
+                        scales: {
+                            y: { beginAtZero: true, position: 'left', title: { display: true, text: 'จำนวน (ราย)', font: { family: 'Kanit', size: 13 } } },
+                            y1: { beginAtZero: true, position: 'right', grid: { display: false }, title: { display: true, text: 'อัตรา ' + (ts.rateUnit || ''), font: { family: 'Kanit', size: 13 } } },
+                            x: { grid: { display: false }, title: { display: true, text: ts.unitLabel || 'เดือน', font: { family: 'Kanit', size: 13 } } }
+                        }
+                    }
+                });
+                if (canvasId) presentCharts.push(inst); else presentChartInst = inst;
+            };
+        }
         const histClean = s => String(s == null ? '' : s).replace(/^ปี\s*/, '').trim();
         const histNum = v => { const n = parseFloat(String(v).replace(/,/g, '')); return isFinite(n) ? n : null; };
         // ตัวกรองช่วงปี (จากช่องในแถบนำเสนอ) — เว้นว่าง = ทั้งหมด
@@ -6468,6 +6496,8 @@
             const V0 = vars[0], V = V0.toUpperCase(), Vlow = V0.toLowerCase();
             const psKey = { VAP: 'VAP', CAUTI: 'CAUTI', CLABSI: 'CLABSI', SSI: 'SSI', HAP: 'HAP', BSI: 'BSI', OMPHALITIS: 'Omphalitis', UTI: 'UTI' }[V];
             const col = C[V] || C.HAI;
+            // 0.5) combo: แท่ง(จำนวน) + เส้น(อัตรา) ในกราฟเดียว 2 แกน Y
+            if (shape === 'combo') return presentComboCb(V, period || 'month', col);
             // 1) ตัวแปรเป็นมิติ หอ/เชื้อ/กลุ่มงาน
             if (/^(ward|หอ|หอผู้ป่วย|รายหอ)$/.test(Vlow)) return presentDimCb(d, 'ward', metric, shape, col, PAL);
             if (/^(org|เชื้อ|เชื้อก่อโรค)$/.test(Vlow)) return presentDimCb(d, 'org', metric, shape, col, PAL);
@@ -6528,7 +6558,7 @@
                 }
                 case 'kpi': case 'ภาพรวม': sec(head, title, tiles([tile(d.stat.totCases, 'เคสติดเชื้อทั้งหมด', 'ราย', C.HAI), tile(fx(d.stat.hospRate), 'อัตราติดเชื้อ', '/1,000 วันนอน', C.VAP), tile(d.stat.mdr, 'ดื้อยา (MDR)', d.stat.mdrPct + '%', C.MDR), tile(fx(d.stat.ssiRate), 'SSI', '/100 ผ่าตัด', C.SSI)])); break;
                 case 'site-table': case 'ตำแหน่ง': sec(head, title, tbl(['ตำแหน่ง', 'จำนวน (ราย)', 'อัตรา'], d.siteRows.map(s => '<tr><td>' + esc(s.label) + '</td><td class="r">' + s.n + '</td><td class="r">' + fx(s.rate) + ' <span style="opacity:.5">' + s.unit + '</span></td></tr>').join('') || '<tr><td colspan="3" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>')); break;
-                case 'trend': case 'แนวโน้ม': sec(head, title, chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { data: { labels: d.monthly.labels, datasets: [{ type: 'bar', label: 'จำนวนเคส', data: d.monthly.counts, backgroundColor: hexA(C.HAI, .3), borderRadius: 8, yAxisID: 'y' }, { type: 'line', label: 'อัตรา /1,000', data: d.monthly.rates, borderColor: C.HAI, backgroundColor: C.HAI, borderWidth: 3, tension: .4, pointRadius: 4, yAxisID: 'y1' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true, position: 'left' }, y1: { beginAtZero: true, position: 'right', grid: { display: false } }, x: { grid: { display: false } } } } }); }); break;
+                case 'trend': case 'แนวโน้ม': sec(head, title, chartBox, presentComboCb(pk || 'HAI', 'month', col)); break;
                 case 'ward-all': case 'รายหอ': sec(head, title, tbl(['#', 'หอผู้ป่วย', 'จำนวนเคส', 'อัตรา/1000'], d.wardsAll.map((w, i) => '<tr><td style="opacity:.5">' + (i + 1) + '</td><td>' + esc(w.name) + '</td><td class="r">' + w.cases + '</td><td class="r">' + fx(w.rate) + '</td></tr>').join('') || '<tr><td colspan="4" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>')); break;
                 case 'site-rate': sec(head, title, chartBox, ps ? mkLine(ps.monthly.labels, ps.monthly.rates, pk + ' ' + (ps.unit || ''), col) : null); if (!ps) ph(head, title, 'ไม่พบตำแหน่ง "' + p + '"'); break;
                 case 'site-month-h1': sec(head, title, chartBox, ps ? mkLine(ps.mH1.labels, ps.mH1.rates, pk, col) : null); break;

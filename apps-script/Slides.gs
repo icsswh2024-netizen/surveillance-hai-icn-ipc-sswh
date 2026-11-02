@@ -74,7 +74,7 @@ var SLIDE_VARS = ['HAI', 'MDR', 'VAP', 'CAUTI', 'CLABSI', 'SSI', 'HAP', 'BSI', '
 var SLIDE_METRICS = ['อัตรา', 'จำนวน', 'ร้อยละ'];        // ค่าที่แสดง
 var SLIDE_PERIODS = ['ปี', 'ไตรมาส', 'เดือน'];           // ช่วงเวลา
 var SLIDE_HISTORY = ['ใช้', 'ไม่'];                       // ใช้ข้อมูลเก่า
-var SLIDE_SHAPES = ['เส้น', 'แท่ง', 'พื้นที่', 'โดนัท', 'วงกลม', 'แท่งแนวนอน'];   // รูปแบบกราฟ (ไทย; เว็บรองรับทั้งไทย/อังกฤษ)
+var SLIDE_SHAPES = ['เส้น', 'แท่ง', 'พื้นที่', 'ผสม(แท่ง+เส้น)', 'โดนัท', 'วงกลม', 'แท่งแนวนอน'];   // รูปแบบกราฟ (ไทย; เว็บรองรับทั้งไทย/อังกฤษ)
 var SLIDE_PARAMS = ['HAI', 'MDR', 'VAP', 'CAUTI', 'CLABSI', 'SSI', 'HAP', 'BSI', 'Omphalitis', 'SSTI', 'UTI',
   // ชื่อแท็บในชีตย้อนหลัง "สรุปรายปี-HAI" (ใช้กับชนิด hist-*)
   'Site', 'HAI-ward', 'VAP-M', 'VAP-W', 'VAP-G', 'VAP-IPD', 'CAUTI-M', 'CAUTI-W', 'CAUTI-G',
