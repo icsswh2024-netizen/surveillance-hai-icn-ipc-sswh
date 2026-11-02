@@ -61,6 +61,8 @@
         .pslide .p-sub { font-size: 22px; opacity: .72; margin-top: 14px; }
         .pslide .p-accent { height: 6px; width: 104px; border-radius: 9999px; background: linear-gradient(90deg,var(--p-a1,#6366f1),var(--p-a2,#a855f7)); margin: 20px 0; box-shadow: 0 6px 16px -4px rgba(99,102,241,.5); }
         .pslide .p-foot { position: absolute; bottom: 34px; left: 80px; right: 80px; display: flex; justify-content: space-between; font-size: 15px; opacity: .5; letter-spacing: .01em; }
+        .pslide .p-note { position: absolute; left: 80px; right: 80px; bottom: 58px; font-size: 14px; opacity: .6; font-style: italic; line-height: 1.4; }
+        .pslide.ic .p-note { left: 48px; right: 48px; bottom: 46px; color: #eafffb; opacity: .85; font-style: normal; z-index: 1; }
         /* การ์ดนุ่มพรีเมียม (ใช้กับกราฟ/ตาราง) */
         .pcard { background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.66)); border: 1px solid rgba(255,255,255,.6);
             border-radius: 26px; box-shadow: 0 28px 56px -32px rgba(2,6,23,.35), inset 0 1px 0 rgba(255,255,255,.7); backdrop-filter: blur(10px); padding: 18px 20px; }
@@ -1159,7 +1161,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-01m</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02a</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -5936,6 +5938,7 @@
         const HOSPITAL_NAME = 'โรงพยาบาลศรีสังวรสุโขทัย';
         const GROUP_NAME = 'กลุ่มงานการพยาบาลด้านการควบคุมและป้องกันการติดเชื้อ';
         let presentSlides = [], presentIdx = 0, presentChartInst = null, presentCharts = [];
+        let PRESENT_FOOTNOTE = '';   // หมายเหตุของสไลด์ปัจจุบัน (จากคอลัมน์ หมายเหตุ) — แสดงที่ฟุตเตอร์
         function presentDestroyCharts() { if (presentChartInst) { try { presentChartInst.destroy(); } catch (e) { } presentChartInst = null; } presentCharts.forEach(function (c) { try { c.destroy(); } catch (e) { } }); presentCharts = []; }
         // ===== ชุดข้อมูลตามหน่วยเวลา (ปี/ไตรมาส/เดือน) สำหรับกราฟในแท็บ Slides =====
         // key: 'HAI' หรือตำแหน่งติดเชื้อ (VAP/CAUTI/...), unit: 'year'|'quarter'|'month'
@@ -6269,10 +6272,11 @@
             const IC = (PRESENT_PAL === 'ic');
             const icPeriod = 'ปีงบประมาณ\n' + fLabel('year');
             const icHeadHtml = eye => '<div class="ic-head"><img class="ic-logo" src="assets/ic-logo.png" alt="IC"><div class="ic-titles"><h2 class="ic-title">' + eye + '</h2><div class="ic-sub">' + HOSPITAL_NAME + '</div></div><div class="ic-divider"></div><div class="ic-period">' + icPeriod + '</div></div>';
+            const noteHtml = () => PRESENT_FOOTNOTE ? '<div class="p-note">' + esc(PRESENT_FOOTNOTE) + '</div>' : '';
             const sec = (eye, title, body, chart, dark) => {
-                if (!IC) { slides.push({ html: '<div class="pslide' + (dark ? ' dark' : '') + '"><div class="p-eyebrow">' + eye + '</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:36px">' + title + '</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' + body + foot + '</div>', chart }); return; }
+                if (!IC) { slides.push({ html: '<div class="pslide' + (dark ? ' dark' : '') + '"><div class="p-eyebrow">' + eye + '</div><h2 class="p-title" style="view-transition-name:pTitle;font-size:36px">' + title + '</h2><div class="p-accent" style="view-transition-name:pAccent"></div>' + body + noteHtml() + foot + '</div>', chart }); return; }
                 if (dark) { slides.push({ html: '<div class="pslide ic" style="justify-content:center;text-align:center"><div class="p-anim" style="position:relative;z-index:1"><div class="ic-pill" style="display:inline-block;margin:0 auto">' + eye + '</div><h2 class="ic-title" style="font-size:50px;margin-top:22px">' + title + '</h2></div><div class="ic-deco"></div></div>', chart }); return; }
-                slides.push({ html: '<div class="pslide ic">' + icHeadHtml(eye) + '<div class="ic-pill">' + title + '</div><div class="ic-body p-anim">' + body + '</div><div class="ic-foot">' + GROUP_NAME + '</div><div class="ic-deco"></div></div>', chart });
+                slides.push({ html: '<div class="pslide ic">' + icHeadHtml(eye) + '<div class="ic-pill">' + title + '</div><div class="ic-body p-anim">' + body + '</div>' + noteHtml() + '<div class="ic-foot">' + GROUP_NAME + '</div><div class="ic-deco"></div></div>', chart });
             };
             const ph = (eye, title, note) => sec(eye, title, '<div class="p-anim" style="margin-top:34px;font-size:22px;opacity:.5;line-height:1.9">' + (note || '📄 หัวข้อนี้ไม่มีข้อมูลในระบบ — เว้นไว้เติมเนื้อหา/ภาพจากเด็ค Canva') + '</div>');
             const tile = (n, l, s, accent) => '<div class="pstat"><div class="n" style="color:' + accent + '">' + n + '</div><div class="l">' + l + '</div><div class="s">' + s + '</div></div>';
@@ -6500,6 +6504,7 @@
             if (!type && (row.variable || '').toString().trim()) type = 'chart';   // ไม่ใส่ชนิด แต่มีตัวแปร → โหมดประกอบเอง
             const p = (row.param || '').toString().trim();          // พารามิเตอร์ (เช่น VAP, CAUTI)
             const shape = presentShapeNorm(row.shape);   // รูปแบบกราฟที่ผู้ใช้เลือก (line/bar/area) รองรับไทย/อังกฤษ
+            PRESENT_FOOTNOTE = (type && type !== 'placeholder') ? (row.note || '') : '';   // หมายเหตุ → ฟุตเตอร์ (ยกเว้น placeholder ที่โน้ตเป็นเนื้อหา)
             const pk = p.toUpperCase();                              // key ตำแหน่งติดเชื้อ
             const ps = d.perSite[pk] || d.perSite[p];                // ชุดข้อมูลของตำแหน่งนั้น (ถ้ามี)
             const col = C[pk] || C.HAI;
@@ -6604,6 +6609,7 @@
             return X.slides;
         }
         function presentBuild() {
+            PRESENT_FOOTNOTE = '';
             const d = presentData();
             // ลองใช้ config จากแท็บ Slides ก่อน — ถ้ามีปัญหาใด ๆ ให้ตกกลับไปเด็ค 81 สไลด์ในตัวเสมอ
             if (SLIDES_CONFIG && SLIDES_CONFIG.length) {
