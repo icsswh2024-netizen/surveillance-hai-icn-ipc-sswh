@@ -1161,7 +1161,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02l</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02m</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -5477,7 +5477,9 @@
                 if (isNonWard(c.unit)) return;   // ตัดรหัสที่ไม่ใช่หอผู้ป่วย
                 const u = c.unit || '(ไม่ระบุ)';
                 const b = by[u] || (by[u] = { unit: u, total: 0, n: 0, right: 0, wrong: 0, none: 0, dSum: 0, dN: 0 });
-                b.total++;                       // จำนวนรายงานทั้งหมดของหอ (ทุกบันทึกตามตัวกรอง)
+                // จำนวนรายงานทั้งหมด = นับเฉพาะ "แถวหลัก" (1 ผู้ป่วย/รายงาน: มีวันรับไว้ หรือเป็นเคส HAI)
+                // ไม่รวมแถวต่อเนื่อง (ตำแหน่งติดเชื้อเพิ่มของผู้ป่วยเดิม ที่ไม่มีวัน Admit และ HAI ว่าง)
+                if (c.dAdmit || c.isHAI) b.total++;
                 if (!c.isHAI) return;            // ส่วนที่เหลือคิดเฉพาะเคส HAI
                 b.n++;
                 const k = survClass(c); if (k === 'right') b.right++; else if (k === 'wrong') b.wrong++; else if (k === 'none') b.none++;
