@@ -1161,7 +1161,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02g</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02h</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -6295,7 +6295,7 @@
             const tile = (n, l, s, accent) => '<div class="pstat"><div class="n" style="color:' + accent + '">' + n + '</div><div class="l">' + l + '</div><div class="s">' + s + '</div></div>';
             const tiles = arr => '<div class="p-anim" style="display:grid;grid-template-columns:repeat(' + arr.length + ',1fr);gap:22px;margin-top:26px">' + arr.join('') + '</div>';
             const tbl = (headers, bodyRows) => '<div class="p-anim pcard" style="margin-top:8px;max-width:1080px;max-height:548px;overflow:auto"><table class="ptable"><thead><tr>' + headers.map((h, i) => '<th' + (i ? ' class="r"' : '') + '>' + h + '</th>').join('') + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div>';
-            const chartBox = '<div class="pcard" style="flex:1;position:relative;margin-top:8px;min-height:0"><canvas id="presentChart"></canvas></div>';
+            const chartBox = '<div class="pcard" style="flex:1;position:relative;margin-top:8px;margin-bottom:54px;min-height:0"><canvas id="presentChart"></canvas></div>';
             const mkLine = (labels, data, label, color) => () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label, data, borderColor: color, backgroundColor: color, borderWidth: 3, tension: .4, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); };
             const mkBar = (labels, data, label, color) => () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label, data, backgroundColor: color, borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); };
             // แถวตาราง
@@ -6597,7 +6597,7 @@
                     const n = specs.length || 1;
                     const cols = n <= 1 ? 1 : 2;
                     const cells = specs.map((sp, i) => '<div class="pcard" style="position:relative;min-height:0;padding:12px 14px"><canvas id="pcm_' + i + '"></canvas></div>').join('');
-                    const body = '<div class="p-anim" style="flex:1;display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:14px 20px;margin-top:6px;min-height:0">' + cells + '</div>';
+                    const body = '<div class="p-anim" style="flex:1;display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:14px 20px;margin-top:6px;margin-bottom:54px;min-height:0">' + cells + '</div>';
                     const liveMap = presentLiveMap(d), cy = presentCurYear();
                     const cb = () => specs.forEach((sp, i) => {
                         const cid = 'pcm_' + i;
