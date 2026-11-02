@@ -1161,7 +1161,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02a</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02b</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -5939,6 +5939,7 @@
         const GROUP_NAME = 'กลุ่มงานการพยาบาลด้านการควบคุมและป้องกันการติดเชื้อ';
         let presentSlides = [], presentIdx = 0, presentChartInst = null, presentCharts = [];
         let PRESENT_FOOTNOTE = '';   // หมายเหตุของสไลด์ปัจจุบัน (จากคอลัมน์ หมายเหตุ) — แสดงที่ฟุตเตอร์
+        let PRESENT_AGENDA = [];     // หัวข้อ agenda ที่ดึงจาก "หัวข้อหลัก" ที่กรอกในแท็บ Slides
         function presentDestroyCharts() { if (presentChartInst) { try { presentChartInst.destroy(); } catch (e) { } presentChartInst = null; } presentCharts.forEach(function (c) { try { c.destroy(); } catch (e) { } }); presentCharts = []; }
         // ===== ชุดข้อมูลตามหน่วยเวลา (ปี/ไตรมาส/เดือน) สำหรับกราฟในแท็บ Slides =====
         // key: 'HAI' หรือตำแหน่งติดเชื้อ (VAP/CAUTI/...), unit: 'year'|'quarter'|'month'
@@ -6292,7 +6293,8 @@
             const siteOrgSlide = (eye, title, key, color, off, lim) => sec(eye, title, tbl(['#', 'เชื้อก่อโรค', 'จำนวน', '%'], orgRows(d.perSite[key].orgs, color, off, lim)));
             const C = PRESENT_C();
             const agendaItems = ['อัตราการติดเชื้อในโรงพยาบาล', 'อัตราการติดเชื้อดื้อยาต้านจุลชีพ', 'อุบัติการณ์เข็มทิ่มตำในเจ้าหน้าที่', 'การติดเชื้อโคโรนาไวรัส (COVID-19)', 'วัณโรคในเจ้าหน้าที่', 'IC Round และการทำความสะอาดมือ', 'การทบทวนความรู้ของบุคลากร', 'มาตรการป้องกัน CAUTI / VAP'];
-            const agenda = hi => '<ol class="p-anim" style="margin-top:20px;font-size:26px;line-height:2.1;padding-left:0;list-style:none">' + agendaItems.map((t, i) => '<li style="opacity:' + (hi == null || hi === i ? 1 : .4) + ';font-weight:' + (hi === i ? 700 : 400) + '">' + (i + 1) + '. ' + t + '</li>').join('') + '</ol>';
+            // ลำดับความสำคัญของหัวข้อ: รายการที่ส่งมาเอง > หัวข้อหลักที่กรอกในแท็บ Slides > ค่าเริ่มต้น
+            const agenda = (hi, itemsOverride) => { const list = (itemsOverride && itemsOverride.length) ? itemsOverride : ((PRESENT_AGENDA && PRESENT_AGENDA.length) ? PRESENT_AGENDA : agendaItems); return '<ol class="p-anim" style="margin-top:20px;font-size:26px;line-height:2.1;padding-left:0;list-style:none">' + list.map((t, i) => '<li style="opacity:' + (hi == null || hi === i ? 1 : .4) + ';font-weight:' + (hi === i ? 700 : 400) + '">' + (i + 1) + '. ' + t + '</li>').join('') + '</ol>'; };
             const coverHtml = IC
                 ? '<div class="pslide ic-cover"><div class="p-anim"><div class="cv-logos"><img src="assets/hospital-logo.png" alt="รพ."><img src="assets/ic-logo.png" alt="IC"></div><h1>การประชุมสรุปผลประจำปี' + (/ทุก|ทั้งหมด/.test(fLabel('year')) ? '' : ' ' + fLabel('year')) + '</h1><div class="cv-sub">การพยาบาลด้านการควบคุมและป้องกันการติดเชื้อ<br>' + HOSPITAL_NAME + '</div></div><div class="cv-foot">กลุ่มงานการพยาบาลด้านการควบคุมและป้องกันการติดเชื้อ</div></div>'
                 : '<div class="pslide dark"><div class="p-anim"><div class="p-eyebrow">Healthcare-Associated Infection</div><h1 class="p-title" style="view-transition-name:pTitle">การประชุมสรุปผลการดำเนินงาน<br>ด้านการควบคุมและป้องกันการติดเชื้อ</h1><div class="p-accent" style="view-transition-name:pAccent"></div><div class="p-sub">' + HOSPITAL_NAME + ' · ' + d.periodLabel + '</div></div><div class="p-foot"><span>งานป้องกันและควบคุมการติดเชื้อ (IC)</span><span>' + new Date().toLocaleDateString('th-TH') + '</span></div></div>';
@@ -6514,7 +6516,13 @@
                 // ===== โหมดประกอบเอง: ตัวแปร + ค่า + ช่วงเวลา + ข้อมูลเก่า + รูปแบบ =====
                 case 'chart': case 'auto': case 'กราฟ': sec(head, title, chartBox, presentResolveComposite(X, d, row)); break;
                 case 'cover': slides.push({ html: X.coverHtml }); break;
-                case 'agenda': sec(head || 'Agenda', title || 'หัวข้อการนำเสนอ', agenda(isFinite(num) ? num - 1 : null), null, true); break;
+                case 'agenda': {
+                    PRESENT_FOOTNOTE = '';   // agenda ไม่เอาโน้ตไปเป็น footnote
+                    // พิมพ์หัวข้อเองได้ในช่องหมายเหตุ คั่นด้วย ; หรือขึ้นบรรทัดใหม่ — ไม่งั้นดึงจาก "หัวข้อหลัก" ที่กรอก
+                    const custom = (row.note && /[;\n]/.test(row.note)) ? row.note.split(/[;\n]/).map(s => s.trim()).filter(Boolean) : null;
+                    sec(head || 'Agenda', title || 'หัวข้อการนำเสนอ', agenda(isFinite(num) ? num - 1 : null, custom), null, true);
+                    break;
+                }
                 case 'kpi': case 'ภาพรวม': sec(head, title, tiles([tile(d.stat.totCases, 'เคสติดเชื้อทั้งหมด', 'ราย', C.HAI), tile(fx(d.stat.hospRate), 'อัตราติดเชื้อ', '/1,000 วันนอน', C.VAP), tile(d.stat.mdr, 'ดื้อยา (MDR)', d.stat.mdrPct + '%', C.MDR), tile(fx(d.stat.ssiRate), 'SSI', '/100 ผ่าตัด', C.SSI)])); break;
                 case 'site-table': case 'ตำแหน่ง': sec(head, title, tbl(['ตำแหน่ง', 'จำนวน (ราย)', 'อัตรา'], d.siteRows.map(s => '<tr><td>' + esc(s.label) + '</td><td class="r">' + s.n + '</td><td class="r">' + fx(s.rate) + ' <span style="opacity:.5">' + s.unit + '</span></td></tr>').join('') || '<tr><td colspan="3" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>')); break;
                 case 'trend': case 'แนวโน้ม': sec(head, title, chartBox, () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { data: { labels: d.monthly.labels, datasets: [{ type: 'bar', label: 'จำนวนเคส', data: d.monthly.counts, backgroundColor: hexA(C.HAI, .3), borderRadius: 8, yAxisID: 'y' }, { type: 'line', label: 'อัตรา /1,000', data: d.monthly.rates, borderColor: C.HAI, backgroundColor: C.HAI, borderWidth: 3, tension: .4, pointRadius: 4, yAxisID: 'y1' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true, position: 'left' }, y1: { beginAtZero: true, position: 'right', grid: { display: false } }, x: { grid: { display: false } } } } }); }); break;
@@ -6604,12 +6612,15 @@
             }
         }
         function presentFromConfig(d) {
+            // ดึงหัวข้อ agenda จาก "หัวข้อหลัก" ที่กรอกจริง (ไม่ซ้ำ ตามลำดับที่พบ ยกเว้นปก/agenda)
+            PRESENT_AGENDA = [];
+            SLIDES_CONFIG.forEach(r => { const s = (r.section || '').toString().trim(); const t = (r.type || '').toString().trim().toLowerCase(); if (s && t !== 'cover' && t !== 'agenda' && PRESENT_AGENDA.indexOf(s) < 0) PRESENT_AGENDA.push(s); });
             const X = presentCtx(d);
             SLIDES_CONFIG.forEach(row => { try { presentConfigSlide(X, d, row); } catch (e) { X.ph(row.section || '', row.title || 'สไลด์', '⚠️ สร้างไม่สำเร็จ: ' + e.message); } });
             return X.slides;
         }
         function presentBuild() {
-            PRESENT_FOOTNOTE = '';
+            PRESENT_FOOTNOTE = ''; PRESENT_AGENDA = [];
             const d = presentData();
             // ลองใช้ config จากแท็บ Slides ก่อน — ถ้ามีปัญหาใด ๆ ให้ตกกลับไปเด็ค 81 สไลด์ในตัวเสมอ
             if (SLIDES_CONFIG && SLIDES_CONFIG.length) {
