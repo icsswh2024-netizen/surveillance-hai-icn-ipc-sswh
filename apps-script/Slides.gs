@@ -267,6 +267,36 @@ function createSlidesTabLite() {
   Logger.log('createSlidesTabLite: เขียน %s แถว', SLIDE_SAMPLE.length);
 }
 
+/**
+ * ★ ปลอดภัย: ไม่ลบข้อมูลที่กรอกไว้ ★
+ * ใส่ "ดรอปดาวน์" ให้คอลัมน์ที่มีอยู่แล้วในแท็บ Slides โดยจับจากชื่อหัวคอลัมน์
+ * (ไม่ clear, ไม่เขียนทับค่า) — ใช้เมื่อกรอกข้อมูลเองไว้แล้ว แต่อยากได้ดรอปดาวน์
+ */
+function applySlidesValidation() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) ss = SpreadsheetApp.openById(SLIDES_SHEET_ID);
+  var sh = ss.getSheetByName(SLIDES_TAB);
+  if (!sh) { Logger.log('ไม่พบแท็บ "%s"', SLIDES_TAB); return; }
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var nRows = Math.max(sh.getLastRow() - 1, 0) + 200;   // แถวที่มี + เผื่ออีก 200
+  var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (x) { return String(x).trim(); });
+  function colOf(names) { for (var i = 0; i < headers.length; i++) if (names.indexOf(headers[i]) >= 0) return i + 1; return 0; }
+  function setDV(c, list, help) {
+    if (!c) return;
+    sh.getRange(2, c, nRows, 1).setDataValidation(
+      SpreadsheetApp.newDataValidation().requireValueInList(list, true).setAllowInvalid(true).setHelpText(help).build());
+  }
+  setDV(colOf(['ชนิด', 'type', 'ชนิดข้อมูล']), SLIDE_TYPES.map(function (t) { return t[0]; }), 'ชนิดเฉพาะ (cover/agenda/kpi/...)');
+  setDV(colOf(['พารามิเตอร์', 'param']), SLIDE_PARAMS, 'พารามิเตอร์/ชื่อแท็บย้อนหลัง');
+  setDV(colOf(['ตัวแปร', 'ตัวชี้วัด', 'variable']), SLIDE_VARS, 'ตัวแปร (HAI/VAP/หอ/เชื้อ/กลุ่มงาน/...)');
+  setDV(colOf(['ค่า', 'ค่าที่แสดง', 'metric']), SLIDE_METRICS, 'ค่า: อัตรา/จำนวน/ร้อยละ');
+  setDV(colOf(['ช่วงเวลา', 'ช่วง', 'period']), SLIDE_PERIODS, 'ช่วงเวลา: ปี/ไตรมาส/เดือน');
+  setDV(colOf(['ข้อมูลเก่า', 'ย้อนหลัง', 'history']), SLIDE_HISTORY, 'ใช้ข้อมูลเก่า: ใช้/ไม่');
+  setDV(colOf(['กราฟ', 'รูปแบบ', 'shape']), SLIDE_SHAPES, 'รูปแบบกราฟ');
+  Logger.log('ใส่ดรอปดาวน์ให้คอลัมน์ที่มีอยู่แล้ว (ไม่ลบข้อมูล)');
+}
+
+// ⚠️ createSlidesTab / createSlidesTabLite จะ "ลบข้อมูลเดิมทั้งแท็บ" แล้วเขียนตัวอย่างใหม่
+//    ถ้ากรอกข้อมูลเองไว้แล้ว ให้ใช้ applySlidesValidation() แทน (ไม่ลบข้อมูล)
+//
 // หมายเหตุ: โปรเจกต์นี้มี onOpen อยู่แล้วใน SurveillanceMatch.gs — ห้ามประกาศ onOpen ซ้ำ
-// ถ้าต้องการเมนูลัด ให้เพิ่มบรรทัดนี้ภายใน onOpen เดิม:
-//   SpreadsheetApp.getUi().createMenu('IC นำเสนอ').addItem('สร้าง/รีเซ็ตแท็บ Slides','createSlidesTab').addToUi();
