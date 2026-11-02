@@ -1161,7 +1161,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02k</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02l</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -1368,6 +1368,7 @@
                             <option value="site">ตำแหน่งติดเชื้อ (SITE)</option>
                             <option value="year">ปี</option>
                             <option value="quarter">ไตรมาส</option>
+                            <option value="month">เดือน</option>
                         </select>
                     </div>
                     <div>
@@ -5292,8 +5293,10 @@
 
         /* ===================== เมนู: เปรียบเทียบ ===================== */
         let cmpChartInstance = null;
-        const CMP_DIM_LABEL = { unit: 'หอผู้ป่วย', pct: 'กลุ่มงาน', site: 'ตำแหน่งติดเชื้อ', year: 'ปี', quarter: 'ไตรมาส' };
-        const CMP_DIM_GET = { unit: d => d.unit, pct: d => d.pct, site: d => d.siteType, year: d => d.year, quarter: d => d.quarter };
+        const CMP_DIM_LABEL = { unit: 'หอผู้ป่วย', pct: 'กลุ่มงาน', site: 'ตำแหน่งติดเชื้อ', year: 'ปี', quarter: 'ไตรมาส', month: 'เดือน' };
+        const CMP_DIM_GET = { unit: d => d.unit, pct: d => d.pct, site: d => d.siteType, year: d => d.year, quarter: d => d.quarter, month: d => d.month == null ? '' : String(d.month) };
+        // ป้ายแสดงผลของค่าในมิติ (เดือน → ชื่อเดือนไทย)
+        function cmpDispVal(dim, v) { return dim === 'month' ? (MONTH_LABELS[+v] || v) : v; }
         const CMP_METRIC = {
             haiRate:    { label: 'อัตรา HAI /1000 วันนอน', color: '#10b981', fmt: v => v == null ? '-' : v.toFixed(2) },
             haiCount:   { label: 'จำนวนเคส HAI',           color: '#0ea5e9', fmt: v => (v || 0).toLocaleString() },
@@ -5332,7 +5335,7 @@
             return rawData.filter(d =>
                 (dim === 'year' || fPass('year', d.year)) &&
                 (dim === 'quarter' || fPass('quarter', d.quarter)) &&
-                fPass('month', String(d.month)) &&
+                (dim === 'month' || fPass('month', String(d.month))) &&
                 (dim === 'unit' || fPass('unit', d.unit)) &&
                 (dim === 'pct' || fPass('pct', d.pct)));
         }
@@ -5341,6 +5344,7 @@
             if (dim === 'site') return [...new Set(rows.filter(r => r.isHAI && cmpMdrPass(r)).map(r => r.siteType).filter(Boolean))].sort();
             const set = [...new Set(rows.map(CMP_DIM_GET[dim]).filter(Boolean))];
             if (dim === 'quarter') return ['Q1', 'Q2', 'Q3', 'Q4'].filter(q => set.includes(q));
+            if (dim === 'month') return FISCAL_MONTHS.map(String).filter(m => set.includes(m));   // เรียงตามปีงบประมาณ
             return set.sort();
         }
         function cmpMetricsOf(rows) {
@@ -5378,7 +5382,7 @@
                 const id = 'cmpv_' + v.replace(/[^a-zA-Z0-9ก-๙]/g, '_');
                 return '<label class="inline-flex items-center gap-1.5 text-sm bg-white border border-slate-200 rounded-full px-3 py-1 cursor-pointer hover:border-emerald-400">' +
                     '<input type="checkbox" class="cmp-val accent-emerald-600" value="' + v.replace(/"/g, '&quot;') + '" ' + checked + '>' +
-                    '<span>' + v + '</span></label>';
+                    '<span>' + cmpDispVal(dim, v) + '</span></label>';
             }).join('') : '<span class="text-sm text-slate-400">— ไม่มีค่าตามตัวกรองด้านบน —</span>';
             wrap.querySelectorAll('.cmp-val').forEach(cb => cb.addEventListener('change', cmpRender));
         }
@@ -5402,7 +5406,7 @@
             if (ctx && stats.length) {
                 cmpChartInstance = new Chart(ctx, {
                     type: 'bar',
-                    data: { labels: stats.map(s => s.v), datasets: [{ label: meta.label, data: stats.map(s => s.m[metric] || 0), backgroundColor: meta.color, borderRadius: 6, _badge: true, _badgeColor: darken(meta.color) }] },
+                    data: { labels: stats.map(s => cmpDispVal(dim, s.v)), datasets: [{ label: meta.label, data: stats.map(s => s.m[metric] || 0), backgroundColor: meta.color, borderRadius: 6, _badge: true, _badgeColor: darken(meta.color) }] },
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
                 });
             }
@@ -5414,7 +5418,7 @@
                 bodyEl.innerHTML = '<tr><td class="py-8 text-center text-slate-400">— เลือกค่าอย่างน้อย 1 รายการเพื่อเปรียบเทียบ —</td></tr>';
                 return;
             }
-            head.innerHTML = '<th class="py-3 px-4">ตัวชี้วัด</th>' + stats.map(s => '<th class="py-3 px-4 text-right">' + s.v + '</th>').join('');
+            head.innerHTML = '<th class="py-3 px-4">ตัวชี้วัด</th>' + stats.map(s => '<th class="py-3 px-4 text-right">' + cmpDispVal(dim, s.v) + '</th>').join('');
             bodyEl.innerHTML = Object.keys(CMP_METRIC).map(mk => {
                 const mm = CMP_METRIC[mk];
                 return '<tr class="hover:bg-slate-50' + (mk === metric ? ' bg-emerald-50/40' : '') + '">' +
@@ -5429,7 +5433,7 @@
             const sel = cmpGetChecked();
             const stats = sel.map(v => ({ v, m: cmpMetricsFor(dim, v, base) }));
             const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
-            let csv = '﻿' + [q('ตัวชี้วัด'), ...stats.map(s => q(s.v))].join(',') + '\n';
+            let csv = '﻿' + [q('ตัวชี้วัด'), ...stats.map(s => q(cmpDispVal(dim, s.v)))].join(',') + '\n';
             Object.keys(CMP_METRIC).forEach(mk => {
                 csv += [q(CMP_METRIC[mk].label), ...stats.map(s => q(CMP_METRIC[mk].fmt(s.m[mk])))].join(',') + '\n';
             });
