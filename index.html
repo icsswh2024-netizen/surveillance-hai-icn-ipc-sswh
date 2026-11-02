@@ -1161,7 +1161,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02h</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02e</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2633,8 +2633,8 @@
                     const rm = (cfg.rates || {})[it.label];
                     it.l1 = it.label + '  ' + it.v + ' (' + pct + '%)';
                     it.l2 = rm && rm.r != null ? ('อัตรา ' + rm.r + ' ' + rm.unit) : '';
-                    ctx.font = '600 11px Anuphan, Kanit, sans-serif'; const w1 = ctx.measureText(it.l1).width;
-                    ctx.font = '500 10px Anuphan, Kanit, sans-serif'; const w2 = it.l2 ? ctx.measureText(it.l2).width : 0;
+                    ctx.font = '600 11px Kanit, sans-serif'; const w1 = ctx.measureText(it.l1).width;
+                    ctx.font = '500 10px Kanit, sans-serif'; const w2 = it.l2 ? ctx.measureText(it.l2).width : 0;
                     maxTextW = Math.max(maxTextW, w1, w2);
                 });
                 const cardW = maxTextW + padX * 2;
@@ -2648,16 +2648,10 @@
                         const cardH = l2 ? 32 : 22;
                         const cardX = side === 1 ? (kneeX + 8) : (kneeX - 8 - cardW);
                         const cardY = it.ly - cardH / 2;
-                        // เส้นปะโยงจากชิ้น -> การ์ด (ชัดเจน)
-                        ctx.save();
-                        ctx.strokeStyle = it.color; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-                        ctx.setLineDash([5, 4]);
+                        // เส้นโยงจากชิ้น -> การ์ด
+                        ctx.strokeStyle = it.color; ctx.lineWidth = 1.5;
                         ctx.beginPath(); ctx.moveTo(it.x0, it.y0); ctx.lineTo(kneeX, it.ly); ctx.lineTo(side === 1 ? cardX : cardX + cardW, it.ly); ctx.stroke();
-                        ctx.setLineDash([]);
-                        ctx.restore();
-                        // จุดต้นทางบนชิ้น (ขอบขาวให้เด่น)
-                        ctx.beginPath(); ctx.arc(it.x0, it.y0, 3.4, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
-                        ctx.fillStyle = it.color; ctx.beginPath(); ctx.arc(it.x0, it.y0, 2.4, 0, Math.PI * 2); ctx.fill();
+                        ctx.fillStyle = it.color; ctx.beginPath(); ctx.arc(it.x0, it.y0, 2.5, 0, Math.PI * 2); ctx.fill();
                         // การ์ดเฟดสีขอบมน
                         const g = ctx.createLinearGradient(cardX, 0, cardX + cardW, 0);
                         g.addColorStop(0, lighten(it.color, 0.12)); g.addColorStop(1, it.color);
@@ -2667,9 +2661,9 @@
                         ctx.restore();
                         // ข้อความในการ์ด (ขาว)
                         ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-                        ctx.fillStyle = '#ffffff'; ctx.font = '600 11px Anuphan, Kanit, sans-serif';
+                        ctx.fillStyle = '#ffffff'; ctx.font = '600 11px Kanit, sans-serif';
                         ctx.fillText(l1, cardX + padX, it.ly - (l2 ? 6 : 0));
-                        if (l2) { ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.font = '500 10px Anuphan, Kanit, sans-serif'; ctx.fillText(l2, cardX + padX, it.ly + 7); }
+                        if (l2) { ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.font = '500 10px Kanit, sans-serif'; ctx.fillText(l2, cardX + padX, it.ly + 7); }
                     });
                 });
                 ctx.restore();
@@ -6127,16 +6121,13 @@
                 if (presentChartInst) presentChartInst.destroy();
                 const inst = new Chart(ctx, {
                     type: doughnut === false ? 'pie' : 'doughnut',
-                    data: { labels, datasets: [{ data, backgroundColor: colors, _solidColors: colors, borderColor: 'rgba(255,255,255,.75)', borderWidth: 2 }] },
+                    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: 'rgba(255,255,255,.65)', borderWidth: 2 }] },
                     options: {
                         responsive: true, maintainAspectRatio: false,
-                        // เว้นขอบให้ป้ายนอก + เส้นปะโยงมีที่วาง
-                        layout: { padding: { top: 18, bottom: 18, left: 150, right: 150 } },
                         plugins: {
-                            legend: { display: false },
-                            datalabels: { display: false },
-                            // ป้ายนอกวง + เส้นปะโยงชัดเจน (ชื่อ + จำนวน + ร้อยละ)
-                            outLabels: { display: true }
+                            legend: { position: 'right', labels: { font: { family: 'Anuphan', size: 13 }, boxWidth: 14 } },
+                            // ป้าย % บนชิ้นโดนัท/วงกลม (เฉพาะชิ้นที่ ≥ 4% กันรก)
+                            datalabels: { display: ctx2 => { const a = ctx2.dataset.data; const t = a.reduce((x, y) => x + (+y || 0), 0); return t && (+a[ctx2.dataIndex] / t) >= 0.04; }, color: '#fff', font: { family: 'Anuphan', weight: 'bold', size: 12 }, formatter: (v, c) => { const t = c.dataset.data.reduce((a, b) => a + (+b || 0), 0); return t ? Math.round(v / t * 100) + '%' : ''; } }
                         }
                     }
                 });
@@ -6295,7 +6286,7 @@
             const tile = (n, l, s, accent) => '<div class="pstat"><div class="n" style="color:' + accent + '">' + n + '</div><div class="l">' + l + '</div><div class="s">' + s + '</div></div>';
             const tiles = arr => '<div class="p-anim" style="display:grid;grid-template-columns:repeat(' + arr.length + ',1fr);gap:22px;margin-top:26px">' + arr.join('') + '</div>';
             const tbl = (headers, bodyRows) => '<div class="p-anim pcard" style="margin-top:8px;max-width:1080px;max-height:548px;overflow:auto"><table class="ptable"><thead><tr>' + headers.map((h, i) => '<th' + (i ? ' class="r"' : '') + '>' + h + '</th>').join('') + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div>';
-            const chartBox = '<div class="pcard" style="flex:1;position:relative;margin-top:8px;margin-bottom:54px;min-height:0"><canvas id="presentChart"></canvas></div>';
+            const chartBox = '<div class="pcard" style="flex:1;position:relative;margin-top:8px;min-height:0"><canvas id="presentChart"></canvas></div>';
             const mkLine = (labels, data, label, color) => () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label, data, borderColor: color, backgroundColor: color, borderWidth: 3, tension: .4, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 14 } } } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); };
             const mkBar = (labels, data, label, color) => () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label, data, backgroundColor: color, borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); };
             // แถวตาราง
@@ -6597,7 +6588,7 @@
                     const n = specs.length || 1;
                     const cols = n <= 1 ? 1 : 2;
                     const cells = specs.map((sp, i) => '<div class="pcard" style="position:relative;min-height:0;padding:12px 14px"><canvas id="pcm_' + i + '"></canvas></div>').join('');
-                    const body = '<div class="p-anim" style="flex:1;display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:14px 20px;margin-top:6px;margin-bottom:54px;min-height:0">' + cells + '</div>';
+                    const body = '<div class="p-anim" style="flex:1;display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:14px 20px;margin-top:6px;min-height:0">' + cells + '</div>';
                     const liveMap = presentLiveMap(d), cy = presentCurYear();
                     const cb = () => specs.forEach((sp, i) => {
                         const cid = 'pcm_' + i;
@@ -6689,9 +6680,8 @@
             const slideEl = document.getElementById('presentSlide');
             const render = () => { slideEl.innerHTML = (presentSlides[presentIdx] || {}).html || ''; };
             // instant = ข้ามอนิเมชัน (ใช้ตอนพิมพ์เลขสไลด์ ให้เร็วทันที)
-            let vt = null;
             try {
-                if (!instant && document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) vt = document.startViewTransition(render);
+                if (!instant && document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(render);
                 else render();
             } catch (e) { render(); }
             const gi = document.getElementById('presentGoto'); if (gi && document.activeElement !== gi) gi.value = (presentIdx + 1);
@@ -6706,21 +6696,7 @@
                 noEl.textContent = presentIdx === 0 ? '' : (presentIdx + 1) + ' / ' + presentSlides.length;
             }
             const ch = presentSlides[presentIdx].chart;
-            if (ch) {
-                // สร้างกราฟหลัง View Transition จบ (ไม่งั้น canvas วัดขนาด container ได้ตอนกำลัง transition → รัศมีหด)
-                const run = () => { try { ch(); } catch (e) { console.error('present chart:', e); } presentChartResizeNudge(); };
-                if (vt && vt.finished && vt.finished.then) vt.finished.then(() => setTimeout(run, 20)).catch(() => setTimeout(run, 20));
-                else setTimeout(run, 60);
-            }
-        }
-        // เผื่อ canvas วัดขนาดผิดตอนสร้าง: บังคับ resize อีกครั้งเมื่อ layout นิ่งแล้ว
-        function presentChartResizeNudge() {
-            [80, 260, 520].forEach(function (ms) {
-                setTimeout(function () {
-                    const all = presentChartInst ? presentCharts.concat([presentChartInst]) : presentCharts;
-                    all.forEach(function (c) { try { if (c && c.resize) { c.resize(); c.update('none'); } } catch (e) { } });
-                }, ms);
-            });
+            if (ch) setTimeout(ch, 60);
         }
         function presentOpen() {
             try {
