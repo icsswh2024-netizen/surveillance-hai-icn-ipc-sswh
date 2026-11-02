@@ -1161,7 +1161,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02j</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02k</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -1494,8 +1494,7 @@
                     <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
                         <thead class="bg-slate-50 text-slate-700 font-semibold"><tr>
                             <th class="py-3 px-4">หอผู้ป่วย</th><th class="py-3 px-4 text-right text-slate-500">จำนวนรายงานทั้งหมด</th><th class="py-3 px-4 text-right">เคส HAI</th>
-                            <th class="py-3 px-4 text-right text-emerald-700">รายงาน</th><th class="py-3 px-4 text-right text-rose-600">ไม่รายงาน</th>
-                            <th class="py-3 px-4 text-right">รวมประเมิน</th>
+                            <th class="py-3 px-4 text-right text-emerald-700">รายงานแล้วตรง</th><th class="py-3 px-4 text-right text-amber-600">รายงานแล้วไม่ตรง</th><th class="py-3 px-4 text-right text-rose-600">ไม่รายงาน</th>
                             <th class="py-3 px-4 text-right text-teal-700">ร้อยละประสิทธิภาพ</th>
                             <th class="py-3 px-4 text-right">ตรวจพบเฉลี่ย (วัน)</th>
                         </tr></thead>
@@ -5454,20 +5453,30 @@
             return Object.keys(cnt).map(k => ({ k, n: cnt[k], pct: tot ? Math.round(cnt[k] / tot * 100) : 0 }))
                 .sort((a, b) => b.n - a.n);
         }
-        // Yes/No ของประสิทธิภาพ (ไม่สนตัวพิมพ์)
-        function survYes(c) { return (c.survEff || '').toString().trim().toLowerCase() === 'yes'; }
-        function survNo(c) { return (c.survEff || '').toString().trim().toLowerCase() === 'no'; }
+        // จำแนกผลประเมินจากคอลัมน์ "ประสิทธิภาพ" เป็น 3 สถานะ: รายงานแล้วตรง / รายงานแล้วไม่ตรง / ไม่รายงาน
+        // รองรับค่าเก่า Yes/No (yes=รายงานแล้วตรง, no=ไม่รายงาน)
+        function survClass(c) {
+            const s = (c.survEff || '').toString().trim().toLowerCase();
+            if (!s) return '';
+            if (/ไม่ตรง|ไม่\s*ถูก|ไม่ถูก/.test(s)) return 'wrong';        // รายงานแล้วไม่ตรง
+            if (/ไม่รายงาน|ไม่ได้รายงาน|ไม่ราย|^no$|^n$/.test(s)) return 'none';  // ไม่รายงาน
+            if (/ตรง|ถูก|^yes$|^y$|^รายงาน/.test(s)) return 'right';      // รายงานแล้วตรง
+            return '';
+        }
+        // "รายงาน" = รายงานแล้ว (ตรง+ไม่ตรง) · ใช้ร่วมกับตัวชี้วัดความไว QI
+        function survYes(c) { const k = survClass(c); return k === 'right' || k === 'wrong'; }
+        function survNo(c) { return survClass(c) === 'none'; }
         function survWardStats() {
             const rows = getFilteredRows();   // ทุกบันทึก/รายงาน (รวมที่ไม่ใช่ HAI)
             const by = {};
             rows.forEach(c => {
                 if (isNonWard(c.unit)) return;   // ตัดรหัสที่ไม่ใช่หอผู้ป่วย
                 const u = c.unit || '(ไม่ระบุ)';
-                const b = by[u] || (by[u] = { unit: u, total: 0, n: 0, yes: 0, no: 0, dSum: 0, dN: 0 });
+                const b = by[u] || (by[u] = { unit: u, total: 0, n: 0, right: 0, wrong: 0, none: 0, dSum: 0, dN: 0 });
                 b.total++;                       // จำนวนรายงานทั้งหมดของหอ (ทุกบันทึกตามตัวกรอง)
                 if (!c.isHAI) return;            // ส่วนที่เหลือคิดเฉพาะเคส HAI
                 b.n++;
-                if (survYes(c)) b.yes++; else if (survNo(c)) b.no++;
+                const k = survClass(c); if (k === 'right') b.right++; else if (k === 'wrong') b.wrong++; else if (k === 'none') b.none++;
                 const d = survDetectDays(c); if (d != null) { b.dSum += d; b.dN++; }
             });
             return Object.values(by).filter(b => b.n > 0).sort((a, b) => b.n - a.n);
@@ -5476,10 +5485,11 @@
             const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
             const cases = getFilteredCases();
             const n = cases.length;
-            const yesN = cases.filter(survYes).length;
-            const noN = cases.filter(survNo).length;
-            const evalN = yesN + noN;                       // ประเมินแล้ว (มี Yes หรือ No)
-            const effPct = evalN ? (yesN / evalN * 100) : null;   // ร้อยละประสิทธิภาพ = Yes / (Yes+No)
+            const rightN = cases.filter(c => survClass(c) === 'right').length;   // รายงานแล้วตรง
+            const wrongN = cases.filter(c => survClass(c) === 'wrong').length;   // รายงานแล้วไม่ตรง
+            const noneN = cases.filter(c => survClass(c) === 'none').length;    // ไม่รายงาน
+            const clsN = rightN + wrongN + noneN;           // ประเมินแล้ว (จัดชั้นได้)
+            const effPct = clsN ? (rightN / clsN * 100) : null;   // ร้อยละประสิทธิภาพ = รายงานแล้วตรง / รวม
             const dateN = cases.filter(c => c.dEvent && c.dSign).length;
             const dList = cases.map(survDetectDays).filter(d => d != null);
             const avgD = dList.length ? (dList.reduce((a, b) => a + b, 0) / dList.length) : null;
@@ -5488,10 +5498,10 @@
                 '<p class="text-xs text-slate-400 mt-1">' + sub + '</p></div>';
             const kw = document.getElementById('survKpis');
             if (kw) kw.innerHTML =
-                kpi('ร้อยละประสิทธิภาพ', effPct == null ? '-' : effPct.toFixed(1) + '%', 'รายงาน ' + yesN + ' / รวมประเมิน ' + evalN, 'text-teal-700') +
-                kpi('รายงาน', yesN, 'ราย · มีประสิทธิภาพ', 'text-emerald-700') +
-                kpi('ไม่รายงาน', noN, 'ราย', 'text-rose-600') +
-                kpi('เคส HAI', n, 'ราย (ทั้งหมดตามตัวกรอง)', 'text-sky-700');
+                kpi('ร้อยละประสิทธิภาพ', effPct == null ? '-' : effPct.toFixed(1) + '%', 'รายงานแล้วตรง ' + rightN + ' / รวม ' + clsN, 'text-teal-700') +
+                kpi('รายงานแล้วตรง', rightN, 'ราย', 'text-emerald-700') +
+                kpi('รายงานแล้วไม่ตรง', wrongN, 'ราย', 'text-amber-600') +
+                kpi('ไม่รายงาน', noneN, 'ราย', 'text-rose-600');
             // ตารางกระจายค่า
             const distHtml = (body, data) => {
                 const el = document.getElementById(body); if (!el) return;
@@ -5500,7 +5510,7 @@
                     : '<tr><td colspan="3" class="py-8 text-center text-slate-400">— ไม่มีข้อมูล —</td></tr>';
             };
             // แสดงผลประเมินด้วยคำ รายงาน/ไม่รายงาน
-            const effLabel = v => { const s = v.toLowerCase(); return s === 'yes' ? 'รายงาน' : s === 'no' ? 'ไม่รายงาน' : v; };
+            const effLabel = v => { const s = v.toLowerCase(); return s === 'yes' ? 'รายงานแล้วตรง' : s === 'no' ? 'ไม่รายงาน' : v; };
             distHtml('survEffBody', survDist(cases, 'survEff').map(d => ({ k: effLabel(d.k), n: d.n, pct: d.pct })));
             // บำราศ: Yes=บันทึก, No=ไม่บันทึก
             const bamLabel = v => { const s = v.toLowerCase(); return s === 'yes' ? 'บันทึก' : s === 'no' ? 'ไม่บันทึก' : v; };
@@ -5509,13 +5519,13 @@
             const wb = document.getElementById('survWardBody');
             const rows = survWardStats();
             if (wb) wb.innerHTML = rows.length ? rows.map(b => {
-                const ev = b.yes + b.no; const pct = ev ? b.yes / ev * 100 : null;
+                const cls = b.right + b.wrong + b.none; const pct = cls ? b.right / cls * 100 : null;
                 return '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 font-medium text-slate-700">' + esc(b.unit) + '</td>' +
                 '<td class="py-2.5 px-4 text-right text-slate-500">' + b.total + '</td>' +
                 '<td class="py-2.5 px-4 text-right">' + b.n + '</td>' +
-                '<td class="py-2.5 px-4 text-right text-emerald-700 font-medium">' + b.yes + '</td>' +
-                '<td class="py-2.5 px-4 text-right text-rose-600">' + b.no + '</td>' +
-                '<td class="py-2.5 px-4 text-right">' + ev + '</td>' +
+                '<td class="py-2.5 px-4 text-right text-emerald-700 font-medium">' + b.right + '</td>' +
+                '<td class="py-2.5 px-4 text-right text-amber-600">' + b.wrong + '</td>' +
+                '<td class="py-2.5 px-4 text-right text-rose-600">' + b.none + '</td>' +
                 '<td class="py-2.5 px-4 text-right ' + (pct == null ? 'text-slate-300' : pdcPctClass(pct, true)) + '">' + (pct == null ? '-' : pct.toFixed(1) + '%') + '</td>' +
                 '<td class="py-2.5 px-4 text-right">' + (b.dN ? (b.dSum / b.dN).toFixed(1) : '-') + '</td></tr>';
             }).join('') : '<tr><td colspan="8" class="py-8 text-center text-slate-400">— ไม่มีเคส HAI ตามตัวกรอง —</td></tr>';
@@ -5717,10 +5727,10 @@
         function exportSurvCSV() {
             const q = v => '"' + (v == null ? '' : v.toString()).replace(/"/g, '""') + '"';
             const rows = survWardStats();
-            let csv = '﻿' + ['หอผู้ป่วย', 'จำนวนรายงานทั้งหมด', 'เคส HAI', 'รายงาน', 'ไม่รายงาน', 'รวมประเมิน', 'ร้อยละประสิทธิภาพ', 'ตรวจพบเฉลี่ย(วัน)'].map(q).join(',') + '\n';
+            let csv = '﻿' + ['หอผู้ป่วย', 'จำนวนรายงานทั้งหมด', 'เคส HAI', 'รายงานแล้วตรง', 'รายงานแล้วไม่ตรง', 'ไม่รายงาน', 'ร้อยละประสิทธิภาพ', 'ตรวจพบเฉลี่ย(วัน)'].map(q).join(',') + '\n';
             rows.forEach(b => {
-                const ev = b.yes + b.no;
-                csv += [q(b.unit), b.total, b.n, b.yes, b.no, ev, (ev ? (b.yes / ev * 100).toFixed(1) : '') + (ev ? '%' : ''), (b.dN ? (b.dSum / b.dN).toFixed(1) : '')].join(',') + '\n';
+                const cls = b.right + b.wrong + b.none;
+                csv += [q(b.unit), b.total, b.n, b.right, b.wrong, b.none, (cls ? (b.right / cls * 100).toFixed(1) : '') + (cls ? '%' : ''), (b.dN ? (b.dSum / b.dN).toFixed(1) : '')].join(',') + '\n';
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -8277,7 +8287,7 @@
                 { col: 'ประเภทการจำหนาย', label: 'ประเภทการจำหน่าย', type: 'text' },
                 { col: 'สาเหตุ Death', label: 'สาเหตุการเสียชีวิต', type: 'text' },
                 { col: 'บำราศ', label: 'บำราศ (Yes=บันทึก / No=ไม่บันทึก)', type: 'select', opts: ['Yes', 'No'] },
-                { col: 'ประสิทธิภาพ', label: 'ประสิทธิภาพการเฝ้าระวัง', type: 'select', opts: ['Yes', 'No'] }
+                { col: 'ประสิทธิภาพ', label: 'ประสิทธิภาพการเฝ้าระวัง', type: 'select', opts: ['รายงานแล้วตรง', 'รายงานแล้วไม่ตรง', 'ไม่รายงาน'] }
             ] },
             { group: 'เชื้อ / ยา / ผลไวต่อยา (AST)', fields: [
                 { col: 'AMR', label: 'ผลดื้อยา (AMR)', type: 'select', opts: ['no mdr', 'mdr'] },
