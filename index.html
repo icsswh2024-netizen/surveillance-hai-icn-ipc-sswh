@@ -1161,7 +1161,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02d</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02e</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -6673,15 +6673,15 @@
             const s = Math.min(window.innerWidth * 0.96 / 1280, window.innerHeight * 0.92 / 720);
             stage.style.transform = 'scale(' + s + ')';
         }
-        function presentShow(i) {
+        function presentShow(i, instant) {
             if (!presentSlides.length) return;
             presentIdx = (i + presentSlides.length) % presentSlides.length;
             presentDestroyCharts();   // ล้างกราฟเดิมทุกตัว (รวมหลายกราฟในสไลด์เดียว)
             const slideEl = document.getElementById('presentSlide');
             const render = () => { slideEl.innerHTML = (presentSlides[presentIdx] || {}).html || ''; };
-            // บาง Safari/iPad startViewTransition มีแต่พังง่าย — ครอบ try/catch แล้ว fallback เป็น render ตรง ๆ
+            // instant = ข้ามอนิเมชัน (ใช้ตอนพิมพ์เลขสไลด์ ให้เร็วทันที)
             try {
-                if (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(render);
+                if (!instant && document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(render);
                 else render();
             } catch (e) { render(); }
             const gi = document.getElementById('presentGoto'); if (gi && document.activeElement !== gi) gi.value = (presentIdx + 1);
@@ -9246,9 +9246,12 @@
         document.getElementById('presentNext').addEventListener('click', () => presentShow(presentIdx + 1));
         (function () {
             const gi = document.getElementById('presentGoto'); if (!gi) return;
-            const go = () => { const n = parseInt(gi.value, 10); if (isFinite(n) && n >= 1 && n <= presentSlides.length) presentShow(n - 1); else gi.value = (presentIdx + 1); };
-            gi.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); gi.blur(); } });
-            gi.addEventListener('change', go);
+            let t = null;
+            const jump = instant => { const n = parseInt(gi.value, 10); if (isFinite(n) && n >= 1 && n <= presentSlides.length) presentShow(n - 1, instant); };
+            // เรียลไทม์: พิมพ์แล้วกระโดดทันที (debounce 90ms กันพิมพ์หลายหลัก) ข้ามอนิเมชันให้เร็ว
+            gi.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => jump(true), 90); });
+            gi.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(t); jump(true); gi.blur(); } });
+            gi.addEventListener('change', () => { clearTimeout(t); const n = parseInt(gi.value, 10); if (!(isFinite(n) && n >= 1 && n <= presentSlides.length)) gi.value = (presentIdx + 1); });
         })();
         document.getElementById('presentClose').addEventListener('click', presentClose);
         document.getElementById('presentPalette').addEventListener('change', e => { applyPresentPalette(e.target.value); presentBuild(); presentShow(presentIdx); });
