@@ -1272,7 +1272,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-03e</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-03f</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2762,7 +2762,7 @@
                 const padX = 9;
                 let maxTextW = 0;
                 items.forEach(it => {
-                    const pct = total ? Math.round(it.v / total * 100) : 0;
+                    const pct = total ? +(it.v / total * 100).toFixed(2) : 0;
                     const rm = (cfg.rates || {})[it.label];
                     it.l1 = it.label + '  ' + it.v + ' (' + pct + '%)';
                     it.l2 = rm && rm.r != null ? ('อัตรา ' + rm.r + ' ' + rm.unit) : '';
@@ -3033,7 +3033,7 @@
             animateValue('kpiBSI', total.BSI);
             animateValue('kpiSSTI', total.SSTI);
             animateValue('kpiMDR', mdrCount);
-            document.getElementById('kpiMDRpct').textContent = total.HAI ? Math.round(mdrCount / total.HAI * 100) : 0;
+            document.getElementById('kpiMDRpct').textContent = total.HAI ? +(mdrCount / total.HAI * 100).toFixed(2) : 0;
             document.getElementById('kpiMDRfrac').textContent = '(' + mdrCount + '/' + total.HAI + ')';
 
             const den = aggregateDenominatorsByMonth(getFilteredRows());
@@ -3161,7 +3161,7 @@
             const wTotal = w.reduce((a, b) => a + b, 0);
             w.forEach((v, i) => {
                 document.getElementById('wc' + (i + 1)).textContent = Math.round(v).toLocaleString();
-                document.getElementById('wc' + (i + 1) + 'p').textContent = (wTotal ? Math.round(v / wTotal * 100) : 0) + '%';
+                document.getElementById('wc' + (i + 1) + 'p').textContent = (wTotal ? (v / wTotal * 100).toFixed(2) : '0.00') + '%';
             });
 
             // การ์ด SSI แยกชนิดผ่าตัด
@@ -3500,7 +3500,7 @@
                         legend: { display: false },
                         tooltip: { callbacks: { label: c => {
                             const key = c.label, v = c.parsed;
-                            const pct = siteTotal ? Math.round(v / siteTotal * 100) : 0;
+                            const pct = siteTotal ? +(v / siteTotal * 100).toFixed(2) : 0;
                             const r = siteRate(key);
                             const rateTxt = r == null ? '' : ' · อัตรา ' + r + ' ' + RATE_META[key].unit;
                             return key + ': ' + v + ' เคส (' + pct + '%)' + rateTxt;
@@ -3662,7 +3662,7 @@
                         '<td class="py-2 px-2 text-right text-slate-500' + bg + '">' + fmtRate(r) + '</td>';
                 });
                 tr += '<td class="py-2 px-2 text-right text-fuchsia-700 font-semibold">' + o.MDR + '</td>' +
-                    '<td class="py-2 px-2 text-right text-fuchsia-700">' + (hc ? Math.round(o.MDR / hc * 100) + '%' : '-') + '</td></tr>';
+                    '<td class="py-2 px-2 text-right text-fuchsia-700">' + (hc ? (o.MDR / hc * 100).toFixed(2) + '%' : '-') + '</td></tr>';
                 return tr;
             };
             let body = '';
@@ -3714,7 +3714,7 @@
                 const hc = repTotalCases(w);
                 const cells = [w.unit, Math.round(w.den.patientDay), hc, fmtRate(rate(hc, w.den.patientDay, 1000))];
                 SITES.forEach(s => { const dv = repDenOf(w, s); cells.push(repCaseOf(w, s), dv ? Math.round(dv) : '-', fmtRate(repRate(w, s))); });
-                cells.push(w.MDR, (hc ? Math.round(w.MDR / hc * 100) : 0) + '%');
+                cells.push(w.MDR, (hc ? (w.MDR / hc * 100).toFixed(2) : '0.00') + '%');
                 csv += cells.map(q).join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -3740,7 +3740,7 @@
             if (months.length === 0) months = FISCAL_MONTHS;
             const labels = months.map(m => MONTH_LABELS[m]);
             const counts = months.map(m => byMonthMdr[m]);
-            const pcts = months.map(m => byMonthHai[m] ? +((byMonthMdr[m] / byMonthHai[m]) * 100).toFixed(1) : null);
+            const pcts = months.map(m => byMonthHai[m] ? +((byMonthMdr[m] / byMonthHai[m]) * 100).toFixed(2) : null);
 
             const ctx = document.getElementById(canvasId).getContext('2d');
             const grad = ctx.createLinearGradient(0, 0, 0, 288);
@@ -3844,7 +3844,7 @@
             const mdr = cases.filter(c => c.isMDR).length;
             document.getElementById('mdrTotal').textContent = mdr;
             document.getElementById('mdrHai').textContent = cases.length;
-            document.getElementById('mdrPct').textContent = (cases.length ? Math.round(mdr / cases.length * 100) : 0) + '%';
+            document.getElementById('mdrPct').textContent = (cases.length ? (mdr / cases.length * 100).toFixed(2) : '0.00') + '%';
             // อัตรา MDRO ต่อ 1,000 วันนอน — ใช้วันนอนของทุกตึก (เหมือนฐาน HAI รวม)
             const mdrDenMonths = aggregateDenominatorsByMonth(getRowsForWards());
             const mdrPd = FISCAL_MONTHS.reduce((a, m) => a + (mdrDenMonths[m] ? mdrDenMonths[m].patientDay : 0), 0);
@@ -3870,7 +3870,7 @@
                     '<td class="py-3 px-4 text-right">' + (w.patientDay || 0).toLocaleString() + '</td>' +
                     '<td class="py-3 px-4 text-right">' + w.HAI + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + w.MDR + '</td>' +
-                    '<td class="py-3 px-4 text-right ' + (w.HAI ? pdcPctClass(w.MDR / w.HAI * 100, false) : 'text-fuchsia-700') + '">' + (w.HAI ? Math.round(w.MDR / w.HAI * 100) + '%' : '-') + '</td>' +
+                    '<td class="py-3 px-4 text-right ' + (w.HAI ? pdcPctClass(w.MDR / w.HAI * 100, false) : 'text-fuchsia-700') + '">' + (w.HAI ? (w.MDR / w.HAI * 100).toFixed(2) + '%' : '-') + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700">' + fmtRate(rate(w.MDR, w.patientDay, 1000)) + '</td>' +
                     '<td class="py-3 px-4 text-right">' + w.CAUTI + '</td>' +
                     '<td class="py-3 px-4 text-right">' + w.VAP + '</td>' +
@@ -3885,7 +3885,7 @@
                 '<td class="py-3 px-4 text-right">' + Math.round(mdrPd).toLocaleString() + '</td>' +
                 '<td class="py-3 px-4 text-right">' + tot.HAI + '</td>' +
                 '<td class="py-3 px-4 text-right text-fuchsia-700">' + tot.MDR + '</td>' +
-                '<td class="py-3 px-4 text-right text-fuchsia-700">' + (tot.HAI ? Math.round(tot.MDR / tot.HAI * 100) + '%' : '-') + '</td>' +
+                '<td class="py-3 px-4 text-right text-fuchsia-700">' + (tot.HAI ? (tot.MDR / tot.HAI * 100).toFixed(2) + '%' : '-') + '</td>' +
                 '<td class="py-3 px-4 text-right text-fuchsia-700">' + fmtRate(rate(tot.MDR, mdrPd, 1000)) + '</td>' +
                 '<td class="py-3 px-4 text-right">' + tot.CAUTI + '</td>' +
                 '<td class="py-3 px-4 text-right">' + tot.VAP + '</td>' +
@@ -3925,7 +3925,7 @@
                 .sort((a, b) => b.MDR - a.MDR);
             let csv = head.join(',') + '\n';
             wards.forEach(w => {
-                csv += [w.unit, w.patientDay, w.HAI, w.MDR, (w.HAI ? Math.round(w.MDR / w.HAI * 100) : 0),
+                csv += [w.unit, w.patientDay, w.HAI, w.MDR, (w.HAI ? +(w.MDR / w.HAI * 100).toFixed(2) : 0),
                         fmtRate(rate(w.MDR, w.patientDay, 1000)), w.CAUTI, w.VAP, w.CLABSI, w.SSI].join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -4053,7 +4053,7 @@
         function opDistribution(rows, getVal) {
             const cnt = {}; let tot = 0;
             rows.forEach(r => { const v = (getVal(r) || '').toString().trim(); if (!v) return; cnt[v] = (cnt[v] || 0) + 1; tot++; });
-            const list = Object.keys(cnt).map(k => ({ k, n: cnt[k], pct: tot ? +(cnt[k] / tot * 100).toFixed(1) : 0 })).sort((a, b) => b.n - a.n);
+            const list = Object.keys(cnt).map(k => ({ k, n: cnt[k], pct: tot ? +(cnt[k] / tot * 100).toFixed(2) : 0 })).sort((a, b) => b.n - a.n);
             return { list, tot };
         }
         function renderOpBreakdown(rows) {
@@ -4679,7 +4679,7 @@
                 else { partial++; missKs.forEach(k => missedAtK[k] = (missedAtK[k] || 0) + 1); }
             });
             // อัปเดตการ์ด KPI (ฐาน % = ผู้ที่ถึงกำหนดนัดแล้ว)
-            const pct = n => evaluable ? Math.round(n / evaluable * 100) : 0;
+            const pct = n => evaluable ? +(n / evaluable * 100).toFixed(2) : 0;
             document.getElementById('pdcTotal').textContent = surveilled;
             document.getElementById('pdcAll').textContent = allCame;
             document.getElementById('pdcAllPct').textContent = pct(allCame);
@@ -4698,7 +4698,7 @@
                 tr.innerHTML =
                     '<td class="py-3 px-4 font-medium text-slate-700">ครั้งที่ ' + k + '</td>' +
                     '<td class="py-3 px-4 text-right text-rose-700 font-semibold">' + missedAtK[k] + '</td>' +
-                    '<td class="py-3 px-4 text-right text-rose-700">' + (partial ? Math.round(missedAtK[k] / partial * 100) : 0) + '%</td>';
+                    '<td class="py-3 px-4 text-right text-rose-700">' + (partial ? (missedAtK[k] / partial * 100).toFixed(2) : '0.00') + '%</td>';
                 pBody.appendChild(tr);
             });
             const seqBody = document.getElementById('pdcSeqBody');
@@ -4790,7 +4790,7 @@
             const labels = months.map(m => MONTH_LABELS[m]);
             const came = months.map(m => (postdcMonthAgg[m] || {}).came || 0);
             const missed = months.map(m => (postdcMonthAgg[m] || {}).missed || 0);
-            const pct = months.map(m => { const d = (postdcMonthAgg[m] || {}); const t = (d.came || 0) + (d.missed || 0); return t ? +(d.came / t * 100).toFixed(1) : 0; });
+            const pct = months.map(m => { const d = (postdcMonthAgg[m] || {}); const t = (d.came || 0) + (d.missed || 0); return t ? +(d.came / t * 100).toFixed(2) : 0; });
             const ctx = document.getElementById('pdcCmpChart').getContext('2d');
             if (pdcCmpChartInstance) pdcCmpChartInstance.destroy();
             pdcCmpChartInstance = new Chart(ctx, {
@@ -5018,7 +5018,7 @@
                         (i === 0 ? '<td class="py-2.5 px-4 font-semibold text-slate-700 align-top" rowspan="' + s.orgs.length + '">' + esc(s.site) + ' <span class="text-xs text-slate-400">(' + s.total + ')</span></td>' : '') +
                         '<td class="py-2.5 px-4">' + esc(o.org) + '</td>' +
                         '<td class="py-2.5 px-4 text-right font-medium">' + o.n + '</td>' +
-                        '<td class="py-2.5 px-4 text-right text-slate-500">' + (s.total ? Math.round(o.n / s.total * 100) : 0) + '%</td>' +
+                        '<td class="py-2.5 px-4 text-right text-slate-500">' + (s.total ? (o.n / s.total * 100).toFixed(2) : '0.00') + '%</td>' +
                         '</tr>';
                 });
             });
@@ -5054,10 +5054,10 @@
             body.innerHTML = data.map(w => {
                 const max = Math.max(1, ...w.orgs.map(o => o.n));
                 const rows = w.orgs.map((o, i) => {
-                    const pct = w.total ? Math.round(o.n / w.total * 100) : 0;
+                    const pct = w.total ? +(o.n / w.total * 100).toFixed(2) : 0;
                     return '<div class="flex items-center gap-2 py-1">' +
                         '<span class="w-32 shrink-0 truncate text-xs text-slate-600" title="' + esc(o.org) + '">' + esc(o.org) + '</span>' +
-                        '<div class="flex-1 h-3 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full" style="width:' + Math.round(o.n / max * 100) + '%;background:' + shade(i) + '"></div></div>' +
+                        '<div class="flex-1 h-3 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full" style="width:' + (o.n / max * 100).toFixed(2) + '%;background:' + shade(i) + '"></div></div>' +
                         '<span class="w-6 text-right text-xs font-semibold text-slate-700">' + o.n + '</span>' +
                         '<span class="w-9 text-right text-xs text-slate-400">' + pct + '%</span>' +
                         '</div>';
@@ -5077,7 +5077,7 @@
             const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
             let csv = '﻿' + ['หอผู้ป่วย', 'จำนวนชนิดเชื้อ', 'เชื้อก่อโรค', 'จำนวน', '% ในหอ'].map(q).join(',') + '\n';
             data.forEach(w => w.orgs.forEach(o => {
-                csv += [q(w.ward), w.kinds, q(o.org), o.n, (w.total ? Math.round(o.n / w.total * 100) : 0) + '%'].join(',') + '\n';
+                csv += [q(w.ward), w.kinds, q(o.org), o.n, (w.total ? (o.n / w.total * 100).toFixed(2) : '0.00') + '%'].join(',') + '\n';
             }));
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -5089,7 +5089,7 @@
             let csv = '﻿' + ['ตำแหน่ง (SITE)', 'เชื้อก่อโรค', 'จำนวน', '% ในไซต์'].join(',') + '\n';
             const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
             data.forEach(s => s.orgs.forEach(o => {
-                csv += [q(s.site), q(o.org), o.n, (s.total ? Math.round(o.n / s.total * 100) : 0) + '%'].join(',') + '\n';
+                csv += [q(s.site), q(o.org), o.n, (s.total ? (o.n / s.total * 100).toFixed(2) : '0.00') + '%'].join(',') + '\n';
             }));
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -5144,16 +5144,16 @@
             // A: เชื้อ MDR ที่พบ
             const orgs = orgMdrData(); const totO = orgs.reduce((a, x) => a + x.n, 0);
             const aB = document.getElementById('mdrOrgBody');
-            if (aB) aB.innerHTML = orgs.length ? orgs.map((o, i) => '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 text-slate-400">' + (i + 1) + '</td><td class="py-2.5 px-4">' + esc(o.org) + '</td><td class="py-2.5 px-4 text-right font-medium">' + o.n + '</td><td class="py-2.5 px-4 text-right text-slate-500">' + (totO ? Math.round(o.n / totO * 100) : 0) + '%</td></tr>').join('') : empty(4, 'ไม่มีเชื้อ MDR ตามตัวกรอง');
+            if (aB) aB.innerHTML = orgs.length ? orgs.map((o, i) => '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 text-slate-400">' + (i + 1) + '</td><td class="py-2.5 px-4">' + esc(o.org) + '</td><td class="py-2.5 px-4 text-right font-medium">' + o.n + '</td><td class="py-2.5 px-4 text-right text-slate-500">' + (totO ? (o.n / totO * 100).toFixed(2) : '0.00') + '%</td></tr>').join('') : empty(4, 'ไม่มีเชื้อ MDR ตามตัวกรอง');
             // B: เชื้อ MDR แยกตาม SITE
             const bs = orgMdrBySiteData();
             const bB = document.getElementById('mdrOrgSiteBody');
-            if (bB) bB.innerHTML = bs.length ? bs.map(s => s.orgs.map((o, i) => '<tr class="hover:bg-slate-50">' + (i === 0 ? '<td rowspan="' + s.orgs.length + '" class="py-2.5 px-4 font-semibold text-slate-700 align-top">' + esc(s.site) + ' <span class="text-xs text-slate-400">(' + s.total + ')</span></td>' : '') + '<td class="py-2.5 px-4">' + esc(o.org) + '</td><td class="py-2.5 px-4 text-right font-medium">' + o.n + '</td><td class="py-2.5 px-4 text-right text-slate-500">' + (s.total ? Math.round(o.n / s.total * 100) : 0) + '%</td></tr>').join('')).join('') : empty(4, 'ไม่มีเชื้อ MDR ตามตัวกรอง');
+            if (bB) bB.innerHTML = bs.length ? bs.map(s => s.orgs.map((o, i) => '<tr class="hover:bg-slate-50">' + (i === 0 ? '<td rowspan="' + s.orgs.length + '" class="py-2.5 px-4 font-semibold text-slate-700 align-top">' + esc(s.site) + ' <span class="text-xs text-slate-400">(' + s.total + ')</span></td>' : '') + '<td class="py-2.5 px-4">' + esc(o.org) + '</td><td class="py-2.5 px-4 text-right font-medium">' + o.n + '</td><td class="py-2.5 px-4 text-right text-slate-500">' + (s.total ? (o.n / s.total * 100).toFixed(2) : '0.00') + '%</td></tr>').join('')).join('') : empty(4, 'ไม่มีเชื้อ MDR ตามตัวกรอง');
             // C: สรุปราย SITE (จำนวน/อัตรา/ร้อยละ)
             const list = mdrCasesBySite(); const totC = list.reduce((a, x) => a + x.n, 0);
             const cB = document.getElementById('mdrSiteStatBody');
-            if (cB) cB.innerHTML = list.length ? list.map(s => '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 font-medium text-slate-700">' + esc(s.site) + '</td><td class="py-2.5 px-4 text-right text-fuchsia-700 font-semibold">' + s.n + '</td><td class="py-2.5 px-4 text-right text-fuchsia-700">' + (mdrPd ? (s.n / mdrPd * 1000).toFixed(2) : '-') + '</td><td class="py-2.5 px-4 text-right text-slate-500">' + (totC ? Math.round(s.n / totC * 100) : 0) + '%</td></tr>').join('') +
-                '<tr class="bg-slate-50 font-semibold text-slate-800"><td class="py-2.5 px-4">รวม</td><td class="py-2.5 px-4 text-right text-fuchsia-700">' + totC + '</td><td class="py-2.5 px-4 text-right text-fuchsia-700">' + (mdrPd ? (totC / mdrPd * 1000).toFixed(2) : '-') + '</td><td class="py-2.5 px-4 text-right">100%</td></tr>' : empty(4, 'ไม่มีเคส MDR ตามตัวกรอง');
+            if (cB) cB.innerHTML = list.length ? list.map(s => '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 font-medium text-slate-700">' + esc(s.site) + '</td><td class="py-2.5 px-4 text-right text-fuchsia-700 font-semibold">' + s.n + '</td><td class="py-2.5 px-4 text-right text-fuchsia-700">' + (mdrPd ? (s.n / mdrPd * 1000).toFixed(2) : '-') + '</td><td class="py-2.5 px-4 text-right text-slate-500">' + (totC ? (s.n / totC * 100).toFixed(2) : '0.00') + '%</td></tr>').join('') +
+                '<tr class="bg-slate-50 font-semibold text-slate-800"><td class="py-2.5 px-4">รวม</td><td class="py-2.5 px-4 text-right text-fuchsia-700">' + totC + '</td><td class="py-2.5 px-4 text-right text-fuchsia-700">' + (mdrPd ? (totC / mdrPd * 1000).toFixed(2) : '-') + '</td><td class="py-2.5 px-4 text-right">100.00%</td></tr>' : empty(4, 'ไม่มีเคส MDR ตามตัวกรอง');
         }
         function exportMdrSiteCSV() {
             const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
@@ -5161,10 +5161,10 @@
             const mdrPd = FISCAL_MONTHS.reduce((a, m) => a + (mdrDen[m] ? mdrDen[m].patientDay : 0), 0);
             const list = mdrCasesBySite(); const totC = list.reduce((a, x) => a + x.n, 0);
             let csv = '﻿' + ['ตำแหน่ง(SITE)', 'จำนวนเคส MDR', 'อัตรา/1000วันนอน', 'ร้อยละ'].map(q).join(',') + '\n';
-            list.forEach(s => { csv += [q(s.site), s.n, (mdrPd ? (s.n / mdrPd * 1000).toFixed(2) : ''), (totC ? Math.round(s.n / totC * 100) : 0) + '%'].join(',') + '\n'; });
+            list.forEach(s => { csv += [q(s.site), s.n, (mdrPd ? (s.n / mdrPd * 1000).toFixed(2) : ''), (totC ? (s.n / totC * 100).toFixed(2) : '0.00') + '%'].join(',') + '\n'; });
             const bs = orgMdrBySiteData();
             csv += '\n' + ['ตำแหน่ง(SITE)', 'เชื้อก่อโรค(MDR)', 'จำนวน', '%ในไซต์'].map(q).join(',') + '\n';
-            bs.forEach(s => s.orgs.forEach(o => { csv += [q(s.site), q(o.org), o.n, (s.total ? Math.round(o.n / s.total * 100) : 0) + '%'].join(',') + '\n'; }));
+            bs.forEach(s => s.orgs.forEach(o => { csv += [q(s.site), q(o.org), o.n, (s.total ? (o.n / s.total * 100).toFixed(2) : '0.00') + '%'].join(',') + '\n'; }));
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mdr_by_site.csv'; a.click();
             setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -5186,14 +5186,14 @@
             if (kw) kw.innerHTML =
                 kpi('จำนวนเชื้อที่พบ (ครั้ง)', totalOrg, 'รวมทุกตำแหน่ง', 'text-emerald-700') +
                 kpi('ชนิดเชื้อที่พบ', all.length, 'ชนิดไม่ซ้ำ', 'text-sky-700') +
-                kpi('เชื้อดื้อยา (MDR)', mdrTotal, (totalOrg ? Math.round(mdrTotal / totalOrg * 100) : 0) + '% ของเชื้อที่พบ', 'text-rose-700') +
+                kpi('เชื้อดื้อยา (MDR)', mdrTotal, (totalOrg ? (mdrTotal / totalOrg * 100).toFixed(2) : '0.00') + '% ของเชื้อที่พบ', 'text-rose-700') +
                 kpi('ชนิดเชื้อดื้อยา', distinctMdr, 'ชนิดไม่ซ้ำ', 'text-amber-700');
             // ตาราง MDR
             const mb = document.getElementById('orgMdrBody');
             if (mb) mb.innerHTML = mdr.length ? mdr.map(o =>
                 '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4">' + esc(o.org) + '</td>' +
                 '<td class="py-2.5 px-4 text-right font-medium text-rose-600">' + o.n + '</td>' +
-                '<td class="py-2.5 px-4 text-right text-slate-500">' + (mdrTotal ? Math.round(o.n / mdrTotal * 100) : 0) + '%</td></tr>'
+                '<td class="py-2.5 px-4 text-right text-slate-500">' + (mdrTotal ? (o.n / mdrTotal * 100).toFixed(2) : '0.00') + '%</td></tr>'
             ).join('') : '<tr><td colspan="3" class="py-8 text-center text-slate-400">— ไม่มีเชื้อดื้อยาตามตัวกรอง —</td></tr>';
             // ตารางเชื้อทั้งหมด
             const ab = document.getElementById('orgAllBody');
@@ -5201,7 +5201,7 @@
                 '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 text-slate-400">' + (i + 1) + '</td>' +
                 '<td class="py-2.5 px-4">' + esc(o.org) + '</td>' +
                 '<td class="py-2.5 px-4 text-right font-medium">' + o.n + '</td>' +
-                '<td class="py-2.5 px-4 text-right text-slate-500">' + (totalOrg ? Math.round(o.n / totalOrg * 100) : 0) + '%</td></tr>'
+                '<td class="py-2.5 px-4 text-right text-slate-500">' + (totalOrg ? (o.n / totalOrg * 100).toFixed(2) : '0.00') + '%</td></tr>'
             ).join('') : '<tr><td colspan="4" class="py-8 text-center text-slate-400">— ไม่มีข้อมูลเชื้อก่อโรคตามตัวกรอง —</td></tr>';
             // ตารางเชื้อแยกตามไซต์ (ใช้ร่วมกับบทวิเคราะห์)
             renderOrgBySite('orgBySiteBody2');
@@ -5236,7 +5236,7 @@
             const tot = all.reduce((a, x) => a + x.n, 0);
             const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
             let csv = '﻿' + ['#', 'เชื้อก่อโรค', 'จำนวน', '% ของทั้งหมด'].join(',') + '\n';
-            all.forEach((o, i) => { csv += [i + 1, q(o.org), o.n, (tot ? Math.round(o.n / tot * 100) : 0) + '%'].join(',') + '\n'; });
+            all.forEach((o, i) => { csv += [i + 1, q(o.org), o.n, (tot ? (o.n / tot * 100).toFixed(2) : '0.00') + '%'].join(',') + '\n'; });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
             a.download = 'organisms_all.csv'; a.click();
@@ -5287,7 +5287,7 @@
             if (kw) kw.innerHTML =
                 kpi('ผู้ป่วย HAI', n, 'ราย', 'text-emerald-700') +
                 kpi('อายุเฉลี่ย', avgAge == null ? '-' : avgAge.toFixed(0), 'ปี (' + ages.length + ' ราย)', 'text-sky-700') +
-                kpi('ชาย : หญิง', male + ' : ' + female, (n ? Math.round(male / n * 100) : 0) + '% : ' + (n ? Math.round(female / n * 100) : 0) + '%', 'text-violet-700') +
+                kpi('ชาย : หญิง', male + ' : ' + female, (n ? (male / n * 100).toFixed(2) : '0.00') + '% : ' + (n ? (female / n * 100).toFixed(2) : '0.00') + '%', 'text-violet-700') +
                 kpi('วันจนเกิดอาการ (เฉลี่ย)', avgD == null ? '-' : avgD.toFixed(1), 'วัน (' + dList.length + ' ราย)', 'text-amber-700');
             // สามเหลี่ยมระบาดวิทยา + Early/Late — กรองตาม SITE ที่เลือก
             populateTriadSiteFilter(cases);
@@ -5326,7 +5326,7 @@
                 '<td class="py-2.5 px-4 text-right">' + b.female + '</td>' +
                 '<td class="py-2.5 px-4 text-right">' + (b.ageN ? (b.ageSum / b.ageN).toFixed(0) : '-') + '</td>' +
                 '<td class="py-2.5 px-4 text-right">' + (b.dN ? (b.dSum / b.dN).toFixed(1) : '-') + '</td>' +
-                '<td class="py-2.5 px-4 text-right text-fuchsia-700">' + (b.n ? Math.round(b.mdr / b.n * 100) + '%' : '-') + '</td></tr>'
+                '<td class="py-2.5 px-4 text-right text-fuchsia-700">' + (b.n ? (b.mdr / b.n * 100).toFixed(2) + '%' : '-') + '</td></tr>'
             ).join('') : '<tr><td colspan="7" class="py-8 text-center text-slate-400">— ไม่มีเคส HAI ตามตัวกรอง —</td></tr>';
         }
         // ---------- สามเหลี่ยมระบาดวิทยา (Host · Agent · Environment) ----------
@@ -5366,7 +5366,7 @@
             const orgTop = triadTop(orgCnt, 5);
             const distinctOrg = Object.keys(orgCnt).length;
             const mdrN = cases.filter(c => c.isMDR).length;
-            const mdrPct = n ? Math.round(mdrN / n * 100) : 0;
+            const mdrPct = n ? +(mdrN / n * 100).toFixed(2) : 0;
             // กลไก/ชนิดดื้อยา: ดึงจาก mdrType + amr + ชื่อเชื้อ (cre/esbl/mrsa/xdr/mdr)
             const mechCnt = {};
             const mechPats = [['CRE', /\bcre\b/i], ['ESBL', /esbl/i], ['MRSA', /mrsa/i], ['XDR', /\bxdr\b/i], ['VRE', /\bvre\b/i], ['MDR', /\bmdr\b/i]];
@@ -5384,7 +5384,7 @@
             const distinctUnit = Object.keys(unitCnt).filter(u => u !== '(ไม่ระบุ)').length;
             const devSites = { CAUTI: 1, VAP: 1, CLABSI: 1 };
             const devN = cases.filter(c => devSites[c.siteType]).length;
-            const devPct = n ? Math.round(devN / n * 100) : 0;
+            const devPct = n ? +(devN / n * 100).toFixed(2) : 0;
             const srcCnt = {}; cases.forEach(c => { const s = c.admitFrom || '(ไม่ระบุ)'; srcCnt[s] = (srcCnt[s] || 0) + 1; });
             const srcTop = triadTop(srcCnt, 4);
             // แหล่งใส่อุปกรณ์ต้นเหตุ (Tube/FC/CLine) เฉพาะเคสสัมพันธ์อุปกรณ์
@@ -5397,7 +5397,7 @@
                 return '<div class="mt-3"><p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">' + title + '</p>' +
                     (arr.length ? arr.map(x => '<div class="flex items-center gap-2 mb-1.5">' +
                         '<span class="w-24 shrink-0 truncate text-xs text-slate-600" title="' + esc(x.k) + '">' + esc(x.k) + '</span>' +
-                        '<div class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full" style="width:' + Math.round(x.n / max * 100) + '%;background:' + color + '"></div></div>' +
+                        '<div class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full" style="width:' + (x.n / max * 100).toFixed(2) + '%;background:' + color + '"></div></div>' +
                         '<span class="w-6 text-right text-xs font-semibold text-slate-700">' + x.n + '</span></div>').join('') :
                         '<p class="text-xs text-slate-300">—</p>') + '</div>';
             };
@@ -5449,7 +5449,7 @@
             const insCnt = {}; let insN = 0, insOut = 0;
             subset.forEach(c => { const s = deviceInsSite(c); if (!s) return; const su = s.toUpperCase(); insCnt[su] = (insCnt[su] || 0) + 1; insN++; if (c.unit && su !== c.unit) insOut++; });
             const top = cnt => { const a = triadTop(cnt, 1)[0]; return a ? a : null; };
-            return { n, avgD, mdrN, mdrPct: n ? Math.round(mdrN / n * 100) : 0, topOrg: top(orgCnt), topMech: top(mechCnt), devN, devPct: n ? Math.round(devN / n * 100) : 0, topUnit: top(unitCnt), topSrc: top(srcCnt), topIns: top(insCnt), insN, insOut, insOutPct: insN ? Math.round(insOut / insN * 100) : 0 };
+            return { n, avgD, mdrN, mdrPct: n ? +(mdrN / n * 100).toFixed(2) : 0, topOrg: top(orgCnt), topMech: top(mechCnt), devN, devPct: n ? +(devN / n * 100).toFixed(2) : 0, topUnit: top(unitCnt), topSrc: top(srcCnt), topIns: top(insCnt), insN, insOut, insOutPct: insN ? +(insOut / insN * 100).toFixed(2) : 0 };
         }
         function renderOnsetStrata(cases) {
             const host = document.getElementById('patientOnsetStrata');
@@ -5461,7 +5461,7 @@
             const late = onsetGroupStats(classified.filter(c => patientDaysToOnset(c) > ONSET_CUT));
             const tot = classified.length;
             if (!tot) { host.innerHTML = '<p class="py-6 text-center text-slate-400">— ยังไม่มีข้อมูลวันเกิดอาการเพียงพอ (ต้องมีวันนอน/Admit และ Date of event) —</p>' + (unknown ? '<p class="text-center text-xs text-slate-400">เคสที่คำนวณวันเกิดอาการไม่ได้: ' + unknown + ' ราย</p>' : ''); return; }
-            const pct = (x, t) => t ? Math.round(x / t * 100) : 0;
+            const pct = (x, t) => t ? +(x / t * 100).toFixed(2) : 0;
             const txt = o => o ? esc(o.k) + ' (' + o.n + ')' : '—';
             // แถบเปรียบเทียบ %ดื้อยา / %อุปกรณ์
             const barRow = (label, ev, lv, hint) => {
@@ -5502,7 +5502,7 @@
             const rows = patientSiteStats();
             let csv = '﻿' + ['ตำแหน่ง (SITE)', 'จำนวน', 'ชาย', 'หญิง', 'อายุเฉลี่ย', 'วันจนเกิดอาการเฉลี่ย', '%ดื้อยา'].map(q).join(',') + '\n';
             rows.forEach(b => {
-                csv += [q(b.site), b.n, b.male, b.female, (b.ageN ? (b.ageSum / b.ageN).toFixed(0) : ''), (b.dN ? (b.dSum / b.dN).toFixed(1) : ''), (b.n ? Math.round(b.mdr / b.n * 100) : 0) + '%'].join(',') + '\n';
+                csv += [q(b.site), b.n, b.male, b.female, (b.ageN ? (b.ageSum / b.ageN).toFixed(0) : ''), (b.dN ? (b.dSum / b.dN).toFixed(1) : ''), (b.n ? (b.mdr / b.n * 100).toFixed(2) : '0.00') + '%'].join(',') + '\n';
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -5571,7 +5571,7 @@
             const haiCount = hai.length;
             const pd = rows.reduce((a, r) => a + (r.patientDay || 0), 0);
             const mdr = hai.filter(r => r.isMDR).length;
-            return cmpEnrichSite({ haiCount, patientDay: pd, haiRate: pd ? +(haiCount / pd * 1000).toFixed(2) : null, mdrPct: haiCount ? Math.round(mdr / haiCount * 100) : 0 }, rows);
+            return cmpEnrichSite({ haiCount, patientDay: pd, haiRate: pd ? +(haiCount / pd * 1000).toFixed(2) : null, mdrPct: haiCount ? +(mdr / haiCount * 100).toFixed(2) : 0 }, rows);
         }
         // คำนวณตามมิติ (SITE ใช้ตัวหารเฉพาะตำแหน่งตาม RATE_META)
         function cmpMetricsFor(dim, v, base) {
@@ -5583,7 +5583,7 @@
                 const den = meta.den === 'liveBirth'
                     ? FISCAL_MONTHS.reduce((a, m) => a + (liveBirthByMonthIgnoringWard()[m] || 0), 0)
                     : base.reduce((a, r) => a + (r[meta.den] || 0), 0);
-                const obj = { haiCount, patientDay: base.reduce((a, r) => a + (r.patientDay || 0), 0), haiRate: den ? +(haiCount / den * meta.factor).toFixed(2) : null, mdrPct: haiCount ? Math.round(mdr / haiCount * 100) : 0 };
+                const obj = { haiCount, patientDay: base.reduce((a, r) => a + (r.patientDay || 0), 0), haiRate: den ? +(haiCount / den * meta.factor).toFixed(2) : null, mdrPct: haiCount ? +(mdr / haiCount * 100).toFixed(2) : 0 };
                 // เมื่อมิติ=ตำแหน่ง: ให้ค่า rate_/count_ ของตำแหน่งนั้นตรงกับ v (ตำแหน่งอื่นเว้นว่าง)
                 ['VAP', 'CAUTI', 'CLABSI', 'SSI', 'Omphalitis'].forEach(s => { obj['rate_' + s] = (s === v ? obj.haiRate : null); obj['count_' + s] = (s === v ? haiCount : 0); });
                 return obj;
@@ -5673,7 +5673,7 @@
             const cnt = {};
             cases.forEach(c => { const v = (c[field] || '').toString().trim() || '(ไม่ระบุ)'; cnt[v] = (cnt[v] || 0) + 1; });
             const tot = cases.length;
-            return Object.keys(cnt).map(k => ({ k, n: cnt[k], pct: tot ? Math.round(cnt[k] / tot * 100) : 0 }))
+            return Object.keys(cnt).map(k => ({ k, n: cnt[k], pct: tot ? +(cnt[k] / tot * 100).toFixed(2) : 0 }))
                 .sort((a, b) => b.n - a.n);
         }
         // จำแนกผลประเมินจากคอลัมน์ "ประสิทธิภาพ" เป็น 3 สถานะ: รายงานแล้วตรง / รายงานแล้วไม่ตรง / ไม่รายงาน
@@ -5723,7 +5723,7 @@
                 '<p class="text-xs text-slate-400 mt-1">' + sub + '</p></div>';
             const kw = document.getElementById('survKpis');
             if (kw) kw.innerHTML =
-                kpi('ร้อยละประสิทธิภาพ', effPct == null ? '-' : effPct.toFixed(1) + '%', 'รายงานแล้วตรง ' + rightN + ' / รวม ' + clsN, 'text-teal-700') +
+                kpi('ร้อยละประสิทธิภาพ', effPct == null ? '-' : effPct.toFixed(2) + '%', 'รายงานแล้วตรง ' + rightN + ' / รวม ' + clsN, 'text-teal-700') +
                 kpi('รายงานแล้วตรง', rightN, 'ราย', 'text-emerald-700') +
                 kpi('รายงานแล้วไม่ตรง', wrongN, 'ราย', 'text-amber-600') +
                 kpi('ไม่รายงาน', noneN, 'ราย', 'text-rose-600');
@@ -5751,7 +5751,7 @@
                 '<td class="py-2.5 px-4 text-right text-emerald-700 font-medium">' + b.right + '</td>' +
                 '<td class="py-2.5 px-4 text-right text-amber-600">' + b.wrong + '</td>' +
                 '<td class="py-2.5 px-4 text-right text-rose-600">' + b.none + '</td>' +
-                '<td class="py-2.5 px-4 text-right ' + (pct == null ? 'text-slate-300' : pdcPctClass(pct, true)) + '">' + (pct == null ? '-' : pct.toFixed(1) + '%') + '</td>' +
+                '<td class="py-2.5 px-4 text-right ' + (pct == null ? 'text-slate-300' : pdcPctClass(pct, true)) + '">' + (pct == null ? '-' : pct.toFixed(2) + '%') + '</td>' +
                 '<td class="py-2.5 px-4 text-right">' + (b.dN ? (b.dSum / b.dN).toFixed(1) : '-') + '</td></tr>';
             }).join('') : '<tr><td colspan="8" class="py-8 text-center text-slate-400">— ไม่มีเคส HAI ตามตัวกรอง —</td></tr>';
             // ตารางตัวชี้วัดคุณภาพรายไตรมาส
@@ -5770,7 +5770,7 @@
         ];
         function devRows() {
             let cum = 0;
-            return DEV_PHASES.map(p => { cum += p.add; return { ...p, cum, cumPct: +(cum / DEV_TOTAL * 100).toFixed(1), addPct: +(p.add / DEV_TOTAL * 100).toFixed(1) }; });
+            return DEV_PHASES.map(p => { cum += p.add; return { ...p, cum, cumPct: +(cum / DEV_TOTAL * 100).toFixed(2), addPct: +(p.add / DEV_TOTAL * 100).toFixed(2) }; });
         }
         function renderSurvDev() {
             const body = document.getElementById('survDevBody'); if (!body) return;
@@ -5845,7 +5845,7 @@
                 a.applicable++; if (!f.ok) a.missing++;
             }));
             return Object.values(agg).filter(a => a.missing > 0)
-                .map(a => ({ ...a, pct: a.applicable ? Math.round(a.missing / a.applicable * 100) : 0 }))
+                .map(a => ({ ...a, pct: a.applicable ? +(a.missing / a.applicable * 100).toFixed(2) : 0 }))
                 .sort((x, y) => y.missing - x.missing);
         }
         function qiStatsForRows(rows) {
@@ -5881,7 +5881,7 @@
             const pctCell = (v, target, num, den, unit) => {
                 if (v == null) return '<td class="py-2.5 px-4 text-right text-slate-300">NA</td>';
                 const cls = target == null ? '' : (v >= target ? 'text-emerald-700 bg-emerald-50/50' : 'text-rose-600 bg-rose-50/50');
-                return '<td class="py-2.5 px-4 text-right font-semibold ' + cls + '">' + v.toFixed(1) + '%' + frac(num, den, unit) + '</td>';
+                return '<td class="py-2.5 px-4 text-right font-semibold ' + cls + '">' + v.toFixed(2) + '%' + frac(num, den, unit) + '</td>';
             };
             // เซลล์อัตรา (เฝ้าระวังแนวโน้ม) — num/den*factor + กำกับตัวตั้ง/ตัวหาร
             const rateCell = (num, den, factor) => den ? '<td class="py-2.5 px-4 text-right font-medium text-slate-700">' + (num / den * factor).toFixed(2) + frac(num, Math.round(den)) + '</td>' : '<td class="py-2.5 px-4 text-right text-slate-300">NA</td>';
@@ -5955,7 +5955,7 @@
             let csv = '﻿' + ['หอผู้ป่วย', 'จำนวนรายงานทั้งหมด', 'เคส HAI', 'รายงานแล้วตรง', 'รายงานแล้วไม่ตรง', 'ไม่รายงาน', 'ร้อยละประสิทธิภาพ', 'ตรวจพบเฉลี่ย(วัน)'].map(q).join(',') + '\n';
             rows.forEach(b => {
                 const cls = b.right + b.wrong + b.none;
-                csv += [q(b.unit), b.total, b.n, b.right, b.wrong, b.none, (cls ? (b.right / cls * 100).toFixed(1) : '') + (cls ? '%' : ''), (b.dN ? (b.dSum / b.dN).toFixed(1) : '')].join(',') + '\n';
+                csv += [q(b.unit), b.total, b.n, b.right, b.wrong, b.none, (cls ? (b.right / cls * 100).toFixed(2) : '') + (cls ? '%' : ''), (b.dN ? (b.dSum / b.dN).toFixed(1) : '')].join(',') + '\n';
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -6217,7 +6217,7 @@
                 const num = sub.filter(isK).length;
                 return den ? +(num / den * factor).toFixed(2) : 0;
             });
-            const pcts = counts.map((c, i) => totals[i] ? +(c / totals[i] * 100).toFixed(1) : 0);
+            const pcts = counts.map((c, i) => totals[i] ? +(c / totals[i] * 100).toFixed(2) : 0);
             return { labels, counts, rates, pcts, unitLabel: { year: 'ปี', quarter: 'ไตรมาส', month: 'เดือน' }[unit], rateUnit: meta.unit };
         }
         // ===== ข้อมูลย้อนหลัง จากชีต "สรุปรายปี-HAI" (อ่านตรงจากไฟล์แยก) =====
@@ -6393,7 +6393,7 @@
                         plugins: {
                             legend: { position: 'right', labels: { font: { family: 'Anuphan', size: 13 }, boxWidth: 14 } },
                             // ป้าย % บนชิ้นโดนัท/วงกลม (เฉพาะชิ้นที่ ≥ 4% กันรก)
-                            datalabels: { display: ctx2 => { const a = ctx2.dataset.data; const t = a.reduce((x, y) => x + (+y || 0), 0); return t && (+a[ctx2.dataIndex] / t) >= 0.04; }, color: '#fff', font: { family: 'Anuphan', weight: 'bold', size: 12 }, formatter: (v, c) => { const t = c.dataset.data.reduce((a, b) => a + (+b || 0), 0); return t ? Math.round(v / t * 100) + '%' : ''; } }
+                            datalabels: { display: ctx2 => { const a = ctx2.dataset.data; const t = a.reduce((x, y) => x + (+y || 0), 0); return t && (+a[ctx2.dataIndex] / t) >= 0.04; }, color: '#fff', font: { family: 'Anuphan', weight: 'bold', size: 12 }, formatter: (v, c) => { const t = c.dataset.data.reduce((a, b) => a + (+b || 0), 0); return t ? (v / t * 100).toFixed(2) + '%' : ''; } }
                         }
                     }
                 });
@@ -6481,7 +6481,7 @@
             const stat = {
                 totCases, pd, op: denTot.op,
                 hospRate: pd ? totCases / pd * 1000 : null,
-                mdr, mdrPct: totCases ? Math.round(mdr / totCases * 100) : 0,
+                mdr, mdrPct: totCases ? +(mdr / totCases * 100).toFixed(2) : 0,
                 mdrRate: pd ? mdr / pd * 1000 : null,
                 ssiRate: denTot.op ? ssiCases / denTot.op * 100 : null
             };
@@ -6557,7 +6557,7 @@
             const mkBar = (labels, data, label, color) => () => { const ctx = document.getElementById('presentChart'); if (!ctx) return; if (presentChartInst) presentChartInst.destroy(); presentChartInst = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label, data, backgroundColor: color, borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } } }); };
             // แถวตาราง
             const wardRows = arr => arr.length ? arr.map((w, i) => '<tr><td style="opacity:.5">' + (i + 1) + '</td><td>' + esc(w.name) + '</td><td class="r" style="opacity:.6">' + (w.den || 0).toLocaleString() + '</td><td class="r">' + (w.n || 0) + '</td><td class="r">' + fx(w.rate) + '</td></tr>').join('') : '<tr><td colspan="5" style="opacity:.5">— ไม่มีข้อมูล —</td></tr>';
-            const orgRows = (arr, color, off, lim) => { const tot = arr.reduce((s, x) => s + x.n, 0); const a = arr.slice(off || 0, (off || 0) + (lim || 999)); return a.length ? a.map((o, i) => '<tr><td style="opacity:.5">' + ((off || 0) + i + 1) + '</td><td>' + esc(o.org) + '</td><td class="r" style="color:' + color + ';font-weight:700">' + o.n + '</td><td class="r" style="opacity:.6">' + (tot ? Math.round(o.n / tot * 100) : 0) + '%</td></tr>').join('') : '<tr><td colspan="4" style="opacity:.5">— ไม่มี —</td></tr>'; };
+            const orgRows = (arr, color, off, lim) => { const tot = arr.reduce((s, x) => s + x.n, 0); const a = arr.slice(off || 0, (off || 0) + (lim || 999)); return a.length ? a.map((o, i) => '<tr><td style="opacity:.5">' + ((off || 0) + i + 1) + '</td><td>' + esc(o.org) + '</td><td class="r" style="color:' + color + ';font-weight:700">' + o.n + '</td><td class="r" style="opacity:.6">' + (tot ? (o.n / tot * 100).toFixed(2) : '0.00') + '%</td></tr>').join('') : '<tr><td colspan="4" style="opacity:.5">— ไม่มี —</td></tr>'; };
             const siteWardSlide = (eye, title, key) => sec(eye, title, tbl(['#', 'หอผู้ป่วย', 'ตัวหาร', 'ครั้ง', 'อัตรา'], wardRows(d.perSite[key].ward)));
             const siteOrgSlide = (eye, title, key, color, off, lim) => sec(eye, title, tbl(['#', 'เชื้อก่อโรค', 'จำนวน', '%'], orgRows(d.perSite[key].orgs, color, off, lim)));
             const C = PRESENT_C();
@@ -7024,7 +7024,7 @@
             cases.forEach(c => siteCount[c.siteType] = (siteCount[c.siteType] || 0) + 1);
             const topSite = Object.entries(siteCount).sort((a, b) => b[1] - a[1])[0];
             const mdr = cases.filter(c => c.isMDR).length;
-            const mdrPct = totalHAI ? Math.round(mdr / totalHAI * 100) : 0;
+            const mdrPct = totalHAI ? +(mdr / totalHAI * 100).toFixed(2) : 0;
             const overallRate = denTot.patientDay ? (totalHAI / denTot.patientDay * 1000).toFixed(2) : null;
 
             // เดือนที่มีข้อมูล + แนวโน้ม
@@ -7056,7 +7056,7 @@
             const bullets = [];
             bullets.push('พบผู้ป่วยติดเชื้อในโรงพยาบาล (HAI) รวม <b>' + totalHAI + ' ราย</b> ในช่วง <b>' + firstL + '–' + lastL + '</b>' +
                 (overallRate ? ' คิดเป็นอัตรา <b>' + overallRate + ' ต่อ 1,000 วันนอน</b>' : ''));
-            if (topSite) bullets.push('ตำแหน่งการติดเชื้อที่พบมากที่สุดคือ <b>' + (SITE_LABEL[topSite[0]] || topSite[0]) + '</b> จำนวน <b>' + topSite[1] + ' ราย</b> (' + Math.round(topSite[1] / totalHAI * 100) + '% ของทั้งหมด)');
+            if (topSite) bullets.push('ตำแหน่งการติดเชื้อที่พบมากที่สุดคือ <b>' + (SITE_LABEL[topSite[0]] || topSite[0]) + '</b> จำนวน <b>' + topSite[1] + ' ราย</b> (' + (topSite[1] / totalHAI * 100).toFixed(2) + '% ของทั้งหมด)');
             if (topWard && topWard.r != null) bullets.push('หอผู้ป่วยที่มีอัตราการติดเชื้อสูงที่สุดคือ <b>' + topWard.unit + '</b> ที่ <b>' + topWard.r + ' ต่อ 1,000 วันนอน</b> (' + topWard.HAI + ' ราย)');
             bullets.push('แนวโน้มจำนวนเคสเดือนล่าสุดเทียบกับเดือนก่อนหน้า: <b>' + trendTxt + '</b>');
             bullets.push('เชื้อดื้อยา (MDR) จำนวน <b>' + mdr + ' ราย</b> คิดเป็น <b>' + mdrPct + '% ของ HAI</b>' + (topWardMdr ? ' โดยพบมากที่สุดที่หอ <b>' + topWardMdr.unit + '</b> (' + topWardMdr.MDR + ' ราย)' : ''));
@@ -7136,7 +7136,7 @@
                 ];
                 const tot = parts.reduce((a, p) => a + p.v, 0);
                 lb.innerHTML = parts.map(p => {
-                    const pct = tot ? Math.round(p.v / tot * 100) : 0;
+                    const pct = tot ? +(p.v / tot * 100).toFixed(2) : 0;
                     return '<div class="rounded-xl border border-slate-100 bg-slate-50/50 p-3">' +
                         '<div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-600">' + p.k + '</span>' +
                         '<span class="text-xs font-bold" style="color:' + p.c + '">' + pct + '%</span></div>' +
@@ -7159,7 +7159,7 @@
                 ];
                 const tt = lines.reduce((a, p) => a + p.v, 0);
                 hdlb.innerHTML = lines.map(p => {
-                    const pct = tt ? Math.round(p.v / tt * 100) : 0;
+                    const pct = tt ? +(p.v / tt * 100).toFixed(2) : 0;
                     const rateTxt = (p.n != null && p.den) ? fmtRate(rate(p.n, p.den, 1000)) : '—';
                     return '<tr class="hover:bg-slate-50"><td class="py-3 px-4 font-medium text-slate-700">' + p.k + '</td>' +
                         '<td class="py-3 px-4 text-right">' + Math.round(p.v).toLocaleString() + '</td>' +
@@ -7170,7 +7170,7 @@
                 }).join('') +
                     '<tr class="bg-slate-50 font-semibold text-slate-800"><td class="py-3 px-4">รวม</td>' +
                     '<td class="py-3 px-4 text-right">' + Math.round(tt).toLocaleString() + '</td>' +
-                    '<td class="py-3 px-4 text-right">100%</td><td class="py-3 px-4 text-right">—</td>' +
+                    '<td class="py-3 px-4 text-right">100.00%</td><td class="py-3 px-4 text-right">—</td>' +
                     '<td class="py-3 px-4 text-right">—</td><td class="py-3 px-4 text-right">—</td></tr>';
             }
 
@@ -7224,7 +7224,7 @@
                     '<td class="py-3 px-4 text-right">' + Math.round(gd).toLocaleString() + '</td>' +
                     '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(rate(g.n, gd, 1000)) + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + g.mdr + '</td>' +
-                    '<td class="py-3 px-4 text-right ' + (g.n ? pdcPctClass(g.mdr / g.n * 100, false) : 'text-fuchsia-700') + '">' + (g.n ? Math.round(g.mdr / g.n * 100) + '%' : '-') + '</td>';
+                    '<td class="py-3 px-4 text-right ' + (g.n ? pdcPctClass(g.mdr / g.n * 100, false) : 'text-fuchsia-700') + '">' + (g.n ? (g.mdr / g.n * 100).toFixed(2) + '%' : '-') + '</td>';
                 tbody.appendChild(tr);
             });
             if (groups.length) {
@@ -7238,7 +7238,7 @@
                     '<td class="py-3 px-4 text-right">' + (mixed ? '—' : Math.round(den).toLocaleString()) + '</td>' +
                     '<td class="py-3 px-4 text-right text-blue-700">' + (mixed ? '—' : fmtRate(rate(n, den, 1000))) + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700">' + mdr + '</td>' +
-                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + (n ? Math.round(mdr / n * 100) + '%' : '-') + '</td>';
+                    '<td class="py-3 px-4 text-right text-fuchsia-700">' + (n ? (mdr / n * 100).toFixed(2) + '%' : '-') + '</td>';
                 tbody.appendChild(trT);
             } else {
                 tbody.innerHTML = '<tr><td colspan="6" class="py-4 px-4 text-center text-slate-400">ไม่มีข้อมูล</td></tr>';
@@ -7262,7 +7262,7 @@
             let csv = head.join(',') + '\n';
             groups.forEach(g => {
                 csv += [g.grp, g.unit, g.n, Math.round(g.den), fmtRate(rate(g.n, g.den, 1000)),
-                        g.mdr, (g.n ? Math.round(g.mdr / g.n * 100) : 0)].join(',') + '\n';
+                        g.mdr, (g.n ? +(g.mdr / g.n * 100).toFixed(2) : 0)].join(',') + '\n';
             });
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -8374,7 +8374,7 @@
         function mdroPctOfHai() {
             const total = getFilteredCases().length;
             const mdr = getFilteredCases().filter(c => c.isMDR).length;
-            return { mdr, total, pct: total ? +((mdr / total) * 100).toFixed(1) : 0 };
+            return { mdr, total, pct: total ? +((mdr / total) * 100).toFixed(2) : 0 };
         }
         // ข้อความ Monitor & Control อัตโนมัติ (เป้าหมาย / ร้อยละของ HAI[MDRO] / อัตราปัจจุบัน) สำหรับต่อท้ายเนื้อหา
         function monitorInfoText(site) {
@@ -8900,7 +8900,7 @@
                 for (let i = 0; i < files.length; i++) {
                     const idx = i;
                     const { data } = await Tesseract.recognize(files[i], 'eng', {
-                        logger: mm => { if (mm.status === 'recognizing text') st.textContent = 'อ่านใบ ' + (idx + 1) + '/' + files.length + '... ' + Math.round(mm.progress * 100) + '%'; }
+                        logger: mm => { if (mm.status === 'recognizing text') st.textContent = 'อ่านใบ ' + (idx + 1) + '/' + files.length + '... ' + (mm.progress * 100).toFixed(2) + '%'; }
                     });
                     const r = parseAstReport(data.text || '');
                     if (!headerDone) {
