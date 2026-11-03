@@ -926,6 +926,43 @@
                 </div>
             </div>
 
+            <!-- ข้อมูลผ่าตัด: ชื่อผ่าตัด / อวัยวะผ่าตัด (จำนวน + ร้อยละ) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">ข้อมูลผ่าตัด</h3>
+                        <p class="text-xs text-slate-400 mt-1">แยกตามชื่อผ่าตัด และอวัยวะที่ผ่าตัด · จำนวน (ครั้ง) + ร้อยละ · จากเคสที่บันทึกชื่อ/อวัยวะผ่าตัด</p>
+                    </div>
+                    <button id="btnExportOp" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="grid lg:grid-cols-2 gap-0 lg:divide-x divide-slate-100">
+                    <div>
+                        <div class="px-6 py-3 bg-slate-50/60 flex justify-between items-baseline">
+                            <h4 class="text-sm font-semibold text-slate-700">ชื่อผ่าตัด</h4>
+                            <span class="text-xs text-slate-400">รวม <b id="opNameTot" class="text-slate-600">0</b> ครั้ง</span>
+                        </div>
+                        <div class="overflow-x-auto max-h-80 overflow-y-auto">
+                            <table class="w-full text-left text-sm text-slate-600"><thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0"><tr>
+                                <th class="py-2.5 px-4">#</th><th class="py-2.5 px-4">ชื่อผ่าตัด</th>
+                                <th class="py-2.5 px-4 text-right">จำนวน (ครั้ง)</th><th class="py-2.5 px-4 text-right">ร้อยละ</th>
+                            </tr></thead><tbody id="opNameBody" class="divide-y divide-slate-100"></tbody></table>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="px-6 py-3 bg-slate-50/60 flex justify-between items-baseline">
+                            <h4 class="text-sm font-semibold text-slate-700">อวัยวะที่ผ่าตัด</h4>
+                            <span class="text-xs text-slate-400">รวม <b id="opOrganTot" class="text-slate-600">0</b> ครั้ง</span>
+                        </div>
+                        <div class="overflow-x-auto max-h-80 overflow-y-auto">
+                            <table class="w-full text-left text-sm text-slate-600"><thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0"><tr>
+                                <th class="py-2.5 px-4">#</th><th class="py-2.5 px-4">อวัยวะ</th>
+                                <th class="py-2.5 px-4 text-right">จำนวน (ครั้ง)</th><th class="py-2.5 px-4 text-right">ร้อยละ</th>
+                            </tr></thead><tbody id="opOrganBody" class="divide-y divide-slate-100"></tbody></table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- BSI: เฝ้าระวังการให้สารน้ำ / NSS Lock -->
             <div>
                 <div class="flex items-center justify-between mb-3">
@@ -1161,7 +1198,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-02n</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-03a</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2403,6 +2440,8 @@
                     // ---- SSI Risk Index (NNIS): เวลาผ่าตัด/ชื่อหัตถการ/ASA ----
                     opTime: num(pick(r, ['Total-time', 'Totaltime'])),            // เวลาผ่าตัด (นาที)
                     opName: pick(r, ['ชื่อผ่าตัด1', 'ชื่อผ่าตัด']).toString().trim().toLowerCase(),
+                    opNameRaw: pick(r, ['ชื่อผ่าตัด1', 'ชื่อผ่าตัด']).toString().trim(),   // คงตัวพิมพ์เดิมสำหรับแสดงผล
+                    opOrgan: pick(r, ['อวัยวะผ่าตัด', 'อวัยวะที่ผ่าตัด']).toString().trim(),  // อวัยวะที่ผ่าตัด
                     asaN: (function () { var m = String(pick(r, ['ASA'])).match(/[1-5]/); return m ? +m[0] : null; })(),
                     // ---- ประสิทธิภาพการเฝ้าระวัง ----
                     survEff: pick(r, ['ประสิทธิภาพ']).toString().trim(),         // ผลการประเมินประสิทธิภาพการเฝ้าระวัง
@@ -3915,9 +3954,37 @@
             });
         }
 
+        // แจกแจงจำนวน+ร้อยละ ตามค่าในฟิลด์หนึ่ง (เรียงมาก→น้อย)
+        function opDistribution(rows, getVal) {
+            const cnt = {}; let tot = 0;
+            rows.forEach(r => { const v = (getVal(r) || '').toString().trim(); if (!v) return; cnt[v] = (cnt[v] || 0) + 1; tot++; });
+            const list = Object.keys(cnt).map(k => ({ k, n: cnt[k], pct: tot ? +(cnt[k] / tot * 100).toFixed(1) : 0 })).sort((a, b) => b.n - a.n);
+            return { list, tot };
+        }
+        function renderOpBreakdown(rows) {
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            const fill = (bodyId, totId, d, emptyTxt) => {
+                const tb = document.getElementById(bodyId); if (tb) tb.innerHTML = d.list.length
+                    ? d.list.map((x, i) => '<tr class="hover:bg-slate-50"><td class="py-2 px-4 text-slate-400">' + (i + 1) + '</td><td class="py-2 px-4">' + esc(x.k) + '</td><td class="py-2 px-4 text-right font-medium">' + x.n + '</td><td class="py-2 px-4 text-right text-slate-500">' + x.pct + '%</td></tr>').join('')
+                    : '<tr><td colspan="4" class="py-6 text-center text-slate-400">— ' + emptyTxt + ' —</td></tr>';
+                const te = document.getElementById(totId); if (te) te.textContent = d.tot.toLocaleString();
+            };
+            fill('opNameBody', 'opNameTot', opDistribution(rows, r => r.opNameRaw || r.opName), 'ไม่มีข้อมูลชื่อผ่าตัด');
+            fill('opOrganBody', 'opOrganTot', opDistribution(rows, r => r.opOrgan), 'ไม่มีข้อมูลอวัยวะผ่าตัด');
+        }
+        function exportOpCSV() {
+            const rows = getRowsForWards();
+            const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
+            const mk = (title, d) => { let s = q(title) + ',' + q('จำนวน(ครั้ง)') + ',' + q('ร้อยละ') + '\n'; d.list.forEach(x => { s += q(x.k) + ',' + x.n + ',' + x.pct + '%\n'; }); s += q('รวม') + ',' + d.tot + ',\n'; return s; };
+            let csv = '﻿' + mk('ชื่อผ่าตัด', opDistribution(rows, r => r.opNameRaw || r.opName)) + '\n' + mk('อวัยวะผ่าตัด', opDistribution(rows, r => r.opOrgan));
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'operation_breakdown.csv'; a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }
         function updateServiceView() {
             const rows = getRowsForWards();
             updateWoundCharts(rows);
+            renderOpBreakdown(rows);
             renderOnsetCalendars();
             const den = aggregateDenominatorsByMonth(rows);
             // การ์ดสรุป (ยอดรวมทั้งช่วง)
@@ -9273,6 +9340,7 @@
         document.getElementById('btnWardSsi').addEventListener('click', () => { repSsiExpanded = !repSsiExpanded; updateWardTable(); });
         document.getElementById('btnExportMdr').addEventListener('click', exportMdrCSV);
         document.getElementById('btnExportService').addEventListener('click', exportServiceCSV);
+        document.getElementById('btnExportOp').addEventListener('click', exportOpCSV);
         document.getElementById('menuDashboard').addEventListener('click', () => switchView('dashboard'));
         document.getElementById('menuWards').addEventListener('click', () => switchView('wards'));
         document.getElementById('menuMdr').addEventListener('click', () => switchView('mdr'));
