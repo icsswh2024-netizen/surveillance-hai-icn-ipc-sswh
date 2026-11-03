@@ -776,6 +776,56 @@
             </div>
             <p class="text-xs text-slate-400 text-center">เรียงตามจำนวน MDR จากมากไปน้อย</p>
 
+            <!-- สรุปราย SITE (MDR): จำนวน / อัตรา / ร้อยละ -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">เชื้อดื้อยา (MDR) แยกตามตำแหน่งติดเชื้อ (SITE)</h3>
+                        <p class="text-xs text-slate-400 mt-1">จำนวนเคส MDR · อัตรา /1,000 วันนอน · ร้อยละของ MDR ทั้งหมด</p>
+                    </div>
+                    <button id="btnExportMdrSite" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium self-start">ส่งออก CSV</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold"><tr>
+                            <th class="py-3 px-4">ตำแหน่ง (SITE)</th>
+                            <th class="py-3 px-4 text-right text-fuchsia-700">จำนวนเคส MDR</th>
+                            <th class="py-3 px-4 text-right text-fuchsia-700">อัตรา /1000</th>
+                            <th class="py-3 px-4 text-right">ร้อยละ</th>
+                        </tr></thead>
+                        <tbody id="mdrSiteStatBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- เชื้อ MDR ที่พบ + เชื้อ MDR แยกตาม SITE -->
+            <div class="grid lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <h3 class="text-lg font-semibold text-slate-800">เชื้อดื้อยา (MDR) ที่พบ</h3>
+                        <p class="text-xs text-slate-400 mt-1">นับทุกเชื้อจากเคส MDR (คอลัมน์ เชื้อก่อโรค/2/3 รวมบรรทัดต่อ)</p>
+                    </div>
+                    <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                        <table class="w-full text-left text-sm text-slate-600"><thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0"><tr>
+                            <th class="py-2.5 px-4">#</th><th class="py-2.5 px-4">เชื้อก่อโรค</th>
+                            <th class="py-2.5 px-4 text-right">จำนวน</th><th class="py-2.5 px-4 text-right">% ของ MDR</th>
+                        </tr></thead><tbody id="mdrOrgBody" class="divide-y divide-slate-100"></tbody></table>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <h3 class="text-lg font-semibold text-slate-800">เชื้อดื้อยา (MDR) แต่ละ SITE พบเชื้ออะไร</h3>
+                        <p class="text-xs text-slate-400 mt-1">เชื้อ MDR แยกตามตำแหน่งติดเชื้อ · % ภายในไซต์</p>
+                    </div>
+                    <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                        <table class="w-full text-left text-sm text-slate-600"><thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0"><tr>
+                            <th class="py-2.5 px-4">ตำแหน่ง (SITE)</th><th class="py-2.5 px-4">เชื้อก่อโรค</th>
+                            <th class="py-2.5 px-4 text-right">จำนวน</th><th class="py-2.5 px-4 text-right">%</th>
+                        </tr></thead><tbody id="mdrOrgSiteBody" class="divide-y divide-slate-100"></tbody></table>
+                    </div>
+                </div>
+            </div>
+
             <!-- Individual detail (PDPA) — MDR only -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
@@ -1222,7 +1272,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-03d</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-03e</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -3800,6 +3850,7 @@
             const mdrPd = FISCAL_MONTHS.reduce((a, m) => a + (mdrDenMonths[m] ? mdrDenMonths[m].patientDay : 0), 0);
             document.getElementById('mdrRate').textContent = mdrPd ? (mdr / mdrPd * 1000).toFixed(2) : '-';
             document.getElementById('mdrRateDen').textContent = Math.round(mdrPd).toLocaleString();
+            renderMdrOrgSite(mdrPd);   // เชื้อ MDR / แยกตาม SITE / สรุปราย SITE
             updateMdrChart();
             renderMdrRateChart();
 
@@ -5062,6 +5113,61 @@
                 const k = (o || '').toString().trim(); if (!k) return; cnt[k] = (cnt[k] || 0) + 1;
             }));
             return Object.keys(cnt).map(o => ({ org: o, n: cnt[o] })).sort((a, b) => b.n - a.n || a.org.localeCompare(b.org));
+        }
+        // เชื้อดื้อยา (MDR) แยกตามตำแหน่งติดเชื้อ (SITE) → [{site, orgs:[{org,n}], total}]
+        function orgMdrBySiteData() {
+            const bySite = {};
+            getFilteredRows().filter(r => r.isMDR).forEach(r => {
+                if (!r.organisms || !r.organisms.length) return;
+                const site = SITE_LABEL[r.siteType] || r.siteType || (r.rawSITE || '(ไม่ระบุ)');
+                if (!bySite[site]) bySite[site] = {};
+                r.organisms.forEach(o => { const k = (o || '').toString().trim(); if (!k) return; bySite[site][k] = (bySite[site][k] || 0) + 1; });
+            });
+            return Object.keys(bySite).map(site => {
+                const orgs = Object.keys(bySite[site]).map(o => ({ org: o, n: bySite[site][o] })).sort((a, b) => b.n - a.n || a.org.localeCompare(b.org));
+                return { site, orgs, total: orgs.reduce((a, x) => a + x.n, 0) };
+            }).sort((a, b) => b.total - a.total || a.site.localeCompare(b.site));
+        }
+        // เคส MDR แยกตามตำแหน่งติดเชื้อ (SITE) → [{site, n}]
+        function mdrCasesBySite() {
+            const bySite = {};
+            getFilteredCases().filter(c => c.isMDR).forEach(c => {
+                const k = SITE_LABEL[c.siteType] || c.siteType || '(ไม่ระบุ)';
+                bySite[k] = (bySite[k] || 0) + 1;
+            });
+            return Object.keys(bySite).map(k => ({ site: k, n: bySite[k] })).sort((a, b) => b.n - a.n || a.site.localeCompare(b.site));
+        }
+        // เรนเดอร์ 3 ตารางเชื้อ MDR / SITE ในหน้าเชื้อดื้อยา
+        function renderMdrOrgSite(mdrPd) {
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            const empty = (cols, txt) => '<tr><td colspan="' + cols + '" class="py-8 text-center text-slate-400">— ' + txt + ' —</td></tr>';
+            // A: เชื้อ MDR ที่พบ
+            const orgs = orgMdrData(); const totO = orgs.reduce((a, x) => a + x.n, 0);
+            const aB = document.getElementById('mdrOrgBody');
+            if (aB) aB.innerHTML = orgs.length ? orgs.map((o, i) => '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 text-slate-400">' + (i + 1) + '</td><td class="py-2.5 px-4">' + esc(o.org) + '</td><td class="py-2.5 px-4 text-right font-medium">' + o.n + '</td><td class="py-2.5 px-4 text-right text-slate-500">' + (totO ? Math.round(o.n / totO * 100) : 0) + '%</td></tr>').join('') : empty(4, 'ไม่มีเชื้อ MDR ตามตัวกรอง');
+            // B: เชื้อ MDR แยกตาม SITE
+            const bs = orgMdrBySiteData();
+            const bB = document.getElementById('mdrOrgSiteBody');
+            if (bB) bB.innerHTML = bs.length ? bs.map(s => s.orgs.map((o, i) => '<tr class="hover:bg-slate-50">' + (i === 0 ? '<td rowspan="' + s.orgs.length + '" class="py-2.5 px-4 font-semibold text-slate-700 align-top">' + esc(s.site) + ' <span class="text-xs text-slate-400">(' + s.total + ')</span></td>' : '') + '<td class="py-2.5 px-4">' + esc(o.org) + '</td><td class="py-2.5 px-4 text-right font-medium">' + o.n + '</td><td class="py-2.5 px-4 text-right text-slate-500">' + (s.total ? Math.round(o.n / s.total * 100) : 0) + '%</td></tr>').join('')).join('') : empty(4, 'ไม่มีเชื้อ MDR ตามตัวกรอง');
+            // C: สรุปราย SITE (จำนวน/อัตรา/ร้อยละ)
+            const list = mdrCasesBySite(); const totC = list.reduce((a, x) => a + x.n, 0);
+            const cB = document.getElementById('mdrSiteStatBody');
+            if (cB) cB.innerHTML = list.length ? list.map(s => '<tr class="hover:bg-slate-50"><td class="py-2.5 px-4 font-medium text-slate-700">' + esc(s.site) + '</td><td class="py-2.5 px-4 text-right text-fuchsia-700 font-semibold">' + s.n + '</td><td class="py-2.5 px-4 text-right text-fuchsia-700">' + (mdrPd ? (s.n / mdrPd * 1000).toFixed(2) : '-') + '</td><td class="py-2.5 px-4 text-right text-slate-500">' + (totC ? Math.round(s.n / totC * 100) : 0) + '%</td></tr>').join('') +
+                '<tr class="bg-slate-50 font-semibold text-slate-800"><td class="py-2.5 px-4">รวม</td><td class="py-2.5 px-4 text-right text-fuchsia-700">' + totC + '</td><td class="py-2.5 px-4 text-right text-fuchsia-700">' + (mdrPd ? (totC / mdrPd * 1000).toFixed(2) : '-') + '</td><td class="py-2.5 px-4 text-right">100%</td></tr>' : empty(4, 'ไม่มีเคส MDR ตามตัวกรอง');
+        }
+        function exportMdrSiteCSV() {
+            const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
+            const mdrDen = aggregateDenominatorsByMonth(getRowsForWards());
+            const mdrPd = FISCAL_MONTHS.reduce((a, m) => a + (mdrDen[m] ? mdrDen[m].patientDay : 0), 0);
+            const list = mdrCasesBySite(); const totC = list.reduce((a, x) => a + x.n, 0);
+            let csv = '﻿' + ['ตำแหน่ง(SITE)', 'จำนวนเคส MDR', 'อัตรา/1000วันนอน', 'ร้อยละ'].map(q).join(',') + '\n';
+            list.forEach(s => { csv += [q(s.site), s.n, (mdrPd ? (s.n / mdrPd * 1000).toFixed(2) : ''), (totC ? Math.round(s.n / totC * 100) : 0) + '%'].join(',') + '\n'; });
+            const bs = orgMdrBySiteData();
+            csv += '\n' + ['ตำแหน่ง(SITE)', 'เชื้อก่อโรค(MDR)', 'จำนวน', '%ในไซต์'].map(q).join(',') + '\n';
+            bs.forEach(s => s.orgs.forEach(o => { csv += [q(s.site), q(o.org), o.n, (s.total ? Math.round(o.n / s.total * 100) : 0) + '%'].join(',') + '\n'; }));
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mdr_by_site.csv'; a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
         }
         let orgTopChartInstance = null;
         function updateOrgView() {
@@ -9421,6 +9527,7 @@
         document.getElementById('btnExportWards').addEventListener('click', exportWardsCSV);
         document.getElementById('btnWardSsi').addEventListener('click', () => { repSsiExpanded = !repSsiExpanded; updateWardTable(); });
         document.getElementById('btnExportMdr').addEventListener('click', exportMdrCSV);
+        document.getElementById('btnExportMdrSite').addEventListener('click', exportMdrSiteCSV);
         document.getElementById('btnExportService').addEventListener('click', exportServiceCSV);
         document.getElementById('btnExportOp').addEventListener('click', exportOpCSV);
         document.getElementById('menuDashboard').addEventListener('click', () => switchView('dashboard'));
