@@ -960,6 +960,30 @@
                             </tr></thead><tbody id="opOrganBody" class="divide-y divide-slate-100"></tbody></table>
                         </div>
                     </div>
+                    <div class="lg:border-t border-slate-100">
+                        <div class="px-6 py-3 bg-slate-50/60 flex justify-between items-baseline">
+                            <h4 class="text-sm font-semibold text-slate-700">Pre-dx (วินิจฉัยก่อนผ่าตัด)</h4>
+                            <span class="text-xs text-slate-400">รวม <b id="opPreTot" class="text-slate-600">0</b> ราย</span>
+                        </div>
+                        <div class="overflow-x-auto max-h-80 overflow-y-auto">
+                            <table class="w-full text-left text-sm text-slate-600"><thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0"><tr>
+                                <th class="py-2.5 px-4">#</th><th class="py-2.5 px-4">Pre-dx</th>
+                                <th class="py-2.5 px-4 text-right">จำนวน (ราย)</th><th class="py-2.5 px-4 text-right">ร้อยละ</th>
+                            </tr></thead><tbody id="opPreBody" class="divide-y divide-slate-100"></tbody></table>
+                        </div>
+                    </div>
+                    <div class="border-t border-slate-100">
+                        <div class="px-6 py-3 bg-slate-50/60 flex justify-between items-baseline">
+                            <h4 class="text-sm font-semibold text-slate-700">Post-dx (วินิจฉัยหลังผ่าตัด)</h4>
+                            <span class="text-xs text-slate-400">รวม <b id="opPostTot" class="text-slate-600">0</b> ราย</span>
+                        </div>
+                        <div class="overflow-x-auto max-h-80 overflow-y-auto">
+                            <table class="w-full text-left text-sm text-slate-600"><thead class="bg-slate-50 text-slate-700 font-semibold sticky top-0"><tr>
+                                <th class="py-2.5 px-4">#</th><th class="py-2.5 px-4">Post-dx</th>
+                                <th class="py-2.5 px-4 text-right">จำนวน (ราย)</th><th class="py-2.5 px-4 text-right">ร้อยละ</th>
+                            </tr></thead><tbody id="opPostBody" class="divide-y divide-slate-100"></tbody></table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1198,7 +1222,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-03c</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-03d</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2460,6 +2484,8 @@
                     opName: pick(r, ['ชื่อผ่าตัด1', 'ชื่อผ่าตัด']).toString().trim().toLowerCase(),
                     opNameRaw: pick(r, ['ชื่อผ่าตัด1', 'ชื่อผ่าตัด']).toString().trim(),   // คงตัวพิมพ์เดิมสำหรับแสดงผล
                     opOrgan: pick(r, ['อวัยวะผ่าตัด', 'อวัยวะที่ผ่าตัด']).toString().trim(),  // อวัยวะที่ผ่าตัด
+                    preDx: pick(r, ['Pre-dx', 'Pre-Dx', 'Predx', 'Pre dx']).toString().trim(),   // วินิจฉัยก่อนผ่าตัด
+                    postDx: pick(r, ['Post-dx', 'Post-Dx', 'Postdx', 'Post dx']).toString().trim(), // วินิจฉัยหลังผ่าตัด
                     asaN: (function () { var m = String(pick(r, ['ASA'])).match(/[1-5]/); return m ? +m[0] : null; })(),
                     // ---- ประสิทธิภาพการเฝ้าระวัง ----
                     survEff: pick(r, ['ประสิทธิภาพ']).toString().trim(),         // ผลการประเมินประสิทธิภาพการเฝ้าระวัง
@@ -3989,12 +4015,14 @@
             };
             fill('opNameBody', 'opNameTot', opDistribution(rows, r => r.opNameRaw || r.opName), 'ไม่มีข้อมูลชื่อผ่าตัด');
             fill('opOrganBody', 'opOrganTot', opDistribution(rows, r => r.opOrgan), 'ไม่มีข้อมูลอวัยวะผ่าตัด');
+            fill('opPreBody', 'opPreTot', opDistribution(rows, r => r.preDx), 'ไม่มีข้อมูล Pre-dx');
+            fill('opPostBody', 'opPostTot', opDistribution(rows, r => r.postDx), 'ไม่มีข้อมูล Post-dx');
         }
         function exportOpCSV() {
             const rows = getRowsForWards();
             const q = s => '"' + (s == null ? '' : s.toString()).replace(/"/g, '""') + '"';
             const mk = (title, d) => { let s = q(title) + ',' + q('จำนวน(ครั้ง)') + ',' + q('ร้อยละ') + '\n'; d.list.forEach(x => { s += q(x.k) + ',' + x.n + ',' + x.pct + '%\n'; }); s += q('รวม') + ',' + d.tot + ',\n'; return s; };
-            let csv = '﻿' + mk('ชื่อผ่าตัด', opDistribution(rows, r => r.opNameRaw || r.opName)) + '\n' + mk('อวัยวะผ่าตัด', opDistribution(rows, r => r.opOrgan));
+            let csv = '﻿' + mk('ชื่อผ่าตัด', opDistribution(rows, r => r.opNameRaw || r.opName)) + '\n' + mk('อวัยวะผ่าตัด', opDistribution(rows, r => r.opOrgan)) + '\n' + mk('Pre-dx', opDistribution(rows, r => r.preDx)) + '\n' + mk('Post-dx', opDistribution(rows, r => r.postDx));
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'operation_breakdown.csv'; a.click();
             setTimeout(() => URL.revokeObjectURL(a.href), 1000);
