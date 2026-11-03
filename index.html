@@ -1198,7 +1198,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-03b</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-03c</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -1639,6 +1639,24 @@
                             </tr>
                         </thead>
                         <tbody id="hdTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+                <!-- การทำ HD แยกตามชนิดสาย (ทุกสาย) × การติดเชื้อ -->
+                <div class="px-6 pt-5 pb-2 border-t border-slate-100">
+                    <h4 class="text-sm font-semibold text-slate-700">การทำ HD แยกตามชนิดสาย × การติดเชื้อ</h4>
+                    <p class="text-xs text-slate-400 mt-1">จำนวนครั้งฟอกแยกตามชนิดสาย + ร้อยละ · การติดเชื้อที่เกี่ยวข้อง (BSI ผูกกับ AVF/AVG)</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold"><tr>
+                            <th class="py-3 px-4">ชนิดสาย</th>
+                            <th class="py-3 px-4 text-right">จำนวนครั้งฟอก</th>
+                            <th class="py-3 px-4 text-right">ร้อยละ</th>
+                            <th class="py-3 px-4 text-right">การติดเชื้อ (SITE)</th>
+                            <th class="py-3 px-4 text-right">เคส</th>
+                            <th class="py-3 px-4 text-right text-blue-700">อัตรา /1000</th>
+                        </tr></thead>
+                        <tbody id="hdLineBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
             </div>
@@ -6992,6 +7010,34 @@
                         '<div class="h-1.5 rounded-full bg-slate-200 mt-1.5 overflow-hidden"><div class="h-full rounded-full" style="width:' + pct + '%;background:' + p.c + '"></div></div>' +
                         '</div>';
                 }).join('');
+            }
+
+            // การทำ HD แยกตามชนิดสาย (ทุกสาย) × การติดเชื้อ
+            const hdlb = document.getElementById('hdLineBody');
+            if (hdlb) {
+                const bsiGroups = hdGroups.filter(g => /BSI/i.test(g.unit));
+                const bsiN = bsiGroups.reduce((a, g) => a + g.n, 0);
+                const lines = [
+                    { k: 'AVF/AVG', v: totAVF, site: 'BSI', n: bsiN, den: totAVF },
+                    { k: 'Perm', v: rows.reduce((a, r) => a + (r.accPerm || 0), 0), site: '—', n: null, den: null },
+                    { k: 'DLC', v: rows.reduce((a, r) => a + (r.accDLC || 0), 0), site: '—', n: null, den: null },
+                    { k: 'Line', v: rows.reduce((a, r) => a + (r.accLine || 0), 0), site: '—', n: null, den: null }
+                ];
+                const tt = lines.reduce((a, p) => a + p.v, 0);
+                hdlb.innerHTML = lines.map(p => {
+                    const pct = tt ? Math.round(p.v / tt * 100) : 0;
+                    const rateTxt = (p.n != null && p.den) ? fmtRate(rate(p.n, p.den, 1000)) : '—';
+                    return '<tr class="hover:bg-slate-50"><td class="py-3 px-4 font-medium text-slate-700">' + p.k + '</td>' +
+                        '<td class="py-3 px-4 text-right">' + Math.round(p.v).toLocaleString() + '</td>' +
+                        '<td class="py-3 px-4 text-right text-slate-500">' + pct + '%</td>' +
+                        '<td class="py-3 px-4 text-right">' + p.site + '</td>' +
+                        '<td class="py-3 px-4 text-right font-semibold">' + (p.n != null ? p.n : '—') + '</td>' +
+                        '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + rateTxt + '</td></tr>';
+                }).join('') +
+                    '<tr class="bg-slate-50 font-semibold text-slate-800"><td class="py-3 px-4">รวม</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(tt).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right">100%</td><td class="py-3 px-4 text-right">—</td>' +
+                    '<td class="py-3 px-4 text-right">—</td><td class="py-3 px-4 text-right">—</td></tr>';
             }
 
             // กราฟรายเดือน: เส้นจำนวนเคส CI แยกตามชนิด
