@@ -1198,7 +1198,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-03a</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-03b</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -1623,7 +1623,7 @@
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <div>
                         <h3 class="text-lg font-semibold text-sky-700">HD — ฟอกเลือด</h3>
-                        <p class="text-xs text-slate-400 mt-1">ตัวหาร = จำนวนครั้ง HD (HD1) · อัตราต่อ 1,000 ครั้ง</p>
+                        <p class="text-xs text-slate-400 mt-1">ตัวหาร = จำนวนครั้ง HD (HD1) · <b>BSI ใช้ตัวหาร AVF/AVG เท่านั้น</b> · อัตราต่อ 1,000 ครั้ง</p>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -6960,6 +6960,7 @@
             // ตัวหาร (จำนวนครั้ง) รวมจาก "ทุกแถว" แยกตามชนิด
             const totCAPD = rows.reduce((a, r) => a + r.capdN, 0);
             const totHD1 = rows.reduce((a, r) => a + r.hd1N, 0);
+            const totAVF = rows.reduce((a, r) => a + (r.accAVF || 0), 0);   // ครั้งฟอกผ่าน AVF/AVG (ตัวหาร BSI)
             const totLine = rows.reduce((a, r) => a + (r.lineAccN || 0), 0);
             const allGroups = aggregateSpecial(rows);
             const isCapd = g => (g.unit || '').toUpperCase().includes('CAPD');
@@ -6970,7 +6971,7 @@
 
             // เติมกลุ่มลงตาราง + แถบสรุป
             fillSpecialGroup('capd', capdGroups, totCAPD, 'ครั้ง CAPD');
-            fillSpecialGroup('hd', hdGroups, totHD1, 'ครั้ง HD');
+            fillSpecialGroup('hd', hdGroups, totHD1, 'ครั้ง HD', g => /BSI/i.test(g.unit) ? totAVF : totHD1);
             fillSpecialGroup('line', lineGroups, totLine, 'ครั้ง Line');
             // สัดส่วนชนิดสาย (Line / AVF,AVG / Perm / DLC)
             const lb = document.getElementById('lineBreakdown');
@@ -7022,7 +7023,9 @@
         }
 
         // เติมข้อมูลกลุ่ม CAPD หรือ HD (prefix = 'capd' | 'hd')
-        function fillSpecialGroup(prefix, groups, den, denLabel) {
+        // denFn(g) = ตัวหารรายแถว (เช่น BSI ใช้ AVF/AVG) · ไม่ส่ง = ใช้ den เดียวทั้งกลุ่ม
+        function fillSpecialGroup(prefix, groups, den, denLabel, denFn) {
+            const dOf = g => denFn ? denFn(g) : den;
             const n = groups.reduce((a, g) => a + g.n, 0);
             const mdr = groups.reduce((a, g) => a + g.mdr, 0);
             document.getElementById(prefix + 'N').textContent = n;
@@ -7032,13 +7035,14 @@
             const tbody = document.getElementById(prefix + 'TableBody');
             tbody.innerHTML = '';
             groups.forEach(g => {
+                const gd = dOf(g);
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-slate-50 transition-colors';
                 tr.innerHTML =
                     '<td class="py-3 px-4 font-medium text-slate-700">' + g.unit + '</td>' +
                     '<td class="py-3 px-4 text-right font-semibold">' + g.n + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + Math.round(den).toLocaleString() + '</td>' +
-                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(rate(g.n, den, 1000)) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + Math.round(gd).toLocaleString() + '</td>' +
+                    '<td class="py-3 px-4 text-right text-blue-700 font-semibold">' + fmtRate(rate(g.n, gd, 1000)) + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700 font-semibold">' + g.mdr + '</td>' +
                     '<td class="py-3 px-4 text-right ' + (g.n ? pdcPctClass(g.mdr / g.n * 100, false) : 'text-fuchsia-700') + '">' + (g.n ? Math.round(g.mdr / g.n * 100) + '%' : '-') + '</td>';
                 tbody.appendChild(tr);
@@ -7046,11 +7050,13 @@
             if (groups.length) {
                 const trT = document.createElement('tr');
                 trT.className = 'bg-slate-50 font-semibold text-slate-800';
+                // ตัวหารต่างกันรายแถว → ไม่รวมเป็นอัตราเดียว (แสดง —)
+                const mixed = !!denFn && groups.some(g => dOf(g) !== dOf(groups[0]));
                 trT.innerHTML =
                     '<td class="py-3 px-4">รวม</td>' +
                     '<td class="py-3 px-4 text-right">' + n + '</td>' +
-                    '<td class="py-3 px-4 text-right">' + Math.round(den).toLocaleString() + '</td>' +
-                    '<td class="py-3 px-4 text-right text-blue-700">' + fmtRate(rate(n, den, 1000)) + '</td>' +
+                    '<td class="py-3 px-4 text-right">' + (mixed ? '—' : Math.round(den).toLocaleString()) + '</td>' +
+                    '<td class="py-3 px-4 text-right text-blue-700">' + (mixed ? '—' : fmtRate(rate(n, den, 1000))) + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700">' + mdr + '</td>' +
                     '<td class="py-3 px-4 text-right text-fuchsia-700">' + (n ? Math.round(mdr / n * 100) + '%' : '-') + '</td>';
                 tbody.appendChild(trT);
@@ -7064,12 +7070,14 @@
             const allRows = getRowsForWards();
             const totCAPD = allRows.reduce((a, r) => a + r.capdN, 0);
             const totHD1 = allRows.reduce((a, r) => a + r.hd1N, 0);
+            const totAVF = allRows.reduce((a, r) => a + (r.accAVF || 0), 0);
             const totLine = allRows.reduce((a, r) => a + (r.lineAccN || 0), 0);
             const groups = aggregateSpecial(allRows).map(g => {
                 const capd = (g.unit || '').toUpperCase().includes('CAPD');
                 const line = !capd && isLineUnit(g.unit);
                 const grp = capd ? 'CAPD' : (line ? 'Line' : 'HD');
-                return { ...g, grp, den: capd ? totCAPD : (line ? totLine : totHD1) };
+                const den = capd ? totCAPD : (line ? totLine : (/BSI/i.test(g.unit) ? totAVF : totHD1));   // HD: BSI ใช้ AVF/AVG
+                return { ...g, grp, den };
             }).sort((a, b) => a.grp.localeCompare(b.grp) || b.n - a.n);
             let csv = head.join(',') + '\n';
             groups.forEach(g => {
