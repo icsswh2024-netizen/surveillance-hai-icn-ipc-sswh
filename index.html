@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-07e</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-07f</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -9561,7 +9561,8 @@
             const cards = document.getElementById('verifyCards');
             cards.className = 'space-y-7';   // กลุ่มเรียงแนวตั้ง
             const nm = s => { const t = (s || '').toString().trim(); if (!t) return '—'; return t.charAt(0) + '•••'; };   // ปกปิดชื่อ (PDPA)
-            const field = (label, val) => { const v = esc((val == null ? '' : val).toString().trim()); return v ? '<div><dt class="text-[11px] text-slate-400">' + label + '</dt><dd class="text-sm text-slate-700 font-medium">' + v + '</dd></div>' : ''; };
+            // แต่ละข้อความ = กรอบขอบมน พื้นขาว
+            const field = (label, val) => { const v = esc((val == null ? '' : val).toString().trim()); return v ? '<div class="rounded-xl bg-white/80 ring-1 ring-slate-200/70 px-2.5 py-1.5"><dt class="text-[11px] text-slate-400">' + label + '</dt><dd class="text-sm text-slate-700 font-semibold">' + v + '</dd></div>' : ''; };
             // แปลงลิงก์ Google Drive → รูปพรีวิว (thumbnail) + ลิงก์เปิดเต็ม
             const driveId = l => { const m = (l || '').toString().match(/[-\w]{25,}/); return m ? m[0] : null; };
             const imgThumbs = r => {
@@ -9586,8 +9587,6 @@
                     '</div>';
                 const pendingBtn = acts;
                 const details = [
-                    field('วินิจฉัยแรกรับ', r['วินิจฉัยแรกรับ']),
-                    field('ผลการวินิจฉัย', r['ผลการวินิจฉัย']),
                     field('ตำแหน่งยืนยัน', r['ตำแหน่งหารติดเชื้อ']),
                     field('หน่วย', r['หน่วย']),
                     field('POA', r['POA']),
@@ -9598,17 +9597,25 @@
                     field('ผู้รายงาน', r['ลงชื่อผู้รายงาน'])
                 ].join('');
                 const note = esc(r['ข้อมูลเพิ่มเติม (เช่น วันที่พบ Lung : new Infiltration ครั้งใหม่ วันที่มีหนองที่แผล เป็นต้น)'] || r['ข้อมูลเพิ่มเติม'] || '');
-                return '<div class="relative rounded-2xl bg-white border border-slate-100 shadow-[0_10px_30px_-18px_rgba(2,6,23,.35)] overflow-hidden">' +
+                const dx1 = esc((r['วินิจฉัยแรกรับ'] || '').toString().trim());
+                // พื้นหลังการ์ด = สีอ่อนตามสถานะ · ข้อความสำคัญ (ตำแหน่งสงสัย/วินิจฉัยแรกรับ) = กรอบพรีเมียม
+                return '<div class="relative rounded-2xl border ' + s.bd + ' ' + s.bg + ' shadow-[0_12px_32px_-20px_rgba(2,6,23,.4)] overflow-hidden">' +
                     '<div class="h-1.5" style="background:' + s.dot + '"></div>' +
-                    '<div class="p-4">' +
+                    '<div class="p-3.5 space-y-3">' +
+                    // กล่องสำคัญ (พรีเมียม): ตำแหน่งสงสัย + สถานะ + วินิจฉัยแรกรับ
+                    '<div class="rounded-2xl bg-white/95 ring-1 ring-slate-200 shadow-sm p-3">' +
                     '<div class="flex items-start justify-between gap-2">' +
                     '<div><h4 class="text-lg font-bold text-slate-800 leading-tight">' + site + '</h4><p class="text-[11px] text-slate-400 mt-0.5">ผู้ป่วย ' + nm(r['ชื่อ-สกุลผู้ป่วย']) + ' · HN ' + maskId(r['HN']) + '</p></div>' +
                     '<span class="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ' + s.badge + '"><span class="w-1.5 h-1.5 rounded-full" style="background:' + s.dot + '"></span>' + esc(s.label) + '</span>' +
                     '</div>' +
-                    '<dl class="grid grid-cols-2 gap-x-3 gap-y-2 mt-3">' + details + '</dl>' +
-                    (note ? '<div class="mt-3 text-xs text-slate-500 bg-slate-50 rounded-lg p-2 leading-relaxed"><span class="text-slate-400">ข้อมูลเพิ่มเติม:</span> ' + note + '</div>' : '') +
+                    (dx1 ? '<div class="mt-2 rounded-xl bg-slate-50 ring-1 ring-slate-100 px-2.5 py-1.5"><span class="text-[11px] text-slate-400">วินิจฉัยแรกรับ</span><div class="text-sm font-semibold text-slate-700">' + dx1 + '</div></div>' : '') +
+                    '</div>' +
+                    // รายละเอียดอื่น ๆ (แต่ละช่องกรอบขอบมน)
+                    (details ? '<dl class="grid grid-cols-2 gap-2">' + details + '</dl>' : '') +
+                    (note ? '<div class="rounded-xl bg-white/80 ring-1 ring-slate-200/70 px-3 py-2 text-xs text-slate-600 leading-relaxed"><span class="text-slate-400">ข้อมูลเพิ่มเติม:</span> ' + note + '</div>' : '') +
                     imgThumbs(r) +
-                    '<div class="mt-3 pt-3 border-t border-slate-100"><div class="text-[11px] text-slate-400">' + (ts || '') + '</div>' + pendingBtn + '</div>' +
+                    // ฟุต: เวลา + ปุ่มยืนยัน ในกรอบขอบมน
+                    '<div class="rounded-xl bg-white/80 ring-1 ring-slate-200/70 px-3 py-2"><div class="text-[11px] text-slate-400">' + (ts || '') + '</div>' + pendingBtn + '</div>' +
                     '</div></div>';
             };
             // จัดกลุ่มตามหน่วยงาน (หอผู้ป่วย)
