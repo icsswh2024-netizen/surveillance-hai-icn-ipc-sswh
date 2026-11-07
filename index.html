@@ -1277,7 +1277,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-07a</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-07b</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -9535,31 +9535,63 @@
             const chips = [['all', 'ทั้งหมด', rows.length], ['pending', 'รอยืนยัน', cnt.pending], ['hai', 'HAI', cnt.hai], ['nohai', 'ไม่ติดเชื้อ', cnt.nohai], ['poa', 'POA', cnt.poa]];
             const fw = document.getElementById('verifyFilters');
             if (fw) fw.innerHTML = chips.map(([k, l, n]) => '<button class="verify-chip text-sm rounded-full px-3 py-1 border ' + (verifyFilter === k ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-600 border-slate-200 hover:border-sky-400') + '" data-k="' + k + '">' + l + ' <span class="opacity-70">(' + n + ')</span></button>').join('');
-            // การ์ด
+            // การ์ด — จัดกลุ่มตามหน่วยงาน (พรีเมียม)
             const list = rows.filter(r => verifyFilter === 'all' || verifyStatus(r).key === verifyFilter);
             const cards = document.getElementById('verifyCards');
+            cards.className = 'space-y-7';   // กลุ่มเรียงแนวตั้ง
             const nm = s => { const t = (s || '').toString().trim(); if (!t) return '—'; return t.charAt(0) + '•••'; };   // ปกปิดชื่อ (PDPA)
-            cards.innerHTML = list.map(r => {
+            const field = (label, val) => { const v = esc((val == null ? '' : val).toString().trim()); return v ? '<div><dt class="text-[11px] text-slate-400">' + label + '</dt><dd class="text-sm text-slate-700 font-medium">' + v + '</dd></div>' : ''; };
+            // แปลงลิงก์ Google Drive → รูปพรีวิว (thumbnail) + ลิงก์เปิดเต็ม
+            const driveId = l => { const m = (l || '').toString().match(/[-\w]{25,}/); return m ? m[0] : null; };
+            const imgThumbs = r => {
+                const specs = [['เพาะเชื้อ', r['ส่งภาพถ่ายผลการเพาะเชื้อ']], ['ปรอท 1', r['ส่งภาพถ่ายฟอร์มปรอท 1']], ['ปรอท 2', r['ส่งภาพถ่ายฟอร์มปรอท 2 (ถ้ามี)']], ['ปรอท 3', r['ส่งภาพถ่ายฟอร์มปรอท 3 (ถ้ามี)']]];
+                const items = specs.map(([lbl, link]) => { const id = driveId(link); if (!id) return ''; const thumb = 'https://drive.google.com/thumbnail?id=' + id + '&sz=w400'; const view = 'https://drive.google.com/file/d/' + id + '/view'; return '<a href="' + view + '" target="_blank" rel="noopener" title="' + lbl + '" class="relative block w-[72px] h-[72px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0 hover:ring-2 hover:ring-sky-400 transition"><img src="' + thumb + '" loading="lazy" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=\'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2272%22 height=%2272%22><rect width=%2272%22 height=%2272%22 fill=%22%23e2e8f0%22/><text x=%2236%22 y=%2240%22 font-size=%2210%22 fill=%22%2364748b%22 text-anchor=%22middle%22>เปิดรูป</text></svg>\'"><span class="absolute bottom-0 inset-x-0 bg-black/55 text-white text-[9px] text-center py-0.5">' + lbl + '</span></a>'; }).filter(Boolean).join('');
+                return items ? '<div class="flex flex-wrap gap-2 mt-3">' + items + '</div>' : '';
+            };
+            const renderCard = r => {
                 const s = verifyStatus(r);
                 const site = esc(r['ตำแหน่งการติดเชื้อที่สงสัย'] || '-');
-                const ward = esc(r['หอผู้ป่วย'] || '-');
-                const dx1 = esc(r['วินิจฉัยแรกรับ'] || '');
-                const reporter = esc(r['ลงชื่อผู้รายงาน'] || '');
+                const ts = esc((r['ประทับเวลา'] || '').toString().trim());
+                const pendingBtn = s.key === 'pending' ? '<a href="' + VERIFY_FORM_URL + '" target="_blank" rel="noopener" class="mt-3 inline-flex items-center gap-1 text-xs bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white px-3 py-1.5 rounded-lg font-semibold shadow-sm">ยืนยันผลในฟอร์ม ↗</a>' : '';
+                const details = [
+                    field('วินิจฉัยแรกรับ', r['วินิจฉัยแรกรับ']),
+                    field('ผลการวินิจฉัย', r['ผลการวินิจฉัย']),
+                    field('ตำแหน่งยืนยัน', r['ตำแหน่งหารติดเชื้อ']),
+                    field('หน่วย', r['หน่วย']),
+                    field('POA', r['POA']),
+                    field('ผลการวินิจฉัย 2', r['ผลการวินิจฉัย 2']),
+                    field('Check', r['Check']),
+                    field('ใบ IC', r['ใบ IC']),
+                    field('จำหน่ายโดย', r['จำหน่ายโดย']),
+                    field('ผู้รายงาน', r['ลงชื่อผู้รายงาน'])
+                ].join('');
                 const note = esc(r['ข้อมูลเพิ่มเติม (เช่น วันที่พบ Lung : new Infiltration ครั้งใหม่ วันที่มีหนองที่แผล เป็นต้น)'] || r['ข้อมูลเพิ่มเติม'] || '');
-                const ts = esc((r['ประทับเวลา'] || '').toString().split(' ')[0] || '');
-                const hn = maskId(r['HN']);
-                const pendingBtn = s.key === 'pending' ? '<a href="' + VERIFY_FORM_URL + '" target="_blank" rel="noopener" class="mt-3 inline-block text-xs bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg font-medium">ยืนยันผลในฟอร์ม ↗</a>' : '';
-                return '<div class="rounded-2xl border ' + s.bd + ' ' + s.bg + ' p-4 shadow-sm">' +
-                    '<div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-slate-500">' + ward + '</span>' +
-                    '<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ' + s.badge + '">' + esc(s.label) + '</span></div>' +
-                    '<h4 class="text-lg font-bold text-slate-800 mt-2">' + site + '</h4>' +
-                    (dx1 ? '<p class="text-sm text-slate-600 mt-1"><span class="text-slate-400">วินิจฉัยแรกรับ:</span> ' + dx1 + '</p>' : '') +
-                    '<div class="text-xs text-slate-500 mt-2 space-y-0.5">' +
-                    '<div>ผู้ป่วย: <span class="font-medium">' + nm(r['ชื่อ-สกุลผู้ป่วย']) + '</span> · HN ' + hn + '</div>' +
-                    (reporter ? '<div>ผู้รายงาน: ' + reporter + '</div>' : '') +
-                    (ts ? '<div>วันที่รายงาน: ' + ts + '</div>' : '') +
-                    (note ? '<div class="text-slate-400 italic mt-1">' + note + '</div>' : '') +
-                    '</div>' + pendingBtn + '</div>';
+                return '<div class="relative rounded-2xl bg-white border border-slate-100 shadow-[0_10px_30px_-18px_rgba(2,6,23,.35)] overflow-hidden">' +
+                    '<div class="h-1.5" style="background:' + s.dot + '"></div>' +
+                    '<div class="p-4">' +
+                    '<div class="flex items-start justify-between gap-2">' +
+                    '<div><h4 class="text-lg font-bold text-slate-800 leading-tight">' + site + '</h4><p class="text-[11px] text-slate-400 mt-0.5">ผู้ป่วย ' + nm(r['ชื่อ-สกุลผู้ป่วย']) + ' · HN ' + maskId(r['HN']) + '</p></div>' +
+                    '<span class="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ' + s.badge + '"><span class="w-1.5 h-1.5 rounded-full" style="background:' + s.dot + '"></span>' + esc(s.label) + '</span>' +
+                    '</div>' +
+                    '<dl class="grid grid-cols-2 gap-x-3 gap-y-2 mt-3">' + details + '</dl>' +
+                    (note ? '<div class="mt-3 text-xs text-slate-500 bg-slate-50 rounded-lg p-2 leading-relaxed"><span class="text-slate-400">ข้อมูลเพิ่มเติม:</span> ' + note + '</div>' : '') +
+                    imgThumbs(r) +
+                    '<div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-100"><span class="text-[11px] text-slate-400">' + (ts || '') + '</span>' + pendingBtn + '</div>' +
+                    '</div></div>';
+            };
+            // จัดกลุ่มตามหน่วยงาน (หอผู้ป่วย)
+            const groups = {};
+            list.forEach(r => { const w = (r['หอผู้ป่วย'] || '').toString().trim() || 'ไม่ระบุหน่วยงาน'; (groups[w] = groups[w] || []).push(r); });
+            const order = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length || a.localeCompare(b));
+            cards.innerHTML = order.map(w => {
+                const gr = groups[w];
+                const gc = { pending: 0, hai: 0, nohai: 0, poa: 0, other: 0 }; gr.forEach(r => gc[verifyStatus(r).key]++);
+                const dots = [['#f59e0b', gc.pending, 'รอยืนยัน'], ['#e11d48', gc.hai, 'HAI'], ['#10b981', gc.nohai, 'ไม่ติดเชื้อ'], ['#0ea5e9', gc.poa, 'POA']].filter(d => d[1]).map(d => '<span class="inline-flex items-center gap-1 text-xs font-semibold text-white/90"><span class="w-2 h-2 rounded-full ring-2 ring-white/40" style="background:' + d[0] + '"></span>' + d[2] + ' ' + d[1] + '</span>').join('');
+                const head = '<div class="flex items-center justify-between gap-3 rounded-2xl px-5 py-3 bg-gradient-to-r from-slate-800 to-slate-700 text-white shadow-md">' +
+                    '<div class="flex items-center gap-3"><span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white/15 font-bold">' + esc(w).slice(0, 3) + '</span>' +
+                    '<div><div class="font-bold leading-tight">' + esc(w) + '</div><div class="text-[11px] text-white/60">' + gr.length + ' ราย</div></div></div>' +
+                    '<div class="flex flex-wrap items-center gap-3 justify-end">' + dots + '</div></div>';
+                return '<section class="space-y-4">' + head + '<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">' + gr.map(renderCard).join('') + '</div></section>';
             }).join('');
             const empty = document.getElementById('verifyEmpty'); if (empty) empty.hidden = list.length > 0;
             fw && fw.querySelectorAll('.verify-chip').forEach(b => b.addEventListener('click', () => { verifyFilter = b.dataset.k; renderVerify(); }));
