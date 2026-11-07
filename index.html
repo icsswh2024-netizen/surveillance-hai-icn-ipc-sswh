@@ -136,6 +136,11 @@
         .kpi::before { width: 1.6rem; height: 1.6rem; right: 1rem; bottom: 0.6rem; animation-delay: .6s; }
         .kpi::after { width: 1rem; height: 1rem; right: 5.5rem; top: 1rem; animation-delay: 2s; }
         @keyframes kpiFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        /* เรืองแสงหลังการ์ดหน่วยงานที่มีรายงานใหม่รอจัดการ */
+        @keyframes verifyGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,0), 0 12px 30px -18px rgba(2,6,23,.35); } 50% { box-shadow: 0 0 26px 3px rgba(245,158,11,.6), 0 12px 30px -18px rgba(2,6,23,.35); } }
+        .verify-new { animation: verifyGlow 1.8s ease-in-out infinite; }
+        @keyframes verifyPing { 0% { transform: scale(1); opacity: .85; } 75%,100% { transform: scale(2.2); opacity: 0; } }
+        .verify-ping::after { content: ""; position: absolute; inset: 0; border-radius: 9999px; background: #f59e0b; animation: verifyPing 1.4s cubic-bezier(0,0,.2,1) infinite; }
         @media (prefers-reduced-motion: reduce) { .kpi .ring, .kpi::before, .kpi::after { animation: none; } }
         .kpi .kpi-icon { position: absolute; top: 50%; right: 1.35rem; transform: translateY(-50%);
             width: 3rem; height: 3rem; border-radius: 9999px; background: rgba(255,255,255,.22);
@@ -1277,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-07c</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-07d</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -9496,7 +9501,7 @@
         const VERIFY_FORM_SHEET = 'การตอบแบบฟอร์ม 1';
         const VERIFY_CSV_URL = 'https://docs.google.com/spreadsheets/d/' + VERIFY_SHEET_ID + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(VERIFY_FORM_SHEET);
         const VERIFY_FORM_URL = 'https://docs.google.com/spreadsheets/d/' + VERIFY_SHEET_ID + '/edit';
-        let VERIFY_ROWS = [], VERIFY_LOADED = false, verifyFilter = 'all';
+        let VERIFY_ROWS = [], VERIFY_LOADED = false, verifyFilter = 'all', verifyUnit = null;
         // จำแนกสถานะจากคอลัมน์ "ผลการวินิจฉัย" (ว่าง = ยังไม่ยืนยัน)
         function verifyStatus(r) {
             const dx = (r['ผลการวินิจฉัย'] || '').toString().trim().toLowerCase().replace(/\s/g, '');
@@ -9593,17 +9598,37 @@
             // จัดกลุ่มตามหน่วยงาน (หอผู้ป่วย)
             const groups = {};
             list.forEach(r => { const w = (r['หอผู้ป่วย'] || '').toString().trim() || 'ไม่ระบุหน่วยงาน'; (groups[w] = groups[w] || []).push(r); });
-            const order = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length || a.localeCompare(b));
-            cards.innerHTML = order.map(w => {
-                const gr = groups[w];
-                const gc = { pending: 0, hai: 0, nohai: 0, poa: 0, other: 0 }; gr.forEach(r => gc[verifyStatus(r).key]++);
+            const order = Object.keys(groups).sort((a, b) => { const pa = groups[a].filter(r => verifyStatus(r).key === 'pending').length, pb = groups[b].filter(r => verifyStatus(r).key === 'pending').length; return pb - pa || groups[b].length - groups[a].length || a.localeCompare(b); });
+            const gcountOf = gr => { const c = { pending: 0, hai: 0, nohai: 0, poa: 0, other: 0 }; gr.forEach(r => c[verifyStatus(r).key]++); return c; };
+            const premHead = (w, gr, withBack) => { const gc = gcountOf(gr);
                 const dots = [['#f59e0b', gc.pending, 'รอยืนยัน'], ['#e11d48', gc.hai, 'HAI'], ['#10b981', gc.nohai, 'ไม่ติดเชื้อ'], ['#0ea5e9', gc.poa, 'POA']].filter(d => d[1]).map(d => '<span class="inline-flex items-center gap-1 text-xs font-semibold text-white/90"><span class="w-2 h-2 rounded-full ring-2 ring-white/40" style="background:' + d[0] + '"></span>' + d[2] + ' ' + d[1] + '</span>').join('');
-                const head = '<div class="flex items-center justify-between gap-3 rounded-2xl px-5 py-3 bg-gradient-to-r from-slate-800 to-slate-700 text-white shadow-md">' +
-                    '<div class="flex items-center gap-3"><span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white/15 font-bold">' + esc(w).slice(0, 3) + '</span>' +
+                return '<div class="flex items-center justify-between gap-3 rounded-2xl px-5 py-3 bg-gradient-to-r from-slate-800 to-slate-700 text-white shadow-md">' +
+                    '<div class="flex items-center gap-3">' + (withBack ? '<button id="verifyBack" class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white/15 hover:bg-white/25 text-lg">←</button>' : '<span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white/15 font-bold">' + esc(w).slice(0, 3) + '</span>') +
                     '<div><div class="font-bold leading-tight">' + esc(w) + '</div><div class="text-[11px] text-white/60">' + gr.length + ' ราย</div></div></div>' +
                     '<div class="flex flex-wrap items-center gap-3 justify-end">' + dots + '</div></div>';
-                return '<section class="space-y-4">' + head + '<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">' + gr.map(renderCard).join('') + '</div></section>';
-            }).join('');
+            };
+            cards.className = 'space-y-5';
+            if (verifyUnit && groups[verifyUnit]) {
+                // ===== ระดับ 2: การ์ดผู้ป่วยของหน่วยงานที่เลือก =====
+                const gr = groups[verifyUnit];
+                cards.innerHTML = '<section class="space-y-4">' + premHead(verifyUnit, gr, true) + '<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">' + gr.map(renderCard).join('') + '</div></section>';
+                const bk = document.getElementById('verifyBack'); if (bk) bk.addEventListener('click', () => { verifyUnit = null; renderVerify(); });
+            } else {
+                // ===== ระดับ 1: การ์ดสรุปหน่วยงาน (เรืองแสงถ้ามีรายงานใหม่รอจัดการ) =====
+                if (verifyUnit && !groups[verifyUnit]) verifyUnit = null;
+                cards.className = 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5';
+                cards.innerHTML = order.map(w => {
+                    const gr = groups[w]; const gc = gcountOf(gr); const isNew = gc.pending > 0;
+                    const stat = (color, n, label) => '<div class="flex items-center justify-between text-sm"><span class="inline-flex items-center gap-2 text-slate-600"><span class="w-2.5 h-2.5 rounded-full" style="background:' + color + '"></span>' + label + '</span><span class="font-bold" style="color:' + color + '">' + n + '</span></div>';
+                    const newBadge = isNew ? '<span class="relative inline-flex items-center gap-1 text-[11px] font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full">● NEW ' + gc.pending + '<span class="verify-ping absolute -right-1 -top-1 w-2.5 h-2.5"></span></span>' : '<span class="text-[11px] text-emerald-600 font-semibold">จัดการครบ</span>';
+                    return '<button class="verify-unit text-left rounded-2xl bg-white border ' + (isNew ? 'border-amber-200 verify-new' : 'border-slate-100 shadow-sm') + ' p-5 hover:-translate-y-0.5 transition-transform" data-unit="' + esc(w).replace(/"/g, '&quot;') + '">' +
+                        '<div class="flex items-start justify-between gap-2"><div class="flex items-center gap-3"><span class="inline-flex items-center justify-center w-11 h-11 rounded-xl text-white font-bold shadow" style="background:linear-gradient(135deg,#334155,#0f172a)">' + esc(w).slice(0, 3) + '</span><div><h4 class="font-bold text-slate-800 leading-tight">' + esc(w) + '</h4><p class="text-[11px] text-slate-400">' + gr.length + ' รายงาน</p></div></div>' + newBadge + '</div>' +
+                        '<div class="mt-4 space-y-1.5">' + stat('#f59e0b', gc.pending, 'รอยืนยัน') + stat('#e11d48', gc.hai, 'ติดเชื้อ (HAI)') + stat('#10b981', gc.nohai, 'ไม่ติดเชื้อ') + stat('#0ea5e9', gc.poa, 'POA') + '</div>' +
+                        '<div class="mt-4 pt-3 border-t border-slate-100 text-xs text-sky-600 font-semibold">ดูรายผู้ป่วย →</div>' +
+                        '</button>';
+                }).join('');
+                cards.querySelectorAll('.verify-unit').forEach(b => b.addEventListener('click', () => { verifyUnit = b.dataset.unit; renderVerify(); }));
+            }
             const empty = document.getElementById('verifyEmpty'); if (empty) empty.hidden = list.length > 0;
             fw && fw.querySelectorAll('.verify-chip').forEach(b => b.addEventListener('click', () => { verifyFilter = b.dataset.k; renderVerify(); }));
             // ปุ่มยืนยันบนการ์ด
