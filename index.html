@@ -1277,7 +1277,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-07b</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-07c</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -9515,6 +9515,7 @@
                 const res = await fetch(VERIFY_CSV_URL + '&_=' + Date.now());
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 VERIFY_ROWS = parseCSV(await res.text());
+                VERIFY_ROWS.forEach((r, i) => { r._row = i + 2; });   // เลขแถวในชีต (หัว=1)
                 VERIFY_LOADED = true;
                 if (st) st.textContent = 'โหลด ' + VERIFY_ROWS.length + ' รายการ (' + new Date().toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ')';
                 renderVerify();
@@ -9552,7 +9553,17 @@
                 const s = verifyStatus(r);
                 const site = esc(r['ตำแหน่งการติดเชื้อที่สงสัย'] || '-');
                 const ts = esc((r['ประทับเวลา'] || '').toString().trim());
-                const pendingBtn = s.key === 'pending' ? '<a href="' + VERIFY_FORM_URL + '" target="_blank" rel="noopener" class="mt-3 inline-flex items-center gap-1 text-xs bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white px-3 py-1.5 rounded-lg font-semibold shadow-sm">ยืนยันผลในฟอร์ม ↗</a>' : '';
+                // ปุ่มให้แอดมินยืนยันผลผ่านเว็บ (เขียนกลับชีต)
+                const actBtn = (res, label, cls) => '<button class="verify-act text-[11px] font-semibold px-2.5 py-1 rounded-lg ' + cls + '" data-row="' + r._row + '" data-result="' + res + '">' + label + '</button>';
+                const confBy = esc((r['ยืนยันโดย'] || '').toString().trim());
+                const acts = '<div class="verify-actions flex flex-wrap items-center gap-1.5 mt-3">' +
+                    '<span class="text-[11px] text-slate-400 mr-0.5">' + (s.key === 'pending' ? 'ยืนยันเป็น:' : 'เปลี่ยนเป็น:') + '</span>' +
+                    actBtn('HAI', 'ติดเชื้อ (HAI)', 'bg-rose-100 text-rose-700 hover:bg-rose-200') +
+                    actBtn('No HAI', 'ไม่ติดเชื้อ', 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200') +
+                    actBtn('POA', 'POA', 'bg-sky-100 text-sky-700 hover:bg-sky-200') +
+                    (confBy ? '<span class="basis-full text-[10px] text-slate-400 mt-0.5">ยืนยันโดย ' + confBy + '</span>' : '') +
+                    '</div>';
+                const pendingBtn = acts;
                 const details = [
                     field('วินิจฉัยแรกรับ', r['วินิจฉัยแรกรับ']),
                     field('ผลการวินิจฉัย', r['ผลการวินิจฉัย']),
@@ -9576,7 +9587,7 @@
                     '<dl class="grid grid-cols-2 gap-x-3 gap-y-2 mt-3">' + details + '</dl>' +
                     (note ? '<div class="mt-3 text-xs text-slate-500 bg-slate-50 rounded-lg p-2 leading-relaxed"><span class="text-slate-400">ข้อมูลเพิ่มเติม:</span> ' + note + '</div>' : '') +
                     imgThumbs(r) +
-                    '<div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-100"><span class="text-[11px] text-slate-400">' + (ts || '') + '</span>' + pendingBtn + '</div>' +
+                    '<div class="mt-3 pt-3 border-t border-slate-100"><div class="text-[11px] text-slate-400">' + (ts || '') + '</div>' + pendingBtn + '</div>' +
                     '</div></div>';
             };
             // จัดกลุ่มตามหน่วยงาน (หอผู้ป่วย)
@@ -9595,6 +9606,30 @@
             }).join('');
             const empty = document.getElementById('verifyEmpty'); if (empty) empty.hidden = list.length > 0;
             fw && fw.querySelectorAll('.verify-chip').forEach(b => b.addEventListener('click', () => { verifyFilter = b.dataset.k; renderVerify(); }));
+            // ปุ่มยืนยันบนการ์ด
+            cards.querySelectorAll('.verify-act').forEach(b => b.addEventListener('click', () => verifyConfirm(+b.dataset.row, b.dataset.result, b)));
+        }
+        // แอดมินยืนยันผลผ่านเว็บ → เขียนกลับชีต ICWN แล้วอัปเดตการ์ดทันที
+        async function verifyConfirm(sheetRow, result, btn) {
+            const url = (typeof recSaveUrl === 'function') ? recSaveUrl() : '';
+            if (!url) { alert('ยังไม่ได้ตั้งค่า URL Apps Script (ไปที่เมนู "แบบบันทึกผู้ป่วย HAI" เพื่อตั้งค่า)'); return; }
+            const row = VERIFY_ROWS.find(r => r._row === sheetRow); if (!row) return;
+            const by = (() => { try { const s = readSession(); return (s && s.name) || ''; } catch (e) { return ''; } })();
+            const prev = row['ผลการวินิจฉัย'];
+            const grp = btn ? btn.closest('.verify-actions') : null;
+            if (grp) grp.innerHTML = '<span class="text-xs text-slate-400">กำลังบันทึก...</span>';
+            row['ผลการวินิจฉัย'] = result;   // optimistic
+            try {
+                const res = await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'icnVerify', row: sheetRow, hn: row['HN'], result: result, by: by }) });
+                const j = await res.json().catch(() => ({ ok: true }));
+                if (!j.ok) throw new Error(j.note || j.error || 'บันทึกไม่สำเร็จ');
+                row['ยืนยันโดย'] = by; row['เวลายืนยัน'] = new Date().toLocaleString('th-TH');
+                renderVerify();
+            } catch (e) {
+                row['ผลการวินิจฉัย'] = prev;   // rollback
+                renderVerify();
+                alert('ยืนยันไม่สำเร็จ: ' + e.message + '\n(ต้องวาง RecordCode.gs ใหม่แล้ว Deploy เวอร์ชันใหม่ และบัญชีมีสิทธิ์แก้ไฟล์ฟอร์ม ICWN)');
+            }
         }
 
         function switchView(view) {

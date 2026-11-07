@@ -24,6 +24,37 @@ function recJson_(obj, cb) {
   return ContentService.createTextOutput(out).setMimeType(ContentService.MimeType.JSON);
 }
 function recNorm_(s) { return String(s == null ? '' : s).toLowerCase().replace(/[\s.]/g, ''); }
+
+// ===== ยืนยันผลสงสัยติดเชื้อ (ICWN) จากหน้าเว็บ → เขียนกลับไฟล์ฟอร์ม ICWN =====
+var ICN_FILE_ID = '1HU80TyjUXsvyiiBP8gI41qmTfqaLV2k72NbWJ6lh8FA';
+var ICN_SHEET = 'การตอบแบบฟอร์ม 1';
+function icnHn_(v) { return String(v == null ? '' : v).replace(/\D/g, '').replace(/^0+/, ''); }
+function icnVerify_(p) {
+  try {
+    var sh = SpreadsheetApp.openById(ICN_FILE_ID).getSheetByName(ICN_SHEET);
+    if (!sh) return recJson_({ ok: false, note: 'ไม่พบแท็บฟอร์ม ICWN "' + ICN_SHEET + '"' });
+    var lastCol = sh.getLastColumn();
+    var head = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (x) { return String(x).trim(); });
+    var cRes = head.indexOf('ผลการวินิจฉัย'), cHn = head.indexOf('HN');
+    if (cRes < 0) return recJson_({ ok: false, note: 'ไม่พบคอลัมน์ "ผลการวินิจฉัย"' });
+    // คอลัมน์ audit (สร้างต่อท้ายถ้ายังไม่มี)
+    var cBy = head.indexOf('ยืนยันโดย'); if (cBy < 0) { cBy = lastCol; sh.getRange(1, cBy + 1).setValue('ยืนยันโดย'); lastCol++; }
+    var cAt = head.indexOf('เวลายืนยัน'); if (cAt < 0) { cAt = lastCol; sh.getRange(1, cAt + 1).setValue('เวลายืนยัน'); lastCol++; }
+    var hn = icnHn_(p.hn), rowNum = parseInt(p.row, 10), ok = false;
+    var lastRow = sh.getLastRow();
+    function hnAt(r) { return cHn < 0 ? '' : icnHn_(sh.getRange(r, cHn + 1).getValue()); }
+    if (rowNum >= 2 && rowNum <= lastRow && (!hn || hnAt(rowNum) === hn)) { ok = true; }
+    else if (hn && lastRow > 1) {   // เผื่อแถวเลื่อน: ค้นด้วย HN
+      var hns = sh.getRange(2, cHn + 1, lastRow - 1, 1).getValues();
+      for (var i = 0; i < hns.length; i++) { if (icnHn_(hns[i][0]) === hn) { rowNum = i + 2; ok = true; break; } }
+    }
+    if (!ok) return recJson_({ ok: false, note: 'ไม่พบรายการผู้ป่วยในฟอร์ม (HN/แถวไม่ตรง)' });
+    sh.getRange(rowNum, cRes + 1).setValue(String(p.result || ''));
+    sh.getRange(rowNum, cBy + 1).setValue(String(p.by || ''));
+    sh.getRange(rowNum, cAt + 1).setValue(new Date());
+    return recJson_({ ok: true, row: rowNum, result: p.result });
+  } catch (err) { return recJson_({ ok: false, error: String(err) }); }
+}
 const REC_LIST_SHEET = 'List-ทะเบียน-1';
 
 function doGet(e) {
@@ -74,6 +105,7 @@ function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (body.action === 'setList') return recSetList_(body);
+    if (body.action === 'icnVerify') return icnVerify_(body);         // แอดมินยืนยันผลสงสัยติดเชื้อ (ICWN) ผ่านเว็บ
     if (body.action === 'addMonthly') return recAddMonthly_(body);   // บันทึกรายการหัตถการ/ยอดเดือน → แท็บ MMW/HDU (เดิม)
     if (body.action === 'addUnified') return recAddUnified_(body);    // บันทึกรวมทุกหน่วย → แท็บเดียว "หัตถการ"
     if (body.action !== 'addCase') return recJson_({ ok: false, note: 'unknown action: ' + body.action });
