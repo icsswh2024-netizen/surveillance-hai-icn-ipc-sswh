@@ -305,6 +305,10 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 ประสิทธิภาพการเฝ้าระวัง
             </button>
+            <button id="menuVerify" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                ตรวจสอบสงสัยการติดเชื้อ
+            </button>
             <button id="menuSpecial" class="nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors text-slate-600 hover:bg-slate-100">
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
                 เฝ้าระวังหน่วยพิเศษ
@@ -1273,7 +1277,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-03h</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-07a</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -1637,6 +1641,24 @@
                 <p class="px-6 py-3 text-xs text-slate-400 border-t border-slate-100">* เป็น "ความคืบหน้าการพัฒนาสะสม (เฟสงาน)" ตามแผนโครงการ ไม่ใช่สัดส่วนบรรทัดโค้ดต่อไตรมาส</p>
             </div>
         </div><!-- /viewSurv -->
+
+        <!-- ===================== VIEW: ตรวจสอบสงสัยการติดเชื้อ ===================== -->
+        <div id="viewVerify" class="space-y-6" hidden>
+            <div class="rounded-2xl bg-sky-50 border border-sky-100 p-4 text-sm text-sky-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <b>ตรวจสอบสงสัยการติดเชื้อ (ICWN):</b> ดึงรายการที่หน่วยงานรายงานสงสัยติดเชื้อเข้ามา เพื่อให้แอดมิน IC เข้าไปยืนยันผลการติดเชื้อในโรงพยาบาล
+                    <div class="text-xs text-sky-600 mt-1">🔒 PDPA ระดับหน่วยงาน — ปกปิดชื่อ-สกุล, แสดง HN เฉพาะ 3 ตัวท้าย · <span id="verifyStatus" class="text-slate-400"></span></div>
+                </div>
+                <div class="flex gap-2 self-start shrink-0">
+                    <a id="verifyOpenForm" href="#" target="_blank" rel="noopener" class="text-sm bg-white border border-sky-200 hover:bg-sky-100 text-sky-700 py-1.5 px-3 rounded-lg font-medium">เปิดฟอร์มเพื่อยืนยัน ↗</a>
+                    <button id="verifyReload" class="text-sm bg-sky-600 hover:bg-sky-700 text-white py-1.5 px-3 rounded-lg font-medium">รีเฟรช</button>
+                </div>
+            </div>
+            <div id="verifyKpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            <div id="verifyFilters" class="flex flex-wrap gap-2"></div>
+            <div id="verifyCards" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+            <p id="verifyEmpty" class="text-center text-slate-400 py-10" hidden>— ไม่มีรายการสงสัยติดเชื้อตามตัวกรอง —</p>
+        </div><!-- /viewVerify -->
 
         <!-- ===================== VIEW: เฝ้าระวังหน่วยพิเศษ ===================== -->
         <div id="viewSpecial" class="space-y-6" hidden>
@@ -9469,12 +9491,86 @@
             } catch (e) { leStatus('⚠️ บันทึกไม่สำเร็จ: ' + e.message, 'text-rose-600'); }
         }
 
+        /* ===================== เมนู: ตรวจสอบสงสัยการติดเชื้อ (ICWN) ===================== */
+        const VERIFY_SHEET_ID = '1HU80TyjUXsvyiiBP8gI41qmTfqaLV2k72NbWJ6lh8FA';
+        const VERIFY_FORM_SHEET = 'การตอบแบบฟอร์ม 1';
+        const VERIFY_CSV_URL = 'https://docs.google.com/spreadsheets/d/' + VERIFY_SHEET_ID + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(VERIFY_FORM_SHEET);
+        const VERIFY_FORM_URL = 'https://docs.google.com/spreadsheets/d/' + VERIFY_SHEET_ID + '/edit';
+        let VERIFY_ROWS = [], VERIFY_LOADED = false, verifyFilter = 'all';
+        // จำแนกสถานะจากคอลัมน์ "ผลการวินิจฉัย" (ว่าง = ยังไม่ยืนยัน)
+        function verifyStatus(r) {
+            const dx = (r['ผลการวินิจฉัย'] || '').toString().trim().toLowerCase().replace(/\s/g, '');
+            if (!dx) return { key: 'pending', label: 'รอยืนยัน', dot: '#f59e0b', bg: 'bg-amber-50', bd: 'border-amber-200', badge: 'bg-amber-100 text-amber-700' };
+            if (dx === 'hai') return { key: 'hai', label: 'ยืนยันติดเชื้อใน รพ. (HAI)', dot: '#e11d48', bg: 'bg-rose-50', bd: 'border-rose-200', badge: 'bg-rose-100 text-rose-700' };
+            if (/^nohai|^no\b|ไม่/.test(dx) || dx === 'nohai') return { key: 'nohai', label: 'ไม่ติดเชื้อ', dot: '#10b981', bg: 'bg-emerald-50', bd: 'border-emerald-200', badge: 'bg-emerald-100 text-emerald-700' };
+            if (/poa/.test(dx)) return { key: 'poa', label: 'ติดเชื้อจากที่อื่น (POA)', dot: '#0ea5e9', bg: 'bg-sky-50', bd: 'border-sky-200', badge: 'bg-sky-100 text-sky-700' };
+            return { key: 'other', label: r['ผลการวินิจฉัย'], dot: '#64748b', bg: 'bg-slate-50', bd: 'border-slate-200', badge: 'bg-slate-100 text-slate-600' };
+        }
+        async function loadVerify(force) {
+            const st = document.getElementById('verifyStatus');
+            const of = document.getElementById('verifyOpenForm'); if (of) of.href = VERIFY_FORM_URL;
+            if (VERIFY_LOADED && !force) { renderVerify(); return; }
+            if (st) st.textContent = 'กำลังโหลด...';
+            try {
+                const res = await fetch(VERIFY_CSV_URL + '&_=' + Date.now());
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                VERIFY_ROWS = parseCSV(await res.text());
+                VERIFY_LOADED = true;
+                if (st) st.textContent = 'โหลด ' + VERIFY_ROWS.length + ' รายการ (' + new Date().toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ')';
+                renderVerify();
+            } catch (e) {
+                if (st) { st.textContent = '⚠️ โหลดไม่สำเร็จ — ตรวจสอบว่าแชร์ฟอร์มแบบ "ทุกคนที่มีลิงก์" (' + e.message + ')'; st.className = 'text-rose-600'; }
+            }
+        }
+        function renderVerify() {
+            const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+            const rows = VERIFY_ROWS.filter(r => (r['หอผู้ป่วย'] || r['HN'] || r['ชื่อ-สกุลผู้ป่วย'] || '').toString().trim() !== '');
+            // สรุปสถานะ
+            const cnt = { pending: 0, hai: 0, nohai: 0, poa: 0, other: 0 };
+            rows.forEach(r => cnt[verifyStatus(r).key]++);
+            const kpi = (label, n, color, sub) => '<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background:' + color + '"></span><p class="text-xs text-slate-400">' + label + '</p></div><p class="text-2xl font-bold mt-1" style="color:' + color + '">' + n + '</p><p class="text-[11px] text-slate-400">' + sub + '</p></div>';
+            const kw = document.getElementById('verifyKpis');
+            if (kw) kw.innerHTML = kpi('รอยืนยัน', cnt.pending, '#f59e0b', 'ต้องตรวจสอบ') + kpi('ยืนยันติดเชื้อ (HAI)', cnt.hai, '#e11d48', 'ติดเชื้อใน รพ.') + kpi('ไม่ติดเชื้อ', cnt.nohai, '#10b981', 'No HAI') + kpi('จากที่อื่น (POA)', cnt.poa, '#0ea5e9', 'Present on admission');
+            // ตัวกรองสถานะ
+            const chips = [['all', 'ทั้งหมด', rows.length], ['pending', 'รอยืนยัน', cnt.pending], ['hai', 'HAI', cnt.hai], ['nohai', 'ไม่ติดเชื้อ', cnt.nohai], ['poa', 'POA', cnt.poa]];
+            const fw = document.getElementById('verifyFilters');
+            if (fw) fw.innerHTML = chips.map(([k, l, n]) => '<button class="verify-chip text-sm rounded-full px-3 py-1 border ' + (verifyFilter === k ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-600 border-slate-200 hover:border-sky-400') + '" data-k="' + k + '">' + l + ' <span class="opacity-70">(' + n + ')</span></button>').join('');
+            // การ์ด
+            const list = rows.filter(r => verifyFilter === 'all' || verifyStatus(r).key === verifyFilter);
+            const cards = document.getElementById('verifyCards');
+            const nm = s => { const t = (s || '').toString().trim(); if (!t) return '—'; return t.charAt(0) + '•••'; };   // ปกปิดชื่อ (PDPA)
+            cards.innerHTML = list.map(r => {
+                const s = verifyStatus(r);
+                const site = esc(r['ตำแหน่งการติดเชื้อที่สงสัย'] || '-');
+                const ward = esc(r['หอผู้ป่วย'] || '-');
+                const dx1 = esc(r['วินิจฉัยแรกรับ'] || '');
+                const reporter = esc(r['ลงชื่อผู้รายงาน'] || '');
+                const note = esc(r['ข้อมูลเพิ่มเติม (เช่น วันที่พบ Lung : new Infiltration ครั้งใหม่ วันที่มีหนองที่แผล เป็นต้น)'] || r['ข้อมูลเพิ่มเติม'] || '');
+                const ts = esc((r['ประทับเวลา'] || '').toString().split(' ')[0] || '');
+                const hn = maskId(r['HN']);
+                const pendingBtn = s.key === 'pending' ? '<a href="' + VERIFY_FORM_URL + '" target="_blank" rel="noopener" class="mt-3 inline-block text-xs bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg font-medium">ยืนยันผลในฟอร์ม ↗</a>' : '';
+                return '<div class="rounded-2xl border ' + s.bd + ' ' + s.bg + ' p-4 shadow-sm">' +
+                    '<div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-slate-500">' + ward + '</span>' +
+                    '<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ' + s.badge + '">' + esc(s.label) + '</span></div>' +
+                    '<h4 class="text-lg font-bold text-slate-800 mt-2">' + site + '</h4>' +
+                    (dx1 ? '<p class="text-sm text-slate-600 mt-1"><span class="text-slate-400">วินิจฉัยแรกรับ:</span> ' + dx1 + '</p>' : '') +
+                    '<div class="text-xs text-slate-500 mt-2 space-y-0.5">' +
+                    '<div>ผู้ป่วย: <span class="font-medium">' + nm(r['ชื่อ-สกุลผู้ป่วย']) + '</span> · HN ' + hn + '</div>' +
+                    (reporter ? '<div>ผู้รายงาน: ' + reporter + '</div>' : '') +
+                    (ts ? '<div>วันที่รายงาน: ' + ts + '</div>' : '') +
+                    (note ? '<div class="text-slate-400 italic mt-1">' + note + '</div>' : '') +
+                    '</div>' + pendingBtn + '</div>';
+            }).join('');
+            const empty = document.getElementById('verifyEmpty'); if (empty) empty.hidden = list.length > 0;
+            fw && fw.querySelectorAll('.verify-chip').forEach(b => b.addEventListener('click', () => { verifyFilter = b.dataset.k; renderVerify(); }));
+        }
+
         function switchView(view) {
             // ตัวกรองแยกรายเมนู: บันทึกของเมนูเดิม แล้วโหลดของเมนูใหม่ ก่อนเรนเดอร์
             if (view !== CURRENT_FILTER_VIEW) { saveViewFilters(CURRENT_FILTER_VIEW); loadViewFilters(view); CURRENT_FILTER_VIEW = view; }
-            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', report: 'viewReport', org: 'viewOrg', patient: 'viewPatient', compare: 'viewCompare', surv: 'viewSurv', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord', procedure: 'viewProcedure', listedit: 'viewListEdit' };
-            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', patient: 'menuPatient', compare: 'menuCompare', surv: 'menuSurv', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord', procedure: 'menuProcedure' };
-            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', report: 'สรุปรายงาน', org: 'เชื้อก่อโรค HAI', patient: 'วิเคราะห์ผู้ป่วย', surv: 'ประสิทธิภาพการเฝ้าระวัง', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI', procedure: 'บันทึกรายการหัตถการ', listedit: 'แก้ไข Dropdown (List)' };
+            const views = { dashboard: 'viewDashboard', wards: 'viewWards', mdr: 'viewMdr', service: 'viewService', indicator: 'viewIndicator', analysis: 'viewAnalysis', report: 'viewReport', org: 'viewOrg', patient: 'viewPatient', compare: 'viewCompare', surv: 'viewSurv', verify: 'viewVerify', special: 'viewSpecial', postdc: 'viewPostDC', control: 'viewControl', risk: 'viewRisk', record: 'viewRecord', procedure: 'viewProcedure', listedit: 'viewListEdit' };
+            const menus = { dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', patient: 'menuPatient', compare: 'menuCompare', surv: 'menuSurv', verify: 'menuVerify', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord', procedure: 'menuProcedure' };
+            const titles = { dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ', indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', report: 'สรุปรายงาน', org: 'เชื้อก่อโรค HAI', patient: 'วิเคราะห์ผู้ป่วย', surv: 'ประสิทธิภาพการเฝ้าระวัง', verify: 'ตรวจสอบสงสัยการติดเชื้อ', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge', control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI', procedure: 'บันทึกรายการหัตถการ', listedit: 'แก้ไข Dropdown (List)' };
             const base = 'nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ';
             const on = 'bg-emerald-600 text-white shadow-sm';
             const off = 'text-slate-600 hover:bg-slate-100';
@@ -9509,6 +9605,7 @@
             if (view === 'patient') updatePatientView();
             if (view === 'compare') updateCompareView();
             if (view === 'surv') updateSurvView();
+            if (view === 'verify') loadVerify();
             if (view === 'special') updateSpecialView();
             if (view === 'postdc') loadPostDC();
             if (view === 'control') updateControlView();
@@ -9604,6 +9701,8 @@
         document.getElementById('btnExportPatient').addEventListener('click', exportPatientCSV);
         document.getElementById('patientTriadSite').addEventListener('change', updatePatientView);
         document.getElementById('menuSurv').addEventListener('click', () => switchView('surv'));
+        document.getElementById('menuVerify').addEventListener('click', () => switchView('verify'));
+        document.getElementById('verifyReload').addEventListener('click', () => loadVerify(true));
         document.getElementById('btnExportSurv').addEventListener('click', exportSurvCSV);
         document.getElementById('btnExportQi').addEventListener('click', exportQiCSV);
         document.getElementById('btnExportDev').addEventListener('click', exportDevCSV);
@@ -9948,7 +10047,7 @@
         const SESS_KEY = 'authSession';
         const SESS_HOURS = 12;                 // อายุ session
         // map view key -> ปุ่มเมนูใน nav
-        const MENU_BTN = { procedure: 'menuProcedure', dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', patient: 'menuPatient', compare: 'menuCompare', surv: 'menuSurv', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
+        const MENU_BTN = { procedure: 'menuProcedure', dashboard: 'menuDashboard', wards: 'menuWards', mdr: 'menuMdr', service: 'menuService', indicator: 'menuIndicator', analysis: 'menuAnalysis', report: 'menuReport', org: 'menuOrg', patient: 'menuPatient', compare: 'menuCompare', surv: 'menuSurv', verify: 'menuVerify', special: 'menuSpecial', postdc: 'menuPostDC', control: 'menuControl', risk: 'menuRisk', record: 'menuRecord' };
         const ALL_VIEWS = Object.keys(MENU_BTN);
 
         function loginUrl() {
