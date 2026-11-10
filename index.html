@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-10b</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-10c</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2372,7 +2372,7 @@
         //  หากใช้ Publish to web (CSV) ให้แทน URL นี้ด้วยลิงก์ที่ publish
         // ===================================================================
         const SHEET_ID = '1KEK2bvXLDAY7awAapTnF32yZz1qvfqfWXje2ccG2pLc';
-        const SHEET_NAME = 'ทะเบียน-1';
+        const SHEET_NAME = 'ทะเบียน-1-2570';
         const SHEET_CSV_URL =
             'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
             // headers=1 บังคับให้ gviz ใช้แถวแรกเป็นหัวตารางเพียงแถวเดียว
@@ -2383,7 +2383,7 @@
         //   • หัวคอลัมน์ต้องสะกดเหมือน ทะเบียน-1 (ลบคอลัมน์ที่ไม่ใช้ได้ แต่ห้ามเปลี่ยนชื่อ) · ต้องมี Year/Quater/Month/Unit
         //   • ระบบรวมตัวตั้ง/ตัวหารตาม ปี/เดือน/หอ ให้เอง · แท็บไม่มี/โหลดไม่ได้ = ข้ามเงียบ
         //   • ใส่หลายแท็บคั่นด้วย , · ⚠️ อย่าให้ข้อมูลปีซ้ำกับ ทะเบียน-1 (กันนับซ้ำ)
-        const EXTRA_SHEETS = 'ทะเบียน-1-2569,ตัวหาร-2569';
+        const EXTRA_SHEETS = 'ตัวหาร-2570,ทะเบียน-1-2569,ตัวหาร-2569';
         const extraUrl_ = name => 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(name) + '&_=' + Date.now();
 
         // ปีงบประมาณไทยเริ่ม ต.ค. — เรียงเดือน 10,11,12,1..9
