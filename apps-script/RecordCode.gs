@@ -60,11 +60,12 @@ const REC_LIST_SHEET = 'List-ทะเบียน-1';
 function doGet(e) {
   const cb = e && e.parameter && e.parameter.callback;
   const action = e && e.parameter && e.parameter.action;
+  if (action === 'login') return recJson_(recLogin_((e.parameter || {}).u, (e.parameter || {}).h), cb);   // รวม login ไว้ไฟล์เดียว
   if (action === 'ping') {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sh = ss.getSheetByName(REC_SHEET);
     const headers = sh ? sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function (x) { return String(x).trim(); }) : [];
-    return recJson_({ ok: true, version: 'record-v1', lists: true, sheet: REC_SHEET, found: !!sh, headers: headers }, cb);
+    return recJson_({ ok: true, version: 'record-v1', login: 'login-v1', lists: true, sheet: REC_SHEET, found: !!sh, headers: headers }, cb);
   }
   if (action === 'monthlyHeaders') {
     // คืนหัวคอลัมน์ของแท็บ MMW/HDU ให้ฟอร์มสร้างช่องกรอกอัตโนมัติ
@@ -199,4 +200,70 @@ function recAddMonthly_(body) {
   });
   sh.appendRow(row);
   return recJson_({ ok: true, action: 'addMonthly', sheet: name, matched: matched, unmatched: unmatched, lastRow: sh.getLastRow() });
+}
+
+// ========================================================================
+// LOGIN (รวมมาจาก Login.gs — ให้ไฟล์เดียวจบ ไม่ต้องมี doGet ซ้ำอีกไฟล์)
+//   ใช้แท็บ "Users" ในไฟล์ทะเบียน · เว็บส่งเฉพาะ SHA-256(password+SALT)
+//   ⚠️ SALT ต้องตรงกับหน้าเว็บ (index.html)
+// ========================================================================
+var REC_LOGIN = { SHEET: 'Users', SALT: 'sswh-ic-2569' };
+var REC_MENU_KEYS = ['dashboard', 'wards', 'mdr', 'service', 'indicator', 'analysis',
+  'report', 'org', 'patient', 'compare', 'surv', 'verify', 'special', 'postdc', 'control', 'risk', 'record'];
+var REC_MENU_LABELS = {
+  dashboard: 'แดชบอร์ด', wards: 'สรุปรายหอผู้ป่วย', mdr: 'เชื้อดื้อยา (MDR)', service: 'สถิติบริการ',
+  indicator: 'ตัวชี้วัด', analysis: 'บทวิเคราะห์', report: 'สรุปรายงาน', org: 'เชื้อก่อโรค HAI',
+  patient: 'วิเคราะห์ผู้ป่วย', compare: 'เปรียบเทียบ', surv: 'ประสิทธิภาพการเฝ้าระวัง',
+  verify: 'ตรวจสอบสงสัยการติดเชื้อ', special: 'เฝ้าระวังหน่วยพิเศษ', postdc: 'เฝ้าระวัง Post discharge',
+  control: 'Control Chart', risk: 'Risk register', record: 'แบบบันทึกผู้ป่วย HAI'
+};
+function recNormMenu_(s) { return String(s == null ? '' : s).trim().toLowerCase().replace(/[\s()·\-–_.]/g, ''); }
+function recHeaderKey_(h) {
+  var n = recNormMenu_(h); if (!n) return null;
+  if (n === 'all' || n === 'ทุกเมนู' || n === 'ทั้งหมด') return 'all';
+  if (REC_MENU_KEYS.indexOf(n) >= 0) return n;
+  for (var k in REC_MENU_LABELS) { if (recNormMenu_(REC_MENU_LABELS[k]) === n) return k; }
+  return null;
+}
+function recChecked_(v) {
+  if (v === true) return true;
+  var s = String(v == null ? '' : v).trim().toLowerCase();
+  return s === 'true' || s === '1' || s === 'yes' || s === 'y' || s === 'x' || s === '✓' || s === '✔' || s === 'true()';
+}
+function recLogin_(u, h) {
+  u = String(u == null ? '' : u).trim().toLowerCase();
+  h = String(h == null ? '' : h).trim().toLowerCase();
+  if (!u || !h) return { ok: false };
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(REC_LOGIN.SHEET);
+  if (!sh) return { ok: false, error: 'ไม่พบแท็บ "' + REC_LOGIN.SHEET + '"' };
+  var data = sh.getDataRange().getValues();
+  if (data.length < 2) return { ok: false };
+  var hdr = data[0].map(function (x) { return String(x).trim().toLowerCase(); });
+  var ci = { user: hdr.indexOf('username'), pass: hdr.indexOf('password'), name: hdr.indexOf('ชื่อ-สกุล'), role: hdr.indexOf('role'), menus: hdr.indexOf('menus') };
+  if (ci.name < 0) ci.name = hdr.indexOf('name');
+  if (ci.user < 0 || ci.pass < 0) return { ok: false, error: 'หัวคอลัมน์ต้องมี username และ password' };
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    if (String(row[ci.user] == null ? '' : row[ci.user]).trim().toLowerCase() !== u) continue;
+    var calc = recSha256Hex_(String(row[ci.pass] == null ? '' : row[ci.pass]) + REC_LOGIN.SALT);
+    if (calc === h) return { ok: true, username: u, name: ci.name >= 0 ? String(row[ci.name] || '') : u, role: ci.role >= 0 ? String(row[ci.role] || '') : '', menus: recResolveMenus_(hdr, row, ci) };
+    return { ok: false };
+  }
+  return { ok: false };
+}
+function recResolveMenus_(hdr, row, ci) {
+  var allowed = [], seen = {}, sawMenuCol = false;
+  for (var c = 0; c < hdr.length; c++) {
+    var key = recHeaderKey_(hdr[c]); if (!key) continue;
+    sawMenuCol = true;
+    if (recChecked_(row[c])) { if (key === 'all') return 'all'; if (!seen[key]) { seen[key] = true; allowed.push(key); } }
+  }
+  if (sawMenuCol) return allowed.join(',');
+  if (ci.menus >= 0) { var t = String(row[ci.menus] || '').trim(); if (t) return t; }
+  return 'all';
+}
+function recSha256Hex_(s) {
+  var raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, s, Utilities.Charset.UTF_8), hex = '';
+  for (var i = 0; i < raw.length; i++) { var b = raw[i] < 0 ? raw[i] + 256 : raw[i], x = b.toString(16); hex += (x.length === 1 ? '0' : '') + x; }
+  return hex;
 }
