@@ -38,13 +38,19 @@ var SM = {
   REF_DX: 'ผลการวินิจฉัย',
   WRITE_NO: true,        // true = เขียน "ไม่รายงาน" ให้เคสที่ไม่ตรงด้วย
   // ป้ายผลลัพธ์ 3 สถานะ (ตรงกับคอลัมน์ "ประสิทธิภาพ" ในเว็บ)
-  OUT_RIGHT: 'รายงานแล้วตรง', OUT_WRONG: 'รายงานแล้วไม่ตรง', OUT_NONE: 'ไม่รายงาน'
+  OUT_RIGHT: 'รายงานแล้วตรง', OUT_WRONG: 'รายงานแล้วไม่ตรง', OUT_NONE: 'ไม่รายงาน',
+  // ===== จับคู่ "ผลการวินิจฉัย" (ฟอร์ม) ให้ตรงกับคอลัมน์ HAI (ทะเบียน) =====
+  REC_HAI: 'HAI',            // คอลัมน์ HAI ในทะเบียน-1 (ค่า 'hai' = ยืนยันติดเชื้อ)
+  REC_HAI_VAL: 'hai',        // ค่าที่ถือว่าเป็นเคส HAI
+  RES_HAI: 'HAI',            // เขียนลงฟอร์มเมื่อเจอในทะเบียน
+  RES_NO: 'No HAI'           // เขียนลงฟอร์มเมื่อไม่เจอ
 };
 // =========================================================
 
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('IC Tools')
     .addItem('จับคู่ประสิทธิภาพเฝ้าระวัง (ตรง/ไม่ตรง/ไม่รายงาน)', 'smMatchSurveillance')
+    .addItem('จับคู่ผลการวินิจฉัย ↔ HAI (ฟอร์มสงสัย)', 'smMatchResult')
     .addToUi();
 }
 
@@ -145,4 +151,60 @@ function smMatchSurveillance() {
     '  ·  ข้าม(บรรทัดต่อ): ' + skip +
     '\nกุญแจ: HN หรือ ชื่อ+สกุล' + (SM.MATCH_UNIT ? ' + หน่วยต้องตรง (Unit ↔ ' + SM.REF_UNIT + ')' : '') +
     (SM.REF_ONLY_HAI ? '\n(นับเฉพาะ ผลการวินิจฉัย = HAI)' : ''));
+}
+
+// ========================================================================
+// จับคู่ "ผลการวินิจฉัย" (ฟอร์มสงสัย ICWN) ให้ตรงกับคอลัมน์ "HAI" ในทะเบียน-1
+//   - สร้างชุดกุญแจ (HN / ชื่อ+สกุล) จากเคสในทะเบียนที่ HAI = 'hai'
+//   - วนทุกแถวในฟอร์ม: เจอ → 'HAI', ไม่เจอ → 'No HAI' (เขียนลงคอลัมน์ ผลการวินิจฉัย)
+// ========================================================================
+function smMatchResult() {
+  var ui = SpreadsheetApp.getUi();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var rec = ss.getSheetByName(SM.REC_SHEET);
+  if (!rec) { ui.alert('ไม่พบแท็บ "' + SM.REC_SHEET + '"'); return; }
+
+  // ---- สร้างชุดกุญแจ HAI จากทะเบียน (เคสที่ HAI = 'hai') ----
+  var mMap = smHeaderMap_(rec);
+  var cN = smCol_(mMap, SM.REC_NAME), cS = smCol_(mMap, SM.REC_SURNAME), cH = smCol_(mMap, SM.REC_HN), cHai = smCol_(mMap, SM.REC_HAI);
+  if (cHai < 0) { ui.alert('ทะเบียน-1 ไม่พบคอลัมน์ "' + SM.REC_HAI + '"'); return; }
+  var mLast = rec.getLastRow(), haiKeys = {}, haiCnt = 0;
+  if (mLast > 1) {
+    var mData = rec.getRange(2, 1, mLast - 1, rec.getLastColumn()).getValues();
+    mData.forEach(function (row) {
+      if (String(row[cHai]).trim().toLowerCase() !== String(SM.REC_HAI_VAL).toLowerCase()) return;  // เฉพาะเคส HAI
+      var nm = smName_((cN >= 0 ? row[cN] : '') + (cS >= 0 ? row[cS] : '')), hn = cH >= 0 ? smHn_(row[cH]) : '';
+      if (hn) haiKeys['hn:' + hn] = true;
+      if (nm) haiKeys['nm:' + nm] = true;
+      haiCnt++;
+    });
+  }
+
+  // ---- เปิดฟอร์มสงสัย (ข้ามไฟล์) แล้ววนเขียน ผลการวินิจฉัย ----
+  var refSS;
+  try { refSS = SpreadsheetApp.openById(SM.REF_FILE_ID); }
+  catch (e) { ui.alert('เปิดไฟล์ฟอร์มอ้างอิงไม่ได้ — ตรวจสอบสิทธิ์เข้าถึง\n' + e); return; }
+  var ref = refSS.getSheetByName(SM.REF_SHEET);
+  if (!ref) { ui.alert('ไม่พบแท็บ "' + SM.REF_SHEET + '" ในไฟล์ฟอร์ม'); return; }
+  var rMap = smHeaderMap_(ref);
+  var ciName = smCol_(rMap, SM.REF_FULLNAME), ciHn = smCol_(rMap, SM.REF_HN), ciOut = smColFirst_(ref, SM.REF_DX);
+  if (ciOut < 0) { ui.alert('ฟอร์มไม่พบคอลัมน์ "' + SM.REF_DX + '"'); return; }
+  if (ciName < 0 && ciHn < 0) { ui.alert('ฟอร์มไม่พบคอลัมน์ ชื่อ-สกุล/HN'); return; }
+  var rLast = ref.getLastRow();
+  if (rLast < 2) { ui.alert('ฟอร์มไม่มีข้อมูล'); return; }
+
+  var rData = ref.getRange(2, 1, rLast - 1, ref.getLastColumn()).getValues();
+  var out = [], hai = 0, no = 0, skip = 0;
+  rData.forEach(function (row) {
+    var nm = ciName >= 0 ? smName_(row[ciName]) : '', hn = ciHn >= 0 ? smHn_(row[ciHn]) : '';
+    if (!nm && !hn) { out.push([row[ciOut]]); skip++; return; }   // ไม่มีชื่อ/HN → คงค่าเดิม
+    var hit = (hn && haiKeys['hn:' + hn]) || (nm && haiKeys['nm:' + nm]);
+    if (hit) { out.push([SM.RES_HAI]); hai++; } else { out.push([SM.RES_NO]); no++; }
+  });
+  ref.getRange(2, ciOut + 1, out.length, 1).setValues(out);
+
+  ui.alert('จับคู่ผลการวินิจฉัยเสร็จแล้ว ✅' +
+    '\nเคส HAI ในทะเบียน: ' + haiCnt +
+    '\nเขียน "' + SM.RES_HAI + '": ' + hai + '  ·  "' + SM.RES_NO + '": ' + no + '  ·  ข้าม: ' + skip +
+    '\nกุญแจ: HN หรือ ชื่อ+สกุล (ตัดคำนำหน้า/ช่องว่าง)');
 }
