@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-10a</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-10b</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2378,12 +2378,13 @@
             // headers=1 บังคับให้ gviz ใช้แถวแรกเป็นหัวตารางเพียงแถวเดียว
             // (กันปัญหา gviz เดาจำนวนแถวหัวตารางผิดกับคอลัมน์ตัวเลข เช่น Month/Quater)
             '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(SHEET_NAME);
-        // (ตัวเลือก) แท็บ"ตัวหาร"แยก — เผื่อแยกวันนอน/วันอุปกรณ์ออกจากแท็บเคส
-        //   • ตั้งชื่อแท็บที่นี่ (เว้นว่าง = ปิด) · ต้องมีหัวคอลัมน์ Year/Quater/Month/Unit + คอลัมน์ตัวหาร สะกดเหมือน ทะเบียน-1
-        //   • แถวในแท็บนี้จะถูกต่อท้ายข้อมูล (ไม่มี HAI = ไม่นับเป็นเคส) ระบบรวมตัวหารตาม ปี/เดือน/หอ ให้อัตโนมัติ
-        //   • ใส่ได้หลายแท็บ คั่นด้วย , เช่น 'ตัวหาร-2569,ตัวหาร-2570'
-        const DENOM_SHEETS = '';
-        const denomUrl_ = name => 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(name) + '&_=' + Date.now();
+        // (ตัวเลือก) แท็บเพิ่มเติม — ดึงมารวมกับ ทะเบียน-1 (เคสปีปัจจุบัน)
+        //   ใช้ได้ทั้ง "แท็บเคสเก่า" (มี HAI='hai' → นับเป็นเคส) และ "แท็บตัวหาร" (ไม่มี HAI → นับเป็นตัวหารอย่างเดียว)
+        //   • หัวคอลัมน์ต้องสะกดเหมือน ทะเบียน-1 (ลบคอลัมน์ที่ไม่ใช้ได้ แต่ห้ามเปลี่ยนชื่อ) · ต้องมี Year/Quater/Month/Unit
+        //   • ระบบรวมตัวตั้ง/ตัวหารตาม ปี/เดือน/หอ ให้เอง · แท็บไม่มี/โหลดไม่ได้ = ข้ามเงียบ
+        //   • ใส่หลายแท็บคั่นด้วย , · ⚠️ อย่าให้ข้อมูลปีซ้ำกับ ทะเบียน-1 (กันนับซ้ำ)
+        const EXTRA_SHEETS = 'ทะเบียน-1-2569,ตัวหาร-2569';
+        const extraUrl_ = name => 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(name) + '&_=' + Date.now();
 
         // ปีงบประมาณไทยเริ่ม ต.ค. — เรียงเดือน 10,11,12,1..9
         const FISCAL_MONTHS = [10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -2911,15 +2912,19 @@
                 console.log('[HAI] ตัวอย่างแถวแรก:', rows[0]);
             }
             let all = normalize(rows);
-            // (ตัวเลือก) ต่อท้ายแถวตัวหารจากแท็บแยก — best-effort (แท็บไม่มี/โหลดไม่ได้ = ข้ามเงียบ ไม่กระทบของเดิม)
-            const denomTabs = (DENOM_SHEETS || '').split(',').map(s => s.trim()).filter(Boolean);
-            for (const tab of denomTabs) {
+            // (ตัวเลือก) ต่อท้ายแถวจากแท็บเพิ่มเติม (เคสเก่า/ตัวหาร) — best-effort (แท็บไม่มี/โหลดไม่ได้ = ข้ามเงียบ)
+            const extraTabs = (EXTRA_SHEETS || '').split(',').map(s => s.trim()).filter(Boolean);
+            for (const tab of extraTabs) {
                 try {
-                    const dr = await fetch(denomUrl_(tab));
+                    const dr = await fetch(extraUrl_(tab));
                     if (!dr.ok) continue;
                     const drows = parseCSV(await dr.text());
-                    if (drows.length) { all = all.concat(normalize(drows)); console.log('[HAI] รวมตัวหารจากแท็บ "' + tab + '":', drows.length, 'แถว'); }
-                } catch (e) { console.warn('[HAI] โหลดแท็บตัวหาร "' + tab + '" ไม่สำเร็จ:', e.message); }
+                    if (!drows.length) continue;
+                    const hdrs = Object.keys(drows[0]);   // กันดึงหน้า error มารวม: ต้องมีคอลัมน์กุญแจ
+                    if (!hdrs.some(h => /^(year|ปี|unit|หอ)/i.test(h) || /Unit|Year|ปี/.test(h))) continue;
+                    all = all.concat(normalize(drows));
+                    console.log('[HAI] รวมแท็บเพิ่มเติม "' + tab + '":', drows.length, 'แถว');
+                } catch (e) { console.warn('[HAI] โหลดแท็บ "' + tab + '" ไม่สำเร็จ:', e.message); }
             }
             return all;
         }
