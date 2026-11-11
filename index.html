@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11a</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11b</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2283,13 +2283,16 @@
             <!-- รายการที่บันทึกในเครื่องรอบนี้ -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h3 class="text-base font-semibold text-slate-800">รายการที่บันทึกรอบนี้ <span id="recListCount" class="text-slate-400 font-normal text-sm"></span></h3>
-                    <button id="recListClear" class="text-xs text-rose-600 hover:text-rose-800 font-medium">ล้างรายการ</button>
+                    <div>
+                        <h3 class="text-base font-semibold text-slate-800">รายการเคสในชีต <span id="recListCount" class="text-slate-400 font-normal text-sm"></span></h3>
+                        <p class="text-[11px] text-slate-400 mt-0.5">ดึงจากชีตโดยตรง — ทุกเครื่อง/ทุกคนเห็นเหมือนกัน · กด ✏️ เพื่อแก้ไข</p>
+                    </div>
+                    <button id="recListRefresh" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium whitespace-nowrap">🔄 รีเฟรช</button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-slate-600 whitespace-nowrap">
                         <thead class="bg-slate-50 text-slate-700 font-semibold"><tr>
-                            <th class="py-2 px-4">เวลา</th><th class="py-2 px-4">ปี/เดือน</th><th class="py-2 px-4">หอ</th>
+                            <th class="py-2 px-4">แถว</th><th class="py-2 px-4">ปี/เดือน</th><th class="py-2 px-4">หอ</th>
                             <th class="py-2 px-4">HN</th><th class="py-2 px-4">HAI</th><th class="py-2 px-4">SITE</th><th class="py-2 px-4">AMR</th>
                             <th class="py-2 px-4 text-right">แก้ไข</th>
                         </tr></thead>
@@ -8965,6 +8968,17 @@
             ['S', 'I', 'R'].forEach(b => { cols['ชื่อยา ' + b] = uniq(buckets[b].map(d => d.n)).join(', '); cols['กลุ่มยา ' + b] = uniq(buckets[b].map(d => d.c)).join(', '); });
             return cols;
         }
+        // แปลงกลับ: จากคอลัมน์ 'ชื่อยา S/I/R' ในแถวชีต → แผนที่ AST {ดัชนียา: 'S'|'I'|'R'} (ไว้โหลดกลับมาแก้)
+        function colsToAstMap(row) {
+            const map = {};
+            ['S', 'I', 'R'].forEach(b => {
+                (row['ชื่อยา ' + b] || '').toString().split(/[,;]+/).map(s => s.trim()).filter(Boolean).forEach(nm => {
+                    const i = ANTIBIOTICS.findIndex(d => (d.n || '').toLowerCase() === nm.toLowerCase());
+                    if (i >= 0) map[i] = b;
+                });
+            });
+            return map;
+        }
         async function recOcrFiles(fileList) {
             const st = document.getElementById('recOcrStatus');
             const files = [...fileList].filter(f => /^image\//.test(f.type));
@@ -9221,7 +9235,7 @@
                 document.getElementById('recCsv').addEventListener('click', downloadRecordCsv);
                 document.getElementById('recClear').addEventListener('click', () => { clearRecordForm(); });
                 { const cb = document.getElementById('recEditCancel'); if (cb) cb.addEventListener('click', () => { clearRecordForm(); const st = document.getElementById('rec_status'); if (st) { st.textContent = 'ยกเลิกการแก้ไขแล้ว'; st.className = 'text-xs text-slate-400'; } }); }
-                document.getElementById('recListClear').addEventListener('click', () => { try { localStorage.removeItem('recRecent'); } catch (e) { } renderRecentRecords(); });
+                { const rb = document.getElementById('recListRefresh'); if (rb) rb.addEventListener('click', () => recLoadServerList()); }
                 // autosave แบบร่าง: พิมพ์/เลือกอะไรในฟอร์มก็บันทึกลงเครื่อง (กดออกแล้วกลับมากรอกต่อได้)
                 const ff = document.getElementById('recFormFields');
                 ff.addEventListener('input', recSaveDraft);
@@ -9232,7 +9246,7 @@
             }
             buildRecordForm();
             bindRecordForm();
-            renderRecentRecords();
+            recLoadServerList();
             loadRecordLists();
         }
         /* ===== แบบร่างอัตโนมัติ (localStorage ต่อเครื่อง) ===== */
@@ -9300,38 +9314,65 @@
             if (!rec['HAI']) return 'กรุณาเลือกสถานะ HAI';
             return '';
         }
-        function recRecentArr() { try { return JSON.parse(localStorage.getItem('recRecent') || '[]'); } catch (e) { return []; } }
-        function recRecentSave(arr) { try { localStorage.setItem('recRecent', JSON.stringify(arr)); } catch (e) { } }
-        let recEditing = null;  // { ts, match } เมื่อกำลังแก้ไขรายการเดิม
+        let REC_SERVER_ROWS = [];       // รายการเคสจากชีต (ทุกเครื่องเห็นเหมือนกัน)
+        let recServerLoaded = false;
+        function recRecentArr() { return REC_SERVER_ROWS; }
+        function recRecentSave(arr) { REC_SERVER_ROWS = arr || []; }
+        let recEditing = null;  // { match, entry } เมื่อกำลังแก้ไขรายการเดิม
+        // แถวที่ถือเป็น "เคสหลัก" (ไม่ใช่บรรทัดเชื้อเพิ่มที่เว้น HAI/ชื่อ)
+        function recIsCaseRow(row) {
+            return !!((row['HAI'] || '').toString().trim() || (row['ชื่อ'] || '').toString().trim() || (row['สกุล'] || '').toString().trim());
+        }
+        // สร้าง entry รายการจากแถวชีต (คีย์ = ชื่อหัวคอลัมน์ตรงกับ data-col ของฟอร์ม)
+        function recRowToEntry(row, rowNum, local) {
+            return {
+                rowNum: rowNum, _local: !!local,
+                Year: row['Year'], Month: row['Month'], Unit: row['Unit'], HN: row['HN'],
+                HAI: row['HAI'], SITE: row['SITE'], AMR: row['AMR'],
+                saved: true, full: row,
+                orgs: [{ name: row['เชื้อก่อโรค'] || '', ast: colsToAstMap(row) }],
+                match: { Year: row['Year'] || '', Month: row['Month'] || '', Unit: row['Unit'] || '', HN: row['HN'] || '', SITE: row['SITE'] || '', HAI: row['HAI'] || '' }
+            };
+        }
+        // ดึงรายการเคสทั้งหมดจากชีต (ทะเบียน-1-2570) — ทุกเครื่อง/ทุกคนเห็นเหมือนกัน
+        async function recLoadServerList() {
+            const body = document.getElementById('recListBody');
+            if (!REC_SERVER_ROWS.length && body) body.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-slate-400">กำลังโหลดรายการจากชีต...</td></tr>';
+            try {
+                const url = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + '_=' + Date.now();
+                const res = await fetch(url);
+                const rows = parseCSV(await res.text());
+                const out = [];
+                rows.forEach((row, i) => { if (recIsCaseRow(row)) out.push(recRowToEntry(row, i + 2, false)); });
+                out.reverse();                 // ใหม่สุดอยู่บนสุด
+                REC_SERVER_ROWS = out.slice(0, 300);
+                recServerLoaded = true;
+                renderRecentRecords();
+            } catch (e) {
+                if (body && !REC_SERVER_ROWS.length) body.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-rose-500">โหลดรายการไม่สำเร็จ — กดปุ่ม 🔄 รีเฟรช อีกครั้ง</td></tr>';
+            }
+        }
+        // บันทึกใหม่ → แทรกบนสุดทันที (optimistic) เพราะ gviz อาจหน่วงไม่กี่นาที
         function recPushRecent(rec, opts) {
             opts = opts || {};
-            const arr = recRecentArr();
-            let orgs = []; try { orgs = JSON.parse(JSON.stringify(REC_AST_ORGS)); } catch (e) { }
-            arr.unshift({
-                ts: new Date().toISOString(),
-                Year: rec['Year'], Month: rec['Month'], Unit: rec['Unit'], HN: rec['HN'],
-                HAI: rec['HAI'], SITE: rec['SITE'], AMR: rec['AMR'],
-                saved: !!opts.saved,                     // true = เขียนลงชีตจริง (แก้ไขได้)
-                full: Object.assign({}, rec),            // ข้อมูลทุกช่องที่กรอก (ไว้โหลดกลับมาแก้)
-                orgs: orgs,                               // เชื้อ/ผลไวต่อยา (รูปแบบเดียวกับแบบร่าง)
-                match: { Year: rec['Year'] || '', Month: rec['Month'] || '', Unit: rec['Unit'] || '', HN: rec['HN'] || '', SITE: rec['SITE'] || '', HAI: rec['HAI'] || '' }
-            });
-            recRecentSave(arr.slice(0, 50));
+            if (!opts.saved) return;        // CSV/คัดลอก ไม่ได้ลงชีต จึงไม่แสดงในรายการรวม
+            const row = Object.assign({}, rec);
+            try { Object.assign(row, astMapToCols((REC_AST_ORGS[0] || { ast: {} }).ast || {})); } catch (e) { }
+            if (REC_AST_ORGS[0]) row['เชื้อก่อโรค'] = REC_AST_ORGS[0].name || row['เชื้อก่อโรค'] || '';
+            REC_SERVER_ROWS.unshift(recRowToEntry(row, null, true));
             renderRecentRecords();
         }
         function renderRecentRecords() {
             const body = document.getElementById('recListBody'); if (!body) return;
-            const arr = recRecentArr();
+            const arr = REC_SERVER_ROWS;
             document.getElementById('recListCount').textContent = arr.length ? '(' + arr.length + ')' : '';
             const esc = s => (s == null ? '' : s.toString()).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-            if (!arr.length) { body.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-slate-400">— ยังไม่มีรายการ —</td></tr>'; return; }
+            if (!arr.length) { body.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-slate-400">— ' + (recServerLoaded ? 'ยังไม่มีเคสในชีต' : 'กำลังโหลด...') + ' —</td></tr>'; return; }
             body.innerHTML = arr.map((r, i) => {
-                const t = new Date(r.ts); const ts = isNaN(t) ? '' : t.toLocaleString('th-TH', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-                const editBtn = (r.saved && r.full)
-                    ? '<button type="button" class="recEditBtn inline-flex items-center justify-center w-8 h-8 rounded-lg text-emerald-700 hover:bg-emerald-50 border border-emerald-200 transition-colors" title="แก้ไขรายการนี้" data-i="' + i + '">✏️</button>'
-                    : '<span class="text-slate-300 text-xs" title="บันทึกผ่าน CSV/คัดลอก — แก้ไขในชีตโดยตรง">—</span>';
+                const when = r._local ? '<span class="text-emerald-600 font-medium">ใหม่</span>' : (r.rowNum ? ('#' + r.rowNum) : '');
+                const editBtn = '<button type="button" class="recEditBtn inline-flex items-center justify-center w-8 h-8 rounded-lg text-emerald-700 hover:bg-emerald-50 border border-emerald-200 transition-colors" title="แก้ไขรายการนี้" data-i="' + i + '">✏️</button>';
                 return '<tr class="hover:bg-slate-50">' +
-                    '<td class="py-2 px-4 text-slate-500">' + esc(ts) + '</td>' +
+                    '<td class="py-2 px-4 text-slate-500">' + when + '</td>' +
                     '<td class="py-2 px-4">' + esc(r.Year) + '/' + esc(MONTH_LABELS[r.Month] || r.Month) + '</td>' +
                     '<td class="py-2 px-4">' + esc(r.Unit) + '</td>' +
                     '<td class="py-2 px-4">' + esc(r.HN) + '</td>' +
@@ -9355,7 +9396,7 @@
         function recEditStart(i) {
             const arr = recRecentArr(); const e = arr[i]; if (!e || !e.full) return;
             recLoadFull(e.full, e.orgs || []);
-            recEditing = { ts: e.ts, match: e.match || {} };
+            recEditing = { match: e.match || {}, entry: e };
             const banner = document.getElementById('recEditBanner'); if (banner) { banner.style.display = 'flex'; banner.classList.remove('hidden'); }
             const lbl = document.getElementById('recEditLabel'); if (lbl) lbl.textContent = '· HN ' + (e.HN || '-') + ' · ' + (e.Unit || '-') + ' · ' + (e.SITE || '-');
             const sv = document.getElementById('recSave'); if (sv) sv.textContent = '💾 อัปเดตรายการ';
@@ -9396,19 +9437,16 @@
                 if (!ping || !(ping.record === 'record-v1' || ping.version === 'record-v1')) { st.innerHTML = '⚠️ Apps Script ยังไม่พร้อม — ต้องวางโค้ด (Record หรือ Code-ALL) แล้ว <b>Deploy → New version</b> ก่อน'; st.className = 'text-xs text-rose-600'; return; }
                 // ===== โหมดแก้ไข: อัปเดตแถวเดิมแทนการเพิ่มใหม่ =====
                 if (recEditing) {
-                    const matchSnap = recEditing.match, tsSnap = recEditing.ts;
+                    const matchSnap = recEditing.match, entry = recEditing.entry;
                     st.textContent = 'กำลังอัปเดตรายการเดิม...'; st.className = 'text-xs text-slate-500';
                     await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'editCase', match: matchSnap, record: rec }) });
-                    // อัปเดตสำเนาในเครื่องให้ตรงกับข้อมูลใหม่
-                    const list = recRecentArr(); const idx = list.findIndex(x => x.ts === tsSnap);
-                    if (idx >= 0) {
-                        let orgs = []; try { orgs = JSON.parse(JSON.stringify(REC_AST_ORGS)); } catch (e) { }
-                        list[idx] = Object.assign({}, list[idx], {
-                            Year: rec['Year'], Month: rec['Month'], Unit: rec['Unit'], HN: rec['HN'], HAI: rec['HAI'], SITE: rec['SITE'], AMR: rec['AMR'],
-                            full: Object.assign({}, rec), orgs: orgs,
-                            match: { Year: rec['Year'] || '', Month: rec['Month'] || '', Unit: rec['Unit'] || '', HN: rec['HN'] || '', SITE: rec['SITE'] || '', HAI: rec['HAI'] || '' }
-                        });
-                        recRecentSave(list);
+                    // อัปเดตรายการที่แสดงอยู่ให้ตรงกับข้อมูลใหม่ (อิงอ้างวัตถุเดิมใน REC_SERVER_ROWS)
+                    if (entry) {
+                        const row = Object.assign({}, rec);
+                        try { Object.assign(row, astMapToCols((REC_AST_ORGS[0] || { ast: {} }).ast || {})); } catch (e) { }
+                        if (REC_AST_ORGS[0]) row['เชื้อก่อโรค'] = REC_AST_ORGS[0].name || row['เชื้อก่อโรค'] || '';
+                        const updated = recRowToEntry(row, entry.rowNum, entry._local);
+                        Object.keys(updated).forEach(k => { entry[k] = updated[k]; });
                     }
                     clearRecordForm();        // รีเซ็ตฟอร์ม + ออกจากโหมดแก้ไข
                     renderRecentRecords();
