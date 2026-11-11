@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11k</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11l</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -9372,7 +9372,7 @@
         let REC_SERVER_ROWS = [];       // รายการเคสจากชีต (ทุกเครื่องเห็นเหมือนกัน)
         let recServerLoaded = false;
         // แอดมินเห็นข้อมูลเต็ม (ไม่ต้อง PDPA mask) · คนอื่นปกปิดชื่อ/HN
-        function recIsAdmin() { try { const s = (typeof readSession === 'function') ? readSession() : null; return !!(s && /admin/i.test(s.role || '')); } catch (e) { return false; } }
+        function recIsAdmin() { try { const s = window.AUTH_SESSION; return !!(s && (/admin/i.test(s.role || '') || String(s.menus || '').toLowerCase() === 'all')); } catch (e) { return false; } }
         function recMaskName(s) { const t = (s || '').toString().trim(); if (!t) return '—'; return t.charAt(0) + '•••'; }
         function recRecentArr() { return REC_SERVER_ROWS; }
         function recRecentSave(arr) { REC_SERVER_ROWS = arr || []; }
@@ -9878,7 +9878,7 @@
             const url = (typeof recSaveUrl === 'function') ? recSaveUrl() : '';
             if (!url) { alert('ยังไม่ได้ตั้งค่า URL Apps Script (ไปที่เมนู "แบบบันทึกผู้ป่วย HAI" เพื่อตั้งค่า)'); return; }
             const row = VERIFY_ROWS.find(r => r._row === sheetRow); if (!row) return;
-            const by = (() => { try { const s = readSession(); return (s && s.name) || ''; } catch (e) { return ''; } })();
+            const by = (() => { try { const s = window.AUTH_SESSION; return (s && (s.name || s.username)) || ''; } catch (e) { return ''; } })();
             const prev = row['ผลการวินิจฉัย'];
             const grp = btn ? btn.closest('.verify-actions') : null;
             if (grp) grp.innerHTML = '<span class="text-xs text-slate-400">กำลังบันทึก...</span>';
@@ -10419,6 +10419,7 @@
             } catch (e) { return null; }
         }
         function applyAuth(s) {
+            window.AUTH_SESSION = s;   // เปิดให้ส่วนอื่น (เช่น รายการเคส) ตรวจสิทธิ์แอดมินได้
             document.getElementById('loginOverlay').classList.add('hidden');
             document.getElementById('loginOverlay').classList.remove('flex');
             const box = document.getElementById('authBox'); if (box) { box.classList.remove('hidden'); box.classList.add('flex'); }
@@ -10431,7 +10432,7 @@
             ov.classList.remove('hidden'); ov.classList.add('flex');
             const box = document.getElementById('authBox'); if (box) { box.classList.add('hidden'); box.classList.remove('flex'); }
         }
-        function logout() { try { localStorage.removeItem(SESS_KEY); } catch (e) {} location.reload(); }
+        function logout() { window.AUTH_SESSION = null; try { localStorage.removeItem(SESS_KEY); } catch (e) {} location.reload(); }
 
         async function doLogin(ev) {
             ev.preventDefault();
