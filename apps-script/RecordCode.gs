@@ -109,6 +109,7 @@ function doPost(e) {
     if (body.action === 'icnVerify') return icnVerify_(body);         // แอดมินยืนยันผลสงสัยติดเชื้อ (ICWN) ผ่านเว็บ
     if (body.action === 'addMonthly') return recAddMonthly_(body);   // บันทึกรายการหัตถการ/ยอดเดือน → แท็บ MMW/HDU (เดิม)
     if (body.action === 'addUnified') return recAddUnified_(body);    // บันทึกรวมทุกหน่วย → แท็บเดียว "หัตถการ"
+    if (body.action === 'editCase') return recEditCase_(body);        // แก้ไขเคสเดิม (ค้นแถวจากค่าที่เคยบันทึก แล้วอัปเดต)
     if (body.action !== 'addCase') return recJson_({ ok: false, note: 'unknown action: ' + body.action });
     // รองรับทั้งบรรทัดเดียว (record) และหลายบรรทัด (records = เคส + เชื้อเพิ่มบรรทัดต่อ)
     const recs = Array.isArray(body.records) ? body.records : [body.record || {}];
@@ -134,6 +135,44 @@ function doPost(e) {
   } catch (err) {
     return recJson_({ ok: false, error: String(err) });
   }
+}
+
+// ===== แก้ไขเคสเดิม =====
+// body.match = ค่าคอลัมน์ระบุตัวของแถวเดิม (Year/Month/Unit/HN/SITE/HAI) ตอนที่บันทึกไว้
+// body.record = ค่าทั้งหมดที่ต้องการให้เป็น (คอลัมน์ไหนไม่มีในฟอร์มจะไม่ถูกแตะ)
+function recEditCase_(body) {
+  const match = body.match || {};
+  const rec = body.record || {};
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(REC_SHEET);
+  if (!sh) return recJson_({ ok: false, note: 'ไม่พบแท็บ "' + REC_SHEET + '"' });
+  const lastCol = sh.getLastColumn();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return recJson_({ ok: false, action: 'editCase', found: false, note: 'ไม่มีข้อมูลให้แก้ไข' });
+  const headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (x) { return String(x).trim(); });
+  const hmap = {};
+  headers.forEach(function (h, i) { if (h !== '') hmap[recNorm_(h)] = i; });
+  const mkeys = Object.keys(match).filter(function (k) { return hmap[recNorm_(k)] !== undefined; });
+  if (!mkeys.length) return recJson_({ ok: false, action: 'editCase', found: false, note: 'ไม่มีคีย์ค้นหา' });
+  const data = sh.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  let foundRow = -1;
+  for (let r = 0; r < data.length; r++) {
+    let ok = true;
+    for (let i = 0; i < mkeys.length; i++) {
+      const idx = hmap[recNorm_(mkeys[i])];
+      if (String(data[r][idx]).trim() !== String(match[mkeys[i]]).trim()) { ok = false; break; }
+    }
+    if (ok) { foundRow = r + 2; break; }
+  }
+  if (foundRow < 0) return recJson_({ ok: false, action: 'editCase', found: false, note: 'ไม่พบแถวที่ตรงกับรายการเดิม' });
+  const cur = sh.getRange(foundRow, 1, 1, lastCol).getValues()[0];
+  let matched = 0;
+  Object.keys(rec).forEach(function (k) {
+    const idx = hmap[recNorm_(k)];
+    if (idx !== undefined) { cur[idx] = rec[k]; matched++; }
+  });
+  sh.getRange(foundRow, 1, 1, lastCol).setValues([cur]);
+  return recJson_({ ok: true, action: 'editCase', found: true, row: foundRow, matched: matched });
 }
 
 // ===== แท็บรวมทุกหน่วย "หัตถการ" (union ของ MMW + HDU) =====
