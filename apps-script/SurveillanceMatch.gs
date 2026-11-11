@@ -23,7 +23,8 @@
 
 // ========================= CONFIG =========================
 var SM = {
-  REC_SHEET: 'ทะเบียน-1-' + (function (d) { var be = d.getFullYear() + 543; return (d.getMonth() + 1) >= 10 ? be + 1 : be; })(new Date()),  // แท็บเคสปีงบปัจจุบัน (คำนวณเอง เช่น ทะเบียน-1-2570)
+  REC_PREFIX: 'ทะเบียน-1-',   // แท็บเคสตั้งชื่อ 'ทะเบียน-1-<ปปปป>' — ระบบวนทุกปีที่มีอัตโนมัติ
+  REC_EARLIEST: 2569,          // ปีงบเก่าสุดที่ต้องการแมพรวม (แมพ 2569 ด้วย)
   REC_NAME: 'ชื่อ', REC_SURNAME: 'สกุล', REC_HN: 'HN', REC_OUT: 'ประสิทธิภาพ',
   REC_UNIT: 'Unit',                   // รหัสหอในทะเบียน-1 (mmw, icu, su, ...)
   // แท็บอ้างอิง = ฟอร์มรายงานสงสัยติดเชื้อ ICWN (คนละไฟล์)
@@ -85,11 +86,25 @@ function smCol_(map, header) {
   return map[n] !== undefined ? map[n] : -1;
 }
 
+// ปีงบปัจจุบัน (ไทย เริ่ม ต.ค.)
+function smCurrentFyBE_() { var d = new Date(); var be = d.getFullYear() + 543; return (d.getMonth() + 1) >= 10 ? be + 1 : be; }
+// รายชื่อแท็บทะเบียนที่ "มีจริง" ตั้งแต่ปีถัดไปลงถึงปีเก่าสุด (+ เผื่อแท็บชื่อเดิมไม่มีปี)
+function smRegisterSheets_(ss) {
+  var out = [], seen = {}, cur = smCurrentFyBE_();
+  for (var y = cur + 1; y >= SM.REC_EARLIEST; y--) {
+    var nm = SM.REC_PREFIX + y, sh = ss.getSheetByName(nm);
+    if (sh && !seen[nm]) { out.push({ name: nm, sheet: sh }); seen[nm] = true; }
+  }
+  var base = ss.getSheetByName('ทะเบียน-1');
+  if (base && !seen['ทะเบียน-1']) out.push({ name: 'ทะเบียน-1', sheet: base });
+  return out;
+}
+
 function smMatchSurveillance() {
   var ui = SpreadsheetApp.getUi();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var rec = ss.getSheetByName(SM.REC_SHEET);
-  if (!rec) { ui.alert('ไม่พบแท็บ "' + SM.REC_SHEET + '"'); return; }
+  var regs = smRegisterSheets_(ss);
+  if (!regs.length) { ui.alert('ไม่พบแท็บทะเบียน (ทะเบียน-1-<ปี>)\nแท็บที่มีในไฟล์นี้:\n' + ss.getSheets().map(function (s) { return '• ' + s.getName(); }).join('\n')); return; }
 
   // ---- เปิดไฟล์ฟอร์มอ้างอิง (ข้ามไฟล์) ----
   var refSS;
@@ -98,13 +113,12 @@ function smMatchSurveillance() {
   var ref = refSS.getSheetByName(SM.REF_SHEET);
   if (!ref) { ui.alert('ไม่พบแท็บ "' + SM.REF_SHEET + '" ในไฟล์ฟอร์ม'); return; }
 
-  // ---- สร้างชุดกุญแจจากฟอร์ม (HN + ชื่อ + หน่วย) ----
+  // ---- สร้างชุดกุญแจจากฟอร์ม (HN + ชื่อ + หน่วย) ครั้งเดียว ----
   var rMap = smHeaderMap_(ref);
   var ciName = smCol_(rMap, SM.REF_FULLNAME), ciHn = smCol_(rMap, SM.REF_HN), ciDx = smCol_(rMap, SM.REF_DX);
   var ciUnit = smColFirst_(ref, SM.REF_UNIT);   // คอลัมน์ "หน่วย" แรกในฟอร์ม
   if (ciName < 0 && ciHn < 0) { ui.alert('ฟอร์มไม่พบคอลัมน์ ชื่อ-สกุล/HN'); return; }
   if (SM.MATCH_UNIT && ciUnit < 0) { ui.alert('เปิดเงื่อนไขหน่วยไว้ แต่ฟอร์มไม่พบคอลัมน์ "' + SM.REF_UNIT + '"'); return; }
-  // keysAny = เจอในฟอร์ม (ไม่สนหน่วย) · keysUnit = เจอ + หน่วยตรง
   var rLast = ref.getLastRow(), keysAny = {}, keysUnit = {}, refCnt = 0;
   if (rLast > 1) {
     var rData = ref.getRange(2, 1, rLast - 1, ref.getLastColumn()).getValues();
@@ -119,38 +133,39 @@ function smMatchSurveillance() {
     });
   }
 
-  // ---- วนทะเบียน-1 เขียน Yes/No ----
-  var mMap = smHeaderMap_(rec);
-  var cN = smCol_(mMap, SM.REC_NAME), cS = smCol_(mMap, SM.REC_SURNAME), cH = smCol_(mMap, SM.REC_HN), cOut = smCol_(mMap, SM.REC_OUT);
-  var cU = smCol_(mMap, SM.REC_UNIT);
-  if (cOut < 0) { ui.alert('ทะเบียน-1 ไม่พบคอลัมน์ "' + SM.REC_OUT + '"'); return; }
-  if (SM.MATCH_UNIT && cU < 0) { ui.alert('ทะเบียน-1 ไม่พบคอลัมน์ "' + SM.REC_UNIT + '"'); return; }
-  var mLast = rec.getLastRow();
-  if (mLast < 2) { ui.alert('ทะเบียน-1 ไม่มีข้อมูล'); return; }
-
-  var mData = rec.getRange(2, 1, mLast - 1, rec.getLastColumn()).getValues();
-  var out = [], right = 0, wrong = 0, none = 0, skip = 0;
-  mData.forEach(function (row) {
-    var nm = smName_((cN >= 0 ? row[cN] : '') + (cS >= 0 ? row[cS] : '')), hn = cH >= 0 ? smHn_(row[cH]) : '';
-    if (!nm && !hn) { out.push([row[cOut]]); skip++; return; }  // ข้ามบรรทัดต่อ (ไม่มีชื่อ/HN)
-    var reportedAny = (hn && keysAny['hn:' + hn]) || (nm && keysAny['nm:' + nm]);
-    if (!reportedAny) {                                   // ไม่เจอในฟอร์มเลย = ไม่รายงาน
-      if (SM.WRITE_NO) { out.push([SM.OUT_NONE]); none++; } else { out.push([row[cOut]]); }
-      return;
-    }
-    if (!SM.MATCH_UNIT) { out.push([SM.OUT_RIGHT]); right++; return; }  // ไม่เปิดเงื่อนไขหน่วย = เจอก็ตรง
-    var ru = cU >= 0 ? smUnit_(row[cU]) : '';
-    var unitOk = ru && ((hn && keysUnit['hn:' + hn + '|' + ru]) || (nm && keysUnit['nm:' + nm + '|' + ru]));
-    if (unitOk) { out.push([SM.OUT_RIGHT]); right++; }    // เจอ + หน่วยตรง = รายงานแล้วตรง
-    else { out.push([SM.OUT_WRONG]); wrong++; }           // เจอ แต่หน่วยไม่ตรง = รายงานแล้วไม่ตรง
+  // ---- วนทุกแท็บทะเบียน เขียนผล 3 สถานะ ----
+  var tR = 0, tW = 0, tN = 0, tS = 0, lines = [], warn = [];
+  regs.forEach(function (R) {
+    var rec = R.sheet, mMap = smHeaderMap_(rec);
+    var cN = smCol_(mMap, SM.REC_NAME), cS = smCol_(mMap, SM.REC_SURNAME), cH = smCol_(mMap, SM.REC_HN), cOut = smCol_(mMap, SM.REC_OUT);
+    var cU = smCol_(mMap, SM.REC_UNIT);
+    if (cOut < 0) { warn.push(R.name + ': ไม่พบคอลัมน์ "' + SM.REC_OUT + '"'); return; }
+    if (SM.MATCH_UNIT && cU < 0) { warn.push(R.name + ': ไม่พบคอลัมน์ "' + SM.REC_UNIT + '"'); return; }
+    var mLast = rec.getLastRow();
+    if (mLast < 2) { lines.push(R.name + ': (ว่าง)'); return; }
+    var mData = rec.getRange(2, 1, mLast - 1, rec.getLastColumn()).getValues();
+    var out = [], right = 0, wrong = 0, none = 0, skip = 0;
+    mData.forEach(function (row) {
+      var nm = smName_((cN >= 0 ? row[cN] : '') + (cS >= 0 ? row[cS] : '')), hn = cH >= 0 ? smHn_(row[cH]) : '';
+      if (!nm && !hn) { out.push([row[cOut]]); skip++; return; }  // ข้ามบรรทัดต่อ (ไม่มีชื่อ/HN)
+      var reportedAny = (hn && keysAny['hn:' + hn]) || (nm && keysAny['nm:' + nm]);
+      if (!reportedAny) { if (SM.WRITE_NO) { out.push([SM.OUT_NONE]); none++; } else { out.push([row[cOut]]); } return; }
+      if (!SM.MATCH_UNIT) { out.push([SM.OUT_RIGHT]); right++; return; }
+      var ru = cU >= 0 ? smUnit_(row[cU]) : '';
+      var unitOk = ru && ((hn && keysUnit['hn:' + hn + '|' + ru]) || (nm && keysUnit['nm:' + nm + '|' + ru]));
+      if (unitOk) { out.push([SM.OUT_RIGHT]); right++; } else { out.push([SM.OUT_WRONG]); wrong++; }
+    });
+    rec.getRange(2, cOut + 1, out.length, 1).setValues(out);
+    tR += right; tW += wrong; tN += none; tS += skip;
+    lines.push(R.name + ': ตรง ' + right + ' · ไม่ตรง ' + wrong + ' · ไม่รายงาน ' + none);
   });
-  rec.getRange(2, cOut + 1, out.length, 1).setValues(out);
 
-  ui.alert('จับคู่เสร็จแล้ว ✅\nรายการในฟอร์ม: ' + refCnt +
-    '\nรายงานแล้วตรง: ' + right + '  ·  รายงานแล้วไม่ตรง: ' + wrong + '  ·  ไม่รายงาน: ' + none +
-    '  ·  ข้าม(บรรทัดต่อ): ' + skip +
+  ui.alert('จับคู่เสร็จแล้ว ✅  (แท็บที่แมพ: ' + regs.length + ')\nรายการในฟอร์ม: ' + refCnt +
+    '\n' + lines.join('\n') +
+    '\n────────\nรวม: รายงานแล้วตรง ' + tR + ' · ไม่ตรง ' + tW + ' · ไม่รายงาน ' + tN + ' · ข้าม ' + tS +
     '\nกุญแจ: HN หรือ ชื่อ+สกุล' + (SM.MATCH_UNIT ? ' + หน่วยต้องตรง (Unit ↔ ' + SM.REF_UNIT + ')' : '') +
-    (SM.REF_ONLY_HAI ? '\n(นับเฉพาะ ผลการวินิจฉัย = HAI)' : ''));
+    (SM.REF_ONLY_HAI ? '\n(นับเฉพาะ ผลการวินิจฉัย = HAI)' : '') +
+    (warn.length ? '\n⚠️ ข้าม: ' + warn.join(' · ') : ''));
 }
 
 // ========================================================================
@@ -161,15 +176,17 @@ function smMatchSurveillance() {
 function smMatchResult() {
   var ui = SpreadsheetApp.getUi();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var rec = ss.getSheetByName(SM.REC_SHEET);
-  if (!rec) { ui.alert('ไม่พบแท็บ "' + SM.REC_SHEET + '"'); return; }
+  var regs = smRegisterSheets_(ss);
+  if (!regs.length) { ui.alert('ไม่พบแท็บทะเบียน (ทะเบียน-1-<ปี>)\nแท็บที่มีในไฟล์นี้:\n' + ss.getSheets().map(function (s) { return '• ' + s.getName(); }).join('\n')); return; }
 
-  // ---- สร้างชุดกุญแจ HAI จากทะเบียน (เคสที่ HAI = 'hai') ----
-  var mMap = smHeaderMap_(rec);
-  var cN = smCol_(mMap, SM.REC_NAME), cS = smCol_(mMap, SM.REC_SURNAME), cH = smCol_(mMap, SM.REC_HN), cHai = smCol_(mMap, SM.REC_HAI);
-  if (cHai < 0) { ui.alert('ทะเบียน-1 ไม่พบคอลัมน์ "' + SM.REC_HAI + '"'); return; }
-  var mLast = rec.getLastRow(), haiKeys = {}, haiCnt = 0;
-  if (mLast > 1) {
+  // ---- สร้างชุดกุญแจ HAI จากทุกแท็บทะเบียน (เคสที่ HAI = 'hai') ----
+  var haiKeys = {}, haiCnt = 0, warn = [];
+  regs.forEach(function (R) {
+    var rec = R.sheet, mMap = smHeaderMap_(rec);
+    var cN = smCol_(mMap, SM.REC_NAME), cS = smCol_(mMap, SM.REC_SURNAME), cH = smCol_(mMap, SM.REC_HN), cHai = smCol_(mMap, SM.REC_HAI);
+    if (cHai < 0) { warn.push(R.name + ': ไม่พบคอลัมน์ "' + SM.REC_HAI + '"'); return; }
+    var mLast = rec.getLastRow();
+    if (mLast < 2) return;
     var mData = rec.getRange(2, 1, mLast - 1, rec.getLastColumn()).getValues();
     mData.forEach(function (row) {
       if (String(row[cHai]).trim().toLowerCase() !== String(SM.REC_HAI_VAL).toLowerCase()) return;  // เฉพาะเคส HAI
@@ -178,7 +195,7 @@ function smMatchResult() {
       if (nm) haiKeys['nm:' + nm] = true;
       haiCnt++;
     });
-  }
+  });
 
   // ---- เปิดฟอร์มสงสัย (ข้ามไฟล์) แล้ววนเขียน ผลการวินิจฉัย ----
   var refSS;
@@ -203,8 +220,9 @@ function smMatchResult() {
   });
   ref.getRange(2, ciOut + 1, out.length, 1).setValues(out);
 
-  ui.alert('จับคู่ผลการวินิจฉัยเสร็จแล้ว ✅' +
-    '\nเคส HAI ในทะเบียน: ' + haiCnt +
+  ui.alert('จับคู่ผลการวินิจฉัยเสร็จแล้ว ✅  (แท็บทะเบียนที่รวม: ' + regs.length + ')' +
+    '\nเคส HAI ในทะเบียน (รวมทุกปี): ' + haiCnt +
     '\nเขียน "' + SM.RES_HAI + '": ' + hai + '  ·  "' + SM.RES_NO + '": ' + no + '  ·  ข้าม: ' + skip +
-    '\nกุญแจ: HN หรือ ชื่อ+สกุล (ตัดคำนำหน้า/ช่องว่าง)');
+    '\nกุญแจ: HN หรือ ชื่อ+สกุล (ตัดคำนำหน้า/ช่องว่าง)' +
+    (warn.length ? '\n⚠️ ข้าม: ' + warn.join(' · ') : ''));
 }
