@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11n</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11o</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -9877,20 +9877,30 @@
                 cards.innerHTML = '<section class="space-y-4">' + premHead(verifyUnit, gr, true) + '<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">' + gr.map(renderCard).join('') + '</div></section>';
                 const bk = document.getElementById('verifyBack'); if (bk) bk.addEventListener('click', () => { verifyUnit = null; renderVerify(); });
             } else {
-                // ===== ระดับ 1: การ์ดสรุปหน่วยงาน (เรืองแสงถ้ามีรายงานใหม่รอจัดการ) =====
+                // ===== ระดับ 1: การ์ดสรุปหน่วยงาน — แยกช่วง "รายงานใหม่รอตรวจ" ไว้ด้านบน =====
                 if (verifyUnit && !groups[verifyUnit]) verifyUnit = null;
-                cards.className = 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5';
-                cards.innerHTML = order.map(w => {
+                const tint = (hex, a) => { const m = hex.replace('#', ''); return 'rgba(' + parseInt(m.slice(0, 2), 16) + ',' + parseInt(m.slice(2, 4), 16) + ',' + parseInt(m.slice(4, 6), 16) + ',' + a + ')'; };
+                const stat = (color, n, label) => '<div class="flex items-center justify-between text-sm rounded-xl px-3 py-2" style="background:' + tint(color, 0.1) + ';border:1px solid ' + tint(color, 0.22) + '"><span class="inline-flex items-center gap-2 font-medium" style="color:' + color + '"><span class="w-2.5 h-2.5 rounded-full" style="background:' + color + '"></span>' + label + '</span><span class="font-extrabold" style="color:' + color + '">' + n + '</span></div>';
+                const unitCard = w => {
                     const gr = groups[w]; const gc = gcountOf(gr); const isNew = gc.pending > 0;
-                    const tint = (hex, a) => { const m = hex.replace('#', ''); return 'rgba(' + parseInt(m.slice(0, 2), 16) + ',' + parseInt(m.slice(2, 4), 16) + ',' + parseInt(m.slice(4, 6), 16) + ',' + a + ')'; };
-                    const stat = (color, n, label) => '<div class="flex items-center justify-between text-sm rounded-xl px-3 py-2" style="background:' + tint(color, 0.1) + ';border:1px solid ' + tint(color, 0.22) + '"><span class="inline-flex items-center gap-2 font-medium" style="color:' + color + '"><span class="w-2.5 h-2.5 rounded-full" style="background:' + color + '"></span>' + label + '</span><span class="font-extrabold" style="color:' + color + '">' + n + '</span></div>';
                     const newBadge = isNew ? '<span class="relative inline-flex items-center gap-1 text-[11px] font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full">● NEW ' + gc.pending + '<span class="verify-ping absolute -right-1 -top-1 w-2.5 h-2.5"></span></span>' : '<span class="text-[11px] text-emerald-600 font-semibold">จัดการครบ</span>';
                     return '<button class="verify-unit text-left rounded-2xl bg-white border ' + (isNew ? 'border-amber-200 verify-new' : 'border-slate-100 shadow-sm') + ' p-5 hover:-translate-y-0.5 transition-transform" data-unit="' + esc(w).replace(/"/g, '&quot;') + '">' +
                         '<div class="flex items-start justify-between gap-2"><div class="flex items-center gap-3"><span class="inline-flex items-center justify-center w-11 h-11 rounded-xl text-white font-bold shadow" style="background:linear-gradient(135deg,#334155,#0f172a)">' + esc(w).slice(0, 3) + '</span><div><h4 class="font-bold text-slate-800 leading-tight">' + esc(w) + '</h4><p class="text-[11px] text-slate-400">' + gr.length + ' รายงาน</p></div></div>' + newBadge + '</div>' +
                         '<div class="mt-4 space-y-2">' + stat('#f59e0b', gc.pending, 'รอยืนยัน') + stat('#e11d48', gc.hai, 'ติดเชื้อ (HAI)') + stat('#10b981', gc.nohai, 'ไม่ติดเชื้อ') + stat('#0ea5e9', gc.poa, 'POA') + '</div>' +
                         '<div class="mt-4 pt-3 border-t border-slate-100 text-xs text-sky-600 font-semibold">ดูรายผู้ป่วย →</div>' +
                         '</button>';
-                }).join('');
+                };
+                const newUnits = order.filter(w => gcountOf(groups[w]).pending > 0);
+                const doneUnits = order.filter(w => gcountOf(groups[w]).pending === 0);
+                const totalPending = newUnits.reduce((s, w) => s + gcountOf(groups[w]).pending, 0);
+                const gridCls = 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5';
+                const sec = (title, sub, units, cls) => units.length ? ('<section class="space-y-3">' +
+                    '<div class="flex items-center gap-2 ' + cls + '"><span class="font-bold text-base">' + title + '</span><span class="text-xs font-medium opacity-70">' + sub + '</span></div>' +
+                    '<div class="' + gridCls + '">' + units.map(unitCard).join('') + '</div></section>') : '';
+                cards.className = 'space-y-6';
+                cards.innerHTML =
+                    sec('🔔 รายงานใหม่รอตรวจ', newUnits.length + ' หน่วย · ' + totalPending + ' ราย', newUnits, 'text-amber-600') +
+                    sec('✅ จัดการครบแล้ว', doneUnits.length + ' หน่วย', doneUnits, 'text-emerald-600');
                 cards.querySelectorAll('.verify-unit').forEach(b => b.addEventListener('click', () => { verifyUnit = b.dataset.unit; renderVerify(); }));
             }
             const empty = document.getElementById('verifyEmpty'); if (empty) empty.hidden = list.length > 0;
