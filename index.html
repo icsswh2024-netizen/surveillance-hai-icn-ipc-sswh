@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11l</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11m</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2312,8 +2312,7 @@
                         <p class="text-xs text-slate-400 mt-1">ทุกหน่วยกรอกที่เดียว → รวมในแท็บเดียว “หัตถการ” (ไฟล์ 0-2569) แทน Google Form · สร้างแท็บให้อัตโนมัติเมื่อบันทึกครั้งแรก</p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <label class="text-xs font-medium text-slate-500">แบบฟอร์ม</label>
-                        <select id="pc_form" class="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        <select id="pc_form" class="hidden">
                             <option value="MMW">MMW — วันคาอุปกรณ์ (หอผู้ป่วยทั่วไป)</option>
                             <option value="HDU">HDU — หัตถการหน่วยไต</option>
                         </select>
@@ -2321,6 +2320,30 @@
                     </div>
                 </div>
                 <div class="p-6 space-y-5">
+                    <!-- การ์ดเลือกแบบฟอร์มก่อนเข้ากรอก -->
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 mb-2">เลือกแบบฟอร์มที่ต้องการบันทึก</p>
+                        <div id="pc_cards" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <button type="button" class="pc-card text-left rounded-2xl border-2 border-slate-200 bg-white p-5 hover:border-emerald-400 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200" data-form="MMW">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 text-white flex items-center justify-center text-3xl shadow-md shrink-0">🛏️</div>
+                                    <div>
+                                        <div class="font-bold text-slate-800 text-base">MMW — วันคาอุปกรณ์</div>
+                                        <div class="text-xs text-slate-400 mt-0.5">หอผู้ป่วยทั่วไป · วันนอน / สายสวนปัสสาวะ / เครื่องช่วยหายใจ / CVC / สารน้ำ</div>
+                                    </div>
+                                </div>
+                            </button>
+                            <button type="button" class="pc-card text-left rounded-2xl border-2 border-slate-200 bg-white p-5 hover:border-sky-400 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200" data-form="HDU">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-400 to-indigo-500 text-white flex items-center justify-center text-3xl shadow-md shrink-0">🩺</div>
+                                    <div>
+                                        <div class="font-bold text-slate-800 text-base">HDU — หัตถการหน่วยไต</div>
+                                        <div class="text-xs text-slate-400 mt-0.5">หน่วยไต · HD / CAPD / AVF,AVG / Perm / DLC / Tenckhoff</div>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
                     <div id="pc_fields" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div class="col-span-full text-sm text-slate-400">กำลังโหลดช่องกรอกจากหัวคอลัมน์ของชีต...</div>
                     </div>
@@ -9576,6 +9599,19 @@
         };
         function pcStatus(msg, cls) { const st = document.getElementById('pc_status'); if (st) { st.textContent = msg; st.className = 'text-xs ' + (cls || 'text-slate-400'); } }
         function pcIsNumeric(h) { return /จำนวน|วัน|ครั้ง|ราย|ใบ|HD|CAPD|AVF|Perm|DLC|CVC|Tenckhoff/.test(h); }
+        // ไฮไลต์การ์ดแบบฟอร์มที่เลือก
+        function pcSelectCard(form) {
+            document.querySelectorAll('#pc_cards .pc-card').forEach(c => {
+                const on = c.dataset.form === form;
+                const emerald = c.dataset.form === 'MMW';
+                c.classList.toggle(emerald ? 'border-emerald-500' : 'border-sky-500', on);
+                c.classList.toggle(emerald ? 'bg-emerald-50/60' : 'bg-sky-50/60', on);
+                c.classList.toggle('ring-2', on);
+                c.classList.toggle(emerald ? 'ring-emerald-400/40' : 'ring-sky-400/40', on);
+                c.classList.toggle('shadow-md', on);
+                c.classList.toggle('border-slate-200', !on);
+            });
+        }
         function pcLoadFields() {
             const form = document.getElementById('pc_form').value;
             const wrap = document.getElementById('pc_fields');
@@ -9630,10 +9666,16 @@
                 document.getElementById('pc_save').addEventListener('click', pcSave);
                 document.getElementById('pc_reload').addEventListener('click', pcLoadFields);
                 document.getElementById('pc_copylink').addEventListener('click', pcCopyLink);
+                // การ์ดเลือกแบบฟอร์ม → ตั้งค่า pc_form แล้วโหลดช่องกรอก
+                document.querySelectorAll('#pc_cards .pc-card').forEach(c => c.addEventListener('click', () => {
+                    const sel = document.getElementById('pc_form'); sel.value = c.dataset.form;
+                    pcSelectCard(c.dataset.form); pcLoadFields();
+                }));
                 pcBound = true;
             }
             // ลิงก์แยก: ?form=MMW/HDU → ตั้งค่าแบบฟอร์มให้อัตโนมัติ
             try { const f = new URLSearchParams(location.search).get('form'); if (f) { const sel = document.getElementById('pc_form'); if ([...sel.options].some(o => o.value === f.toUpperCase())) sel.value = f.toUpperCase(); } } catch (e) { }
+            pcSelectCard(document.getElementById('pc_form').value);
             pcLoadFields();
         }
 
