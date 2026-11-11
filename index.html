@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11c</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11d</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2965,6 +2965,8 @@
         const FILTER_SEL = { year: new Set(), quarter: new Set(), month: new Set(), unit: new Set(), pct: new Set() };
         const FILTER_ALLTXT = { year: 'ทุกปี', quarter: 'ทุกไตรมาส', month: 'ทุกเดือน', unit: 'ทุกหอผู้ป่วย', pct: 'ทุกกลุ่มงาน' };
         let FILTER_OPTS = { year: [], quarter: [], month: [], unit: [], pct: [] }; // [{v,label}]
+        let FILTER_DEFAULTED = false; // ตั้งค่าเริ่มต้นปีงบปัจจุบันครั้งเดียว
+        let DEFAULT_YEAR_SEL = [];     // ค่าปีงบปัจจุบันไว้เป็นค่าเริ่มต้นของทุกเมนู
         const QUARTER_OPTS = [
             { v: 'Q1', label: 'ไตรมาส 1 (ต.ค. - ธ.ค.)' }, { v: 'Q2', label: 'ไตรมาส 2 (ม.ค. - มี.ค.)' },
             { v: 'Q3', label: 'ไตรมาส 3 (เม.ย. - มิ.ย.)' }, { v: 'Q4', label: 'ไตรมาส 4 (ก.ค. - ก.ย.)' }
@@ -2991,7 +2993,7 @@
             VIEW_FILTERS[view] = { year: [...FILTER_SEL.year], quarter: [...FILTER_SEL.quarter], month: [...FILTER_SEL.month], unit: [...FILTER_SEL.unit], pct: [...FILTER_SEL.pct] };
         }
         function loadViewFilters(view) {
-            const s = VIEW_FILTERS[view] || { year: [], quarter: [], month: [], unit: [], pct: [] };
+            const s = VIEW_FILTERS[view] || { year: DEFAULT_YEAR_SEL.slice(), quarter: [], month: [], unit: [], pct: [] };
             ['year', 'quarter', 'month', 'unit', 'pct'].forEach(k => { FILTER_SEL[k] = new Set(s[k] || []); fRenderPop(k); });
         }
 
@@ -3030,6 +3032,13 @@
             const units = [...new Set(rawData.map(d => d.unit).filter(Boolean))].sort();
             const pcts  = [...new Set(rawData.map(d => d.pct).filter(Boolean))].sort();
             FILTER_OPTS.year = years.map(v => ({ v, label: v }));
+            // ค่าเริ่มต้น: ปีงบปัจจุบัน (ถ้ามีในข้อมูล) — ใช้เป็นค่าตั้งต้นของทุกเมนู
+            { const curY = FILTER_OPTS.year.find(o => String(o.v) === String(FY_CURRENT)); DEFAULT_YEAR_SEL = curY ? [curY.v] : []; }
+            // เลือกให้อัตโนมัติครั้งแรก — ไม่ทับการเลือกของผู้ใช้ภายหลัง
+            if (!FILTER_DEFAULTED) {
+                FILTER_DEFAULTED = true;
+                if (FILTER_SEL.year.size === 0 && DEFAULT_YEAR_SEL.length) DEFAULT_YEAR_SEL.forEach(v => FILTER_SEL.year.add(v));
+            }
             FILTER_OPTS.quarter = QUARTER_OPTS.slice();
             FILTER_OPTS.month = FISCAL_MONTHS.map(m => ({ v: String(m), label: MONTH_LABELS[m] || ('เดือน ' + m) }));
             FILTER_OPTS.unit = units.map(v => ({ v, label: v }));
