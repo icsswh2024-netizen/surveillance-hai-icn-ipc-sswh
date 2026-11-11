@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11b</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11c</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2380,18 +2380,34 @@
         //  หากใช้ Publish to web (CSV) ให้แทน URL นี้ด้วยลิงก์ที่ publish
         // ===================================================================
         const SHEET_ID = '1KEK2bvXLDAY7awAapTnF32yZz1qvfqfWXje2ccG2pLc';
-        const SHEET_NAME = 'ทะเบียน-1-2570';
+        // ===================================================================
+        //  ปีงบประมาณอัตโนมัติ — ปีงบหน้า "ไม่ต้องแก้โค้ด"
+        //  แค่สร้างแท็บใหม่ตามรูปแบบชื่อเดิม เปลี่ยนเฉพาะเลขปี:
+        //     เคส     → 'ทะเบียน-1-<ปปปป>'   (เช่น ทะเบียน-1-2571)
+        //     ตัวหาร  → 'ตัวหาร-<ปปปป>'      (เช่น ตัวหาร-2571)
+        //  ระบบคำนวณปีงบปัจจุบันจากวันที่ (เริ่ม ต.ค.) และดึงทุกปีตั้งแต่ FY_EARLIEST
+        //  ถึงปีถัดไป (เผื่อช่วงรอยต่อปี) โดยอัตโนมัติ · แท็บที่ยังไม่มี = ข้ามเงียบ
+        // ===================================================================
+        function currentFiscalYearBE(d) { d = d || new Date(); const be = d.getFullYear() + 543; return (d.getMonth() + 1) >= 10 ? be + 1 : be; }
+        const FY_CURRENT = currentFiscalYearBE();   // ปีงบปัจจุบัน (คำนวณเอง)
+        const FY_EARLIEST = 2569;                    // ปีงบเก่าสุดที่ต้องการแมพรวม (ปีเก่า)
+        const REG_PREFIX = 'ทะเบียน-1-', DEN_PREFIX = 'ตัวหาร-';
+        // ไล่ปีจาก (ปีหน้า) ลงถึงปีเก่าสุด — เผื่อปีอนาคตไว้ล่วงหน้า แท็บไม่มีก็ข้ามเอง
+        const FY_YEARS = (function () { const a = []; for (let y = FY_CURRENT + 1; y >= FY_EARLIEST; y--) a.push(y); return a; })();
+        const SHEET_NAME = REG_PREFIX + FY_CURRENT;  // แท็บเคสปีปัจจุบัน (primary)
         const SHEET_CSV_URL =
             'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
             // headers=1 บังคับให้ gviz ใช้แถวแรกเป็นหัวตารางเพียงแถวเดียว
-            // (กันปัญหา gviz เดาจำนวนแถวหัวตารางผิดกับคอลัมน์ตัวเลข เช่น Month/Quater)
             '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(SHEET_NAME);
-        // (ตัวเลือก) แท็บเพิ่มเติม — ดึงมารวมกับ ทะเบียน-1 (เคสปีปัจจุบัน)
-        //   ใช้ได้ทั้ง "แท็บเคสเก่า" (มี HAI='hai' → นับเป็นเคส) และ "แท็บตัวหาร" (ไม่มี HAI → นับเป็นตัวหารอย่างเดียว)
-        //   • หัวคอลัมน์ต้องสะกดเหมือน ทะเบียน-1 (ลบคอลัมน์ที่ไม่ใช้ได้ แต่ห้ามเปลี่ยนชื่อ) · ต้องมี Year/Quater/Month/Unit
-        //   • ระบบรวมตัวตั้ง/ตัวหารตาม ปี/เดือน/หอ ให้เอง · แท็บไม่มี/โหลดไม่ได้ = ข้ามเงียบ
-        //   • ใส่หลายแท็บคั่นด้วย , · ⚠️ อย่าให้ข้อมูลปีซ้ำกับ ทะเบียน-1 (กันนับซ้ำ)
-        const EXTRA_SHEETS = 'ตัวหาร-2570,ทะเบียน-1-2569,ตัวหาร-2569';
+        // แท็บเพิ่มเติม = ทุกปี (เคส + ตัวหาร) ยกเว้นแท็บ primary — สร้างอัตโนมัติจาก FY_YEARS
+        //   เคสเก่า (มี HAI='hai') นับเป็นเคส · แท็บตัวหาร (ไม่มี HAI) นับเป็นตัวหารอย่างเดียว
+        //   หัวคอลัมน์ต้องสะกดเหมือนเดิม (ลบคอลัมน์ที่ไม่ใช้ได้ ห้ามเปลี่ยนชื่อ) · ต้องมี Year/Quater/Month/Unit
+        //   ⚠️ อย่าให้ข้อมูลปีซ้ำข้ามแท็บ (กันนับซ้ำ)
+        const EXTRA_SHEETS = (function () {
+            const list = [];
+            FY_YEARS.forEach(function (y) { if (REG_PREFIX + y !== SHEET_NAME) list.push(REG_PREFIX + y); list.push(DEN_PREFIX + y); });
+            return list.join(',');
+        })();
         const extraUrl_ = name => 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(name) + '&_=' + Date.now();
 
         // ปีงบประมาณไทยเริ่ม ต.ค. — เรียงเดือน 10,11,12,1..9
@@ -2913,11 +2929,17 @@
         async function loadData() {
             const res = await fetch(SHEET_CSV_URL);
             if (!res.ok) throw new Error('HTTP ' + res.status);
-            const rows = parseCSV(await res.text());
-            // วินิจฉัย: แสดงหัวคอลัมน์จริง + ค่าตัวอย่างของแถวแรกใน console (กด F12)
+            let rows = parseCSV(await res.text());
+            // กันหน้า error ของ gviz (เช่น แท็บปีปัจจุบันยังไม่ถูกสร้างช่วงรอยต่อปีงบ) มาปนเป็นข้อมูล
             if (rows.length) {
-                console.log('[HAI] หัวคอลัมน์ที่ gviz ส่งมา:', Object.keys(rows[0]));
-                console.log('[HAI] ตัวอย่างแถวแรก:', rows[0]);
+                const hdr0 = Object.keys(rows[0]);
+                if (!hdr0.some(h => /^(year|ปี|unit|หอ)/i.test(h) || /Unit|Year|ปี/.test(h))) {
+                    console.warn('[HAI] แท็บหลัก "' + SHEET_NAME + '" ไม่มีคอลัมน์กุญแจ — ข้าม (ใช้ข้อมูลจากแท็บปีอื่นแทน)');
+                    rows = [];
+                } else {
+                    console.log('[HAI] หัวคอลัมน์ที่ gviz ส่งมา:', hdr0);
+                    console.log('[HAI] ตัวอย่างแถวแรก:', rows[0]);
+                }
             }
             let all = normalize(rows);
             // (ตัวเลือก) ต่อท้ายแถวจากแท็บเพิ่มเติม (เคสเก่า/ตัวหาร) — best-effort (แท็บไม่มี/โหลดไม่ได้ = ข้ามเงียบ)
@@ -9341,7 +9363,8 @@
             try {
                 const url = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + '_=' + Date.now();
                 const res = await fetch(url);
-                const rows = parseCSV(await res.text());
+                let rows = parseCSV(await res.text());
+                if (rows.length) { const h0 = Object.keys(rows[0]); if (!h0.some(h => /^(year|ปี|unit|หอ)/i.test(h) || /Unit|Year|ปี/.test(h))) rows = []; }
                 const out = [];
                 rows.forEach((row, i) => { if (recIsCaseRow(row)) out.push(recRowToEntry(row, i + 2, false)); });
                 out.reverse();                 // ใหม่สุดอยู่บนสุด
