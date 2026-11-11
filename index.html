@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11d</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11e</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2952,8 +2952,11 @@
                     if (!drows.length) continue;
                     const hdrs = Object.keys(drows[0]);   // กันดึงหน้า error มารวม: ต้องมีคอลัมน์กุญแจ
                     if (!hdrs.some(h => /^(year|ปี|unit|หอ)/i.test(h) || /Unit|Year|ปี/.test(h))) continue;
-                    all = all.concat(normalize(drows));
-                    console.log('[HAI] รวมแท็บเพิ่มเติม "' + tab + '":', drows.length, 'แถว');
+                    let nrows = normalize(drows);
+                    // แท็บ "ตัวหาร-*" = ตัวหารล้วน ห้ามนับเป็นเคส HAI (กันนับซ้ำจากสำเนาที่ยังมีแถวเคสติดมา)
+                    if (tab.indexOf(DEN_PREFIX) === 0) nrows.forEach(r => { r.isHAI = false; });
+                    all = all.concat(nrows);
+                    console.log('[HAI] รวมแท็บเพิ่มเติม "' + tab + '":', drows.length, 'แถว' + (tab.indexOf(DEN_PREFIX) === 0 ? ' (ตัวหารล้วน)' : ''));
                 } catch (e) { console.warn('[HAI] โหลดแท็บ "' + tab + '" ไม่สำเร็จ:', e.message); }
             }
             return all;
