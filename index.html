@@ -187,9 +187,13 @@
             #sidebar[data-collapsed="1"] .brand-text { display: none; }
             #sidebar[data-collapsed="1"] .brand-wrap { justify-content: center; }
         }
-        /* จอ <768px (มือถือ/iPad แนวตั้งแคบ): ยุบ = ซ่อนรายการเมนู (เหลือหัวแถบ) */
+        /* จอ <768px (มือถือ/แอนดรอยด์): ยุบ = ซ่อนรายการเมนู (เหลือหัวแถบ ☰) */
         @media (max-width: 767px) {
+            #sidebar { position: sticky; top: 0; z-index: 30; max-height: 100vh; }
             #sidebar[data-collapsed="1"] #sidebarNav { display: none; }
+            #sidebar[data-collapsed="1"] { width: 100%; }             /* ยุบบนมือถือ = แถบหัวเต็มกว้าง ไม่หด */
+            #sidebar .brand-wrap { padding: 0.75rem 1rem; }           /* แถบหัวเตี้ยลง */
+            #sidebar .brand-text h1 { font-size: 0.95rem; }
         }
     </style>
 </head>
@@ -1282,7 +1286,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11p</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11q</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -10069,11 +10073,18 @@
         (function () {
             const sb = document.getElementById('sidebar'), tg = document.getElementById('sidebarToggle');
             if (!sb || !tg) return;
-            try { if (localStorage.getItem('sidebarCollapsed') === '1') sb.setAttribute('data-collapsed', '1'); } catch (e) {}
+            const isMobile = () => window.matchMedia('(max-width: 767px)').matches;
+            // มือถือ: เริ่มต้น "ยุบ" (เหลือแถบหัว กด ☰ เพื่อกาง) · เดสก์ท็อป: ใช้ค่าที่จำไว้
+            if (isMobile()) { sb.setAttribute('data-collapsed', '1'); }
+            else { try { if (localStorage.getItem('sidebarCollapsed') === '1') sb.setAttribute('data-collapsed', '1'); } catch (e) {} }
             tg.addEventListener('click', () => {
                 const on = sb.getAttribute('data-collapsed') === '1';
                 if (on) sb.removeAttribute('data-collapsed'); else sb.setAttribute('data-collapsed', '1');
-                try { localStorage.setItem('sidebarCollapsed', on ? '0' : '1'); } catch (e) {}
+                if (!isMobile()) { try { localStorage.setItem('sidebarCollapsed', on ? '0' : '1'); } catch (e) {} }  // จำสถานะเฉพาะเดสก์ท็อป
+            });
+            // มือถือ: เลือกเมนูแล้วยุบเมนูอัตโนมัติ (ให้เห็นเนื้อหาเต็มจอ)
+            document.getElementById('sidebarNav').addEventListener('click', e => {
+                if (isMobile() && e.target.closest('.nav-item')) sb.setAttribute('data-collapsed', '1');
             });
         })();
         document.getElementById('cmpDim').addEventListener('change', updateCompareView);
