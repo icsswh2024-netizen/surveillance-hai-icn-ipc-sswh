@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11o</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11p</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -8319,7 +8319,7 @@
                 }
                 // 2) เขียนข้อมูล
                 st.textContent = 'กำลังกรอกลงแท็บ "' + target + '" (' + aoa.length + ' แถว)...'; st.className = 'text-xs mt-2 text-slate-500';
-                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'fillYear', year: yr, aoa }) });
+                await fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'fillYear', year: yr, aoa }) });
                 st.textContent = '✅ กรอกลงแท็บ "' + target + '" แล้ว ' + aoa.length + ' แถว · โปรดตรวจสอบในชีต';
                 st.className = 'text-xs mt-2 text-emerald-600';
             } catch (err) { st.textContent = '⚠️ กรอกไม่สำเร็จ: ' + err.message; st.className = 'text-xs mt-2 text-rose-600'; }
@@ -8333,7 +8333,7 @@
             const payload = riskFormPayload();
             st.textContent = 'กำลังบันทึก ' + payload.length + ' แถว...'; st.className = 'text-xs mt-2 text-slate-500';
             try {
-                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'save', rows: payload }) });
+                await fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'save', rows: payload }) });
                 st.textContent = '✅ ส่งข้อมูลแล้ว ' + payload.length + ' แถว · โปรดตรวจสอบในชีต (แท็บ RiskRegister)';
                 st.className = 'text-xs mt-2 text-emerald-600';
             } catch (err) {
@@ -9526,7 +9526,7 @@
                 if (recEditing) {
                     const matchSnap = recEditing.match, entry = recEditing.entry;
                     st.textContent = 'กำลังอัปเดตรายการเดิม...'; st.className = 'text-xs text-slate-500';
-                    await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'editCase', match: matchSnap, record: rec }) });
+                    await fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'editCase', match: matchSnap, record: rec }) });
                     // อัปเดตรายการที่แสดงอยู่ให้ตรงกับข้อมูลใหม่ (อิงอ้างวัตถุเดิมใน REC_SERVER_ROWS)
                     if (entry) {
                         const row = Object.assign({}, rec);
@@ -9544,7 +9544,7 @@
                 }
                 const extra = rows.length - 1;
                 st.textContent = 'กำลังบันทึกลงชีต “ทะเบียน-1-2570”' + (extra ? ' (เคส + ' + extra + ' เชื้อเพิ่ม)' : '') + '...'; st.className = 'text-xs text-slate-500';
-                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'addCase', records: rows }) });
+                await fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'addCase', records: rows }) });
                 recPushRecent(rec, { saved: true });
                 clearRecordForm();
                 st.textContent = '✅ บันทึกแล้ว ' + rows.length + ' บรรทัด · HN ' + (rec['HN'] || '-') + ' · ' + (rec['SITE'] || '-') +
@@ -9646,7 +9646,7 @@
             try {
                 let ping = null; try { ping = await jsonpFrom(url, 'action=ping'); } catch (e) { }
                 if (!ping || !(ping.version === 'record-v1')) { pcStatus('⚠️ Apps Script ยังไม่พร้อม — Deploy เวอร์ชันล่าสุดก่อน', 'text-rose-600'); return; }
-                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'addUnified', record: rec }) });
+                await fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'addUnified', record: rec }) });
                 pcStatus('✅ บันทึกลงแท็บ “หัตถการ” แล้ว · ' + (rec['หน่วยงาน'] || '') + ' · ' + form + ' · ' + (rec['รายงานยอดประจำเดือน'] || ''), 'text-emerald-600');
                 document.querySelectorAll('#pc_fields input[data-h]').forEach(function (el) { if (!/หน่วยงาน|รายงานยอด/.test(el.getAttribute('data-h'))) el.value = ''; });
             } catch (e) { pcStatus('⚠️ บันทึกไม่สำเร็จ: ' + e.message, 'text-rose-600'); }
@@ -9744,7 +9744,7 @@
                 let ping = null; try { ping = await jsonpFrom(url, 'action=ping'); } catch (e) { }
                 if (!ping || !ping.lists) { leStatus('⚠️ Apps Script ยังไม่รองรับแก้ Dropdown — ต้องวาง RecordCode.gs ใหม่แล้ว Deploy → New version', 'text-rose-600'); return; }
                 leStatus('กำลังบันทึก “' + col + '” (' + values.length + ' ค่า)...', 'text-slate-500');
-                await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'setList', header: col, values: values, create: true }) });
+                await fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'setList', header: col, values: values, create: true }) });
                 LE_DATA[col] = [...new Set(values)];
                 recListsLoaded = false; // ให้ฟอร์มบันทึกโหลด List ใหม่คราวหน้า
                 leStatus('✅ บันทึก “' + col + '” แล้ว ' + values.length + ' ค่า · ฟอร์มจะใช้ค่าใหม่เมื่อเปิดครั้งถัดไป', 'text-emerald-600');
@@ -9937,8 +9937,8 @@
             if (grp) grp.innerHTML = '<span class="text-xs text-slate-400">กำลังบันทึก...</span>';
             row['ผลการวินิจฉัย'] = result;   // optimistic
             try {
-                const res = await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'icnVerify', row: sheetRow, hn: row['HN'], result: result, by: by }) });
-                const j = await res.json().catch(() => ({ ok: true }));
+                const res = await fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'icnVerify', row: sheetRow, hn: row['HN'], result: result, by: by }) });
+                const j = await res.json().catch(() => ({ ok: true }));   // no-cors = opaque → ถือว่าส่งสำเร็จ (ยืนยันจริงตอนรีเฟรชรอบถัดไป)
                 if (!j.ok) throw new Error(j.note || j.error || 'บันทึกไม่สำเร็จ');
                 row['ยืนยันโดย'] = by; row['เวลายืนยัน'] = new Date().toLocaleString('th-TH');
                 renderVerify();
