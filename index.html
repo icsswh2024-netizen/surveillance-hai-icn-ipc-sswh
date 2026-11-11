@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11g</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11h</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -8783,7 +8783,7 @@
                 '<input data-col="' + col + '" readonly class="w-full border border-slate-100 bg-slate-50 rounded-xl px-2 py-1.5 text-xs text-slate-600"></div>';
             return '<div class="col-span-1 sm:col-span-2 lg:col-span-3 rounded-lg border border-slate-200 p-3">' +
                 '<div id="recDrop" class="border-2 border-dashed border-slate-300 rounded-xl p-3 mb-3 text-center text-sm text-slate-500 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors">' +
-                    '📄 ลากรูป <b>ใบผลเพาะเชื้อ/AST</b> มาวาง (ลากได้<b>หลายใบ</b>) — ถ้าใบเดียวพบ<b>หลายเชื้อ</b> (คอลัมน์ 1-2-3) ระบบแยกเป็นเชื้อหลัก + เชื้อเพิ่มให้<br>' +
+                    '📄 ลากรูป / <b>วางด้วย Ctrl+V</b> / คลิกเลือก <b>ใบผลเพาะเชื้อ/AST</b> (ได้<b>หลายใบ</b>) — ถ้าใบเดียวพบ<b>หลายเชื้อ</b> (คอลัมน์ 1-2-3) ระบบแยกเป็นเชื้อหลัก + เชื้อเพิ่มให้<br>' +
                     '<span class="text-xs text-slate-400">อ่านรูปในเครื่อง (ไม่ส่งข้อมูลออก) แล้วกรอก เชื้อ/ผลไวต่อยา · HN/AN · ชื่อ-สกุล · อายุ · หอ · ดื้อยา (ESBL/CRE/MRSA→AMR/MDR) ให้ — โปรดตรวจทานก่อนบันทึก</span>' +
                     '<input id="recDropInput" type="file" accept="image/*" multiple class="hidden">' +
                 '</div>' +
@@ -9220,6 +9220,18 @@
                 ['dragover', 'dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('border-emerald-400', 'bg-emerald-50/40'); }));
                 ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('border-emerald-400', 'bg-emerald-50/40'); }));
                 drop.addEventListener('drop', e => { const fs = e.dataTransfer && e.dataTransfer.files; if (fs && fs.length) recOcrFiles(fs); });
+            }
+            // วางรูปด้วย Ctrl+V (แคปหน้าจอ/คัดลอกรูป) — ผูกครั้งเดียวทั้งเอกสาร เฉพาะตอนอยู่หน้าบันทึกเคส
+            if (!window._recPasteBound) {
+                window._recPasteBound = true;
+                document.addEventListener('paste', e => {
+                    const view = document.getElementById('viewRecord');
+                    if (!view || view.hidden) return;   // ทำงานเฉพาะเมนู "แบบบันทึกผู้ป่วย HAI"
+                    const items = (e.clipboardData && e.clipboardData.items) || [];
+                    const files = [];
+                    for (const it of items) { if (it.kind === 'file' && /^image\//.test(it.type)) { const f = it.getAsFile(); if (f) files.push(f); } }
+                    if (files.length) { e.preventDefault(); recOcrFiles(files); }
+                });
             }
             const clrDrop = document.getElementById('recClearAstDrop');
             if (clrDrop) clrDrop.addEventListener('click', () => recDoClearAst(true));
