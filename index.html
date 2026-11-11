@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11j</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-11k</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -2266,7 +2266,7 @@
                     </div>
                     <p id="rec_status" class="text-xs text-slate-400"></p>
                     <div class="flex flex-wrap gap-2">
-                        <button id="recSave" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg font-medium">บันทึกเข้า Google Sheet</button>
+                        <button id="recSave" class="text-base bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white py-3 px-8 rounded-xl font-bold shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all duration-200">💾 บันทึกลงทะเบียน</button>
                         <button id="recCopy" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-lg font-medium">คัดลอกเป็นแถว</button>
                         <button id="recCsv" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-lg font-medium">ดาวน์โหลด CSV</button>
                         <button id="recClear" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-lg font-medium">ล้างฟอร์ม</button>
@@ -9470,7 +9470,7 @@
         function recEditExitUi() {
             recEditing = null;
             const banner = document.getElementById('recEditBanner'); if (banner) { banner.style.display = 'none'; banner.classList.add('hidden'); }
-            const sv = document.getElementById('recSave'); if (sv) sv.textContent = 'บันทึกเข้า Google Sheet';
+            const sv = document.getElementById('recSave'); if (sv) sv.textContent = '💾 บันทึกลงทะเบียน';
         }
         function clearRecordForm() {
             const keep = { 'Year': 1, 'Month': 1, 'Quater': 1, 'Unit': 1, 'PCT': 1 };
@@ -9516,6 +9516,7 @@
                     renderRecentRecords();
                     st.textContent = '✅ อัปเดตรายการแล้ว · HN ' + (rec['HN'] || '-') + ' · ' + (rec['SITE'] || '-') + ' (ตรวจสอบในชีต และรีเฟรชแดชบอร์ด)';
                     st.className = 'text-xs text-emerald-600';
+                    if (typeof uiAlert === 'function') uiAlert('อัปเดตรายการเรียบร้อย ✅\nHN ' + (rec['HN'] || '-') + ' · หอ ' + (rec['Unit'] || '-') + ' · ' + (rec['SITE'] || '-'), { icon: '✅', okText: 'ตกลง' });
                     return;
                 }
                 const extra = rows.length - 1;
@@ -9526,6 +9527,7 @@
                 st.textContent = '✅ บันทึกแล้ว ' + rows.length + ' บรรทัด · HN ' + (rec['HN'] || '-') + ' · ' + (rec['SITE'] || '-') +
                     (extra ? ' · เชื้อเพิ่ม ' + extra + ' รายการ' : '') + ' (ตรวจสอบในชีต และรีเฟรชแดชบอร์ด)';
                 st.className = 'text-xs text-emerald-600';
+                if (typeof uiAlert === 'function') uiAlert('บันทึกลงทะเบียนเรียบร้อย ✅\nHN ' + (rec['HN'] || '-') + ' · หอ ' + (rec['Unit'] || '-') + ' · ' + (rec['SITE'] || '-') + (extra ? '\n(+ เชื้อเพิ่ม ' + extra + ' รายการ)' : ''), { icon: '✅', okText: 'ตกลง' });
             } catch (e2) { st.textContent = '⚠️ บันทึกไม่สำเร็จ: ' + e2.message; st.className = 'text-xs text-rose-600'; }
         }
         function copyRecordRow() {
