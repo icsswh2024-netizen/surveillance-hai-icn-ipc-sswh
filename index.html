@@ -1300,7 +1300,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-17c</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-17d</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -10358,13 +10358,29 @@
                 return 'กรองข้อมูล — ' + p.join(' · ') + ' · ณ ' + (window.fmtDMY ? fmtDMY(new Date().toISOString().slice(0, 10)) : new Date().toLocaleDateString('th-TH'));
             }
             function cardTitle(card) { const h = card.querySelector('h1,h2,h3,h4,h5,h6'); return h ? h.textContent.trim() : 'รายงาน'; }
+            // แปลงตาราง HTML → grid สี่เหลี่ยม เคารพ colspan/rowspan (คอลัมน์ตรงกับในแอป) + เก็บช่วงรวมเซลล์หัว
             function tableToAOA(tbl) {
-                const out = [];
-                tbl.querySelectorAll('tr').forEach(tr => {
-                    const row = []; tr.querySelectorAll('th,td').forEach(td => row.push(td.innerText.replace(/\s+/g, ' ').trim()));
-                    if (row.some(c => c !== '')) out.push(row);
+                const grid = [], occupied = {}, merges = [];
+                const toVal = t => { if (/^-?[\d,]+(\.\d+)?$/.test(t)) { const n = Number(t.replace(/,/g, '')); if (!isNaN(n)) return n; } return t; };
+                Array.from(tbl.rows).forEach((tr, r) => {
+                    grid[r] = grid[r] || [];
+                    let c = 0;
+                    Array.from(tr.cells).forEach(cell => {
+                        while (occupied[r + ',' + c]) c++;
+                        const text = (cell.innerText || '').replace(/\s+/g, ' ').trim();
+                        const cs = cell.colSpan || 1, rs = cell.rowSpan || 1, isHdr = cell.tagName === 'TH';
+                        for (let i = 0; i < rs; i++) for (let j = 0; j < cs; j++) {
+                            const rr = r + i, cc = c + j; grid[rr] = grid[rr] || [];
+                            grid[rr][cc] = (i === 0 && j === 0) ? (isHdr ? text : toVal(text)) : '';
+                            if (!(i === 0 && j === 0)) occupied[rr + ',' + cc] = true;
+                        }
+                        if (cs > 1 || rs > 1) merges.push({ r: r, c: c, r2: r + rs - 1, c2: c + cs - 1 });
+                        c += cs;
+                    });
                 });
-                return out;
+                const width = grid.reduce((w, row) => Math.max(w, row.length), 0);
+                const aoa = grid.map(row => { const a = []; for (let i = 0; i < width; i++) a.push(row[i] == null ? '' : row[i]); return a; });
+                return { aoa: aoa, merges: merges, headerRows: (tbl.tHead ? tbl.tHead.rows.length : 1) };
             }
             function chartToAOA(cv) {
                 const ch = (window.Chart && Chart.getChart) ? Chart.getChart(cv) : null;
@@ -10425,21 +10441,38 @@
             async function exportExcel(card) {
                 if (typeof ExcelJS === 'undefined') return;
                 const title = cardTitle(card), note = filterNote();
-                let aoa = null;
+                let aoa = null, merges = [], headerRows = 1;
                 const tbl = card.querySelector('table');
-                if (tbl) aoa = tableToAOA(tbl);
+                if (tbl) { const res = tableToAOA(tbl); aoa = res.aoa; merges = res.merges; headerRows = res.headerRows; }
                 else { const cv = card.querySelector('canvas'); if (cv) aoa = chartToAOA(cv); }
                 if (!aoa || !aoa.length) { if (window.riskStatusProxy) { const st = riskStatusProxy(); st.textContent = 'การ์ดนี้ยังไม่มีข้อมูลให้ส่งออก'; st.className = 'text-rose-600'; } return; }
                 const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('ข้อมูล');
                 ws.addRow([title]); ws.addRow([note]); ws.addRow([]);
                 aoa.forEach(r => ws.addRow(r));
+                const OFF = 3;   // แถวหัวรายงาน (ชื่อ/ตัวกรอง/ว่าง) ก่อนตาราง
                 ws.getRow(1).font = { bold: true, size: 14, name: 'TH Sarabun New' };
                 ws.getRow(2).font = { size: 11, color: { argb: 'FF64748B' }, name: 'TH Sarabun New' };
-                const hdrRow = 4;
-                ws.getRow(hdrRow).eachCell(c => { c.font = { bold: true, name: 'TH Sarabun New', size: 12 }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } }; });
                 const cols = Math.max.apply(null, aoa.map(r => r.length));
-                ws.columns = Array.from({ length: cols }, (_, i) => ({ width: i === 0 ? 28 : 16 }));
-                ws.eachRow(r => r.eachCell(c => { if (!c.font) c.font = { name: 'TH Sarabun New', size: 12 }; c.alignment = { wrapText: true, vertical: 'top' }; }));
+                // ฐาน: ฟอนต์ + จัดชิดบน + ตัวเลขชิดขวา
+                ws.eachRow((r, rn) => r.eachCell(c => {
+                    if (!c.font) c.font = { name: 'TH Sarabun New', size: 12 };
+                    c.alignment = { wrapText: true, vertical: 'top', horizontal: (typeof c.value === 'number') ? 'right' : 'left' };
+                }));
+                // หัวตาราง (อาจหลายชั้น) — ตัวหนา พื้นเขียวอ่อน จัดกึ่งกลาง
+                for (let hr = 0; hr < headerRows; hr++) {
+                    const row = ws.getRow(OFF + 1 + hr);
+                    row.eachCell(c => { c.font = { bold: true, name: 'TH Sarabun New', size: 12 }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } }; c.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' }; });
+                }
+                // รวมเซลล์หัว (colspan/rowspan) ให้เหมือนในแอป
+                merges.forEach(m => { try { if (m.r < headerRows) ws.mergeCells(OFF + 1 + m.r, m.c + 1, OFF + 1 + m.r2, m.c2 + 1); } catch (e) {} });
+                // เส้นขอบบางทุกเซลล์ของตาราง
+                const thin = { style: 'thin', color: { argb: 'FFCBD5E1' } };
+                for (let rr = OFF + 1; rr <= OFF + aoa.length; rr++) {
+                    const row = ws.getRow(rr);
+                    for (let cc = 1; cc <= cols; cc++) row.getCell(cc).border = { top: thin, left: thin, bottom: thin, right: thin };
+                }
+                for (let i = 1; i <= cols; i++) ws.getColumn(i).width = (i === 1 ? 26 : 15);
+                ws.views = [{ state: 'frozen', xSplit: 1, ySplit: OFF + headerRows }];   // ตรึงคอลัมน์แรก + หัวตาราง
                 const buf = await wb.xlsx.writeBuffer(), blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                 const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileSafe(title) + '.xlsx'; a.click(); URL.revokeObjectURL(a.href);
             }
