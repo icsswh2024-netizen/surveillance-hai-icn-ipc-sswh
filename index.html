@@ -1288,7 +1288,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-17f</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-17g</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -3722,7 +3722,7 @@
             const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = 'hai-register-1.csv';
+            a.href = url; a.download = 'ตารางจำนวนเคสรายเดือน' + ((window.fileFilterSuffix ? window.fileFilterSuffix() : '')) + '.csv';
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
@@ -10349,6 +10349,20 @@
     <script>
         (function () {
             const fileSafe = s => (s || 'card').replace(/[\\/:*?"<>|\n]+/g, '_').replace(/\s+/g, ' ').trim().slice(0, 80);
+            // ท้ายชื่อไฟล์ตามตัวกรอง เช่น _2570_SICU · เว้นว่าง=ทุกค่า
+            function fileFilterSuffix() {
+                try {
+                    const fv = k => (typeof fValues === 'function') ? fValues(k) : [];
+                    const p = [];
+                    const yr = fv('year'); p.push(yr.length ? yr.join('-') : 'ทุกปี');
+                    const q = fv('quarter'); if (q.length) p.push(q.join('-'));
+                    const mo = fv('month'); if (mo.length) p.push('ด' + mo.join('-'));
+                    const u = fv('unit'); if (u.length) p.push(u.join('-'));
+                    const pc = fv('pct'); if (pc.length) p.push(pc.join('-'));
+                    return '_' + p.join('_');
+                } catch (e) { return ''; }
+            }
+            window.fileFilterSuffix = fileFilterSuffix;
             function filterNote() {
                 const dis = key => { const b = document.querySelector('.ms-filter[data-key="' + key + '"] .ms-btn'); return !b || b.disabled; };
                 const p = [];
@@ -10428,7 +10442,7 @@
                 btns.forEach(b => b.style.visibility = 'hidden');
                 try {
                     const canvas = await captureCard(card);
-                    const name = fileSafe(cardTitle(card));
+                    const name = fileSafe(cardTitle(card) + fileFilterSuffix());
                     if (kind === 'jpg') { const a = document.createElement('a'); a.href = canvas.toDataURL('image/jpeg', 0.98); a.download = name + '.jpg'; a.click(); }
                     else {
                         const { jsPDF } = window.jspdf, land = canvas.width >= canvas.height;
@@ -10476,7 +10490,7 @@
                 for (let i = 1; i <= cols; i++) ws.getColumn(i).width = (i === 1 ? 26 : 15);
                 ws.views = [{ state: 'frozen', xSplit: 1, ySplit: OFF + headerRows }];   // ตรึงคอลัมน์แรก + หัวตาราง
                 const buf = await wb.xlsx.writeBuffer(), blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileSafe(title) + '.xlsx'; a.click(); URL.revokeObjectURL(a.href);
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileSafe(title + fileFilterSuffix()) + '.xlsx'; a.click(); URL.revokeObjectURL(a.href);
             }
             function initCardTools() {
                 document.querySelectorAll('div.bg-white.rounded-2xl').forEach(card => {
