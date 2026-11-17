@@ -631,6 +631,10 @@
                             <th class="py-3 px-4 text-right">วันเครื่องช่วยหายใจ</th>
                             <th class="py-3 px-4 text-right text-emerald-700">ผู้ป่วยคาสายหลอดเลือด (ราย)</th>
                             <th class="py-3 px-4 text-right">วันคาสายหลอดเลือด</th>
+                            <th class="py-3 px-4 text-right text-emerald-700">ผู้ป่วยให้สารน้ำ (ราย)</th>
+                            <th class="py-3 px-4 text-right">วันให้สารน้ำ (วัน)</th>
+                            <th class="py-3 px-4 text-right text-emerald-700">ผู้ป่วยให้ NSS Lock (ราย)</th>
+                            <th class="py-3 px-4 text-right">วันให้ NSS Lock (วัน)</th>
                             <th class="py-3 px-4 text-right">ผ่าตัด (op)</th>
                             <th class="py-3 px-4 text-right text-indigo-600">ผ่าตัดแผล 1</th>
                             <th class="py-3 px-4 text-right text-indigo-600">ผ่าตัดแผล 2</th>
@@ -1300,7 +1304,7 @@
                     </div>
                     <div class="flex gap-2 self-start">
                         <button id="btnPresent" class="text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium shadow-sm">▶ นำเสนอ</button>
-                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-17d</span>
+                        <span id="buildStamp" class="text-[10px] text-slate-300 self-center select-all" title="เวอร์ชันไฟล์ที่โหลดอยู่">v2026-11-17e</span>
                         <button id="btnExportReport" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg transition-colors font-medium">ส่งออก CSV</button>
                         <button id="btnPrintReport" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg transition-colors font-medium">🖨️ พิมพ์/บันทึก PDF</button>
                     </div>
@@ -3133,7 +3137,7 @@
         // รวมตัวหารต่อเดือน: วัน device-days / วันนอน / จำนวนผ่าตัด (จากทุกแถว)
         function aggregateDenominatorsByMonth(rows) {
             const den = {};
-            FISCAL_MONTHS.forEach(m => { den[m] = { cathDay: 0, venDay: 0, lineDay: 0, patientDay: 0, op: 0, w1: 0, w2: 0, w3: 0, w4: 0, cathN: 0, venN: 0, lineN: 0, ivDay: 0, liveBirth: 0 }; });
+            FISCAL_MONTHS.forEach(m => { den[m] = { cathDay: 0, venDay: 0, lineDay: 0, patientDay: 0, op: 0, w1: 0, w2: 0, w3: 0, w4: 0, cathN: 0, venN: 0, lineN: 0, ivDay: 0, ivN: 0, ivD: 0, nssN: 0, nssD: 0, liveBirth: 0 }; });
             rows.forEach(r => {
                 if (r.month == null || !den[r.month]) return;
                 den[r.month].cathDay += r.cathDay;
@@ -3145,6 +3149,9 @@
                 den[r.month].cathN += r.cathN;
                 den[r.month].venN += r.venN;
                 den[r.month].lineN += r.lineN;
+                // สารน้ำ: ราย=BSI non1, วัน=BSI non2 · NSS Lock: ราย=BSI non3, วัน=BSI non4
+                den[r.month].ivN += (r.bsi1 || 0); den[r.month].ivD += (r.bsi2 || 0);
+                den[r.month].nssN += (r.bsi3 || 0); den[r.month].nssD += (r.bsi4 || 0);
                 den[r.month].ivDay += (r.bsi2 || 0) + (r.bsi4 || 0);   // วันให้สารน้ำ + วัน NSS Lock (ตัวหาร BSI)
             });
             // เด็กเกิดมีชีพ: ใช้ค่าระดับ รพ./OBW (ไม่สนตัวกรองหอผู้ป่วย) เป็นตัวหาร Omphalitis
@@ -3233,7 +3240,7 @@
             lastByMonth = byMonth; lastDen = den;
             const svcBody = document.getElementById('svcMonthBody');
             svcBody.innerHTML = '';
-            const tot = { patientDay: 0, cathN: 0, cathDay: 0, venN: 0, venDay: 0, lineN: 0, lineDay: 0, op: 0, w1: 0, w2: 0, w3: 0, w4: 0 };
+            const tot = { patientDay: 0, cathN: 0, cathDay: 0, venN: 0, venDay: 0, lineN: 0, lineDay: 0, ivN: 0, ivD: 0, nssN: 0, nssD: 0, op: 0, w1: 0, w2: 0, w3: 0, w4: 0 };
             const cellW = v => '<td class="py-3 px-4 text-right text-indigo-600">' + Math.round(v || 0).toLocaleString() + '</td>';
             const cell = v => '<td class="py-3 px-4 text-right">' + Math.round(v || 0).toLocaleString() + '</td>';
             const cellN = v => '<td class="py-3 px-4 text-right text-emerald-700 font-semibold">' + Math.round(v || 0).toLocaleString() + '</td>';
@@ -3248,6 +3255,7 @@
                     cellN(d.cathN) + cell(d.cathDay) +
                     cellN(d.venN) + cell(d.venDay) +
                     cellN(d.lineN) + cell(d.lineDay) +
+                    cellN(d.ivN) + cell(d.ivD) + cellN(d.nssN) + cell(d.nssD) +
                     cell(d.op) + cellW(d.w1) + cellW(d.w2) + cellW(d.w3) + cellW(d.w4);
                 svcBody.appendChild(trS);
             });
@@ -3259,6 +3267,8 @@
                 '<td class="py-3 px-4 text-right text-emerald-700">' + Math.round(tot.cathN).toLocaleString() + '</td>' + cell(tot.cathDay) +
                 '<td class="py-3 px-4 text-right text-emerald-700">' + Math.round(tot.venN).toLocaleString() + '</td>' + cell(tot.venDay) +
                 '<td class="py-3 px-4 text-right text-emerald-700">' + Math.round(tot.lineN).toLocaleString() + '</td>' + cell(tot.lineDay) +
+                '<td class="py-3 px-4 text-right text-emerald-700">' + Math.round(tot.ivN).toLocaleString() + '</td>' + cell(tot.ivD) +
+                '<td class="py-3 px-4 text-right text-emerald-700">' + Math.round(tot.nssN).toLocaleString() + '</td>' + cell(tot.nssD) +
                 cell(tot.op) + cellW(tot.w1) + cellW(tot.w2) + cellW(tot.w3) + cellW(tot.w4);
             svcBody.appendChild(trST);
 
